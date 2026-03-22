@@ -1,53 +1,61 @@
-import type { MasonryInput, MasonryOutput } from '../types'
+import type { MasonryInput, MasonryOutput } from '../types';
 
 function formatFuelName(fuelType: MasonryInput['fuelType']): string {
   if (fuelType === 'natural-gas') {
-    return 'Natural Gas'
+    return 'Natural Gas';
   }
   if (fuelType === 'propane') {
-    return 'Propane'
+    return 'Propane';
   }
-  return 'Wood'
+  return 'Wood';
 }
 
 export function buildCoursePlanSvg(output: MasonryOutput): string {
-  const rowHeight = 26
-  const svgHeight = output.courses.length * rowHeight + 28
+  const rowHeight = 26;
+  const svgHeight = output.courses.length * rowHeight + 28;
 
   const rows = output.courses
     .map((course, idx) => {
-      const y = 18 + idx * rowHeight
-      const modulePx = 48
-      const offsetPx = course.offsetIn > 0 ? modulePx / 2 : 0
-      const ventCourse = output.ventSpec.targetCourseIndexes.includes(course.courseIndex)
+      const y = 18 + idx * rowHeight;
+      const modulePx = 48;
+      const offsetPx = course.offsetIn > 0 ? modulePx / 2 : 0;
+      const ventCourse = output.ventSpec.targetCourseIndexes.includes(
+        course.courseIndex,
+      );
 
       const bricks = Array.from({ length: course.unitCount }, (_, brickIdx) => {
-        const fill = ventCourse && brickIdx % 5 === 0 ? '#c13a1f' : '#b66a34'
-        const opacity = ventCourse && brickIdx % 5 === 0 ? '0.85' : '0.72'
+        const fill = ventCourse && brickIdx % 5 === 0 ? '#c13a1f' : '#b66a34';
+        const opacity = ventCourse && brickIdx % 5 === 0 ? '0.85' : '0.72';
 
-        return `<rect x="${52 + offsetPx + brickIdx * modulePx}" y="${y}" width="${modulePx - 4}" height="16" rx="2" fill="${fill}" opacity="${opacity}" />`
-      }).join('')
+        return `<rect x="${52 + offsetPx + brickIdx * modulePx}" y="${y}" width="${modulePx - 4}" height="16" rx="2" fill="${fill}" opacity="${opacity}" />`;
+      }).join('');
 
-      return `<g><text x="8" y="${y + 13}" font-size="11" fill="#3c2a11">C${course.courseIndex + 1}</text>${bricks}</g>`
+      return `<g><text x="8" y="${y + 13}" font-size="11" fill="#3c2a11">C${course.courseIndex + 1}</text>${bricks}</g>`;
     })
-    .join('')
+    .join('');
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 ${svgHeight}" width="940" height="${svgHeight}">${rows}</svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 ${svgHeight}" width="940" height="${svgHeight}">${rows}</svg>`;
 }
 
-export function buildSafetyClearanceSvg(input: MasonryInput, output: MasonryOutput): string {
-  const requiredClearanceIn = 120
-  const actualClearanceIn = input.proximityToStructuresFt * 12
-  const pitOuterRadiusIn = output.effectiveOuterDiameterIn / 2
+export function buildSafetyClearanceSvg(
+  input: MasonryInput,
+  output: MasonryOutput,
+): string {
+  const requiredClearanceIn = 120;
+  const actualClearanceIn = input.proximityToStructuresFt * 12;
+  const pitOuterRadiusIn = output.effectiveOuterDiameterIn / 2;
 
-  const displayRadius = 168
-  const center = 190
-  const ringScale = displayRadius / requiredClearanceIn
-  const pitRadiusPx = Math.max(8, pitOuterRadiusIn * ringScale)
-  const requiredRingPx = requiredClearanceIn * ringScale
-  const actualRadiusPx = Math.min(requiredRingPx, Math.max(0, actualClearanceIn * ringScale))
-  const structureX = center + actualRadiusPx
-  const safetyPass = input.proximityToStructuresFt >= 10
+  const displayRadius = 168;
+  const center = 190;
+  const ringScale = displayRadius / requiredClearanceIn;
+  const pitRadiusPx = Math.max(8, pitOuterRadiusIn * ringScale);
+  const requiredRingPx = requiredClearanceIn * ringScale;
+  const actualRadiusPx = Math.min(
+    requiredRingPx,
+    Math.max(0, actualClearanceIn * ringScale),
+  );
+  const structureX = center + actualRadiusPx;
+  const safetyPass = input.proximityToStructuresFt >= 10;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" width="640" height="380">
     <rect x="0" y="0" width="640" height="380" fill="#fffdf7" />
@@ -63,16 +71,19 @@ export function buildSafetyClearanceSvg(input: MasonryInput, output: MasonryOutp
     <text x="390" y="160" font-size="12" fill="#4a3720">Actual distance = ${input.proximityToStructuresFt.toFixed(2)} ft</text>
     <text x="390" y="182" font-size="12" fill="#4a3720">Outer pit diameter = ${output.effectiveOuterDiameterIn.toFixed(2)} in</text>
     <text x="390" y="204" font-size="12" fill="${safetyPass ? '#2f6d3f' : '#a01d1d'}">Status = ${safetyPass ? 'PASS' : 'FAIL'}</text>
-  </svg>`
+  </svg>`;
 }
 
-export function buildConstructionPacketHtml(input: MasonryInput, output: MasonryOutput): string {
-  const svg = buildCoursePlanSvg(output)
-  const clearanceSvg = buildSafetyClearanceSvg(input, output)
+export function buildConstructionPacketHtml(
+  input: MasonryInput,
+  output: MasonryOutput,
+): string {
+  const svg = buildCoursePlanSvg(output);
+  const clearanceSvg = buildSafetyClearanceSvg(input, output);
   const warnings =
     output.warnings.length > 0
       ? `<ul>${output.warnings.map((warning) => `<li>${warning.message} Entered: ${warning.actualValue.toFixed(1)} ft.</li>`).join('')}</ul>`
-      : '<p>No safety clearance warnings.</p>'
+      : '<p>No safety clearance warnings.</p>';
 
   return `<!doctype html>
 <html lang="en">
@@ -142,5 +153,5 @@ export function buildConstructionPacketHtml(input: MasonryInput, output: Masonry
       ${svg}
     </section>
   </body>
-</html>`
+</html>`;
 }

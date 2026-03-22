@@ -11,7 +11,7 @@ Build and maintain an engineering-accurate Parametric Masonry Designer for firep
 3. Running bond is required: each adjacent course offsets 50% module from previous course.
 4. Circular course count uses centerline formula:
 
-   N = (pi * (D - W)) / (L + J)
+   N = (pi \* (D - W)) / (L + J)
 
 5. Fuel-specific venting:
    - Propane: vents at base courses.

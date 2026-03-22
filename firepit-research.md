@@ -12,7 +12,7 @@ This document captures engineering principles used by the Parametric Masonry Des
 
 Circular count (centerline method):
 
-N = (pi * (D - W)) / (L + J)
+N = (pi \* (D - W)) / (L + J)
 
 Where:
 
@@ -40,7 +40,7 @@ D = D_inner + 2W
 
 Volume of angular stone:
 
-V = pi * (D_footprint / 2)^2 * depth
+V = pi _ (D_footprint / 2)^2 _ depth
 
 ## Safety Rule
 
