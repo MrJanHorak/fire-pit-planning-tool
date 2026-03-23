@@ -24,6 +24,14 @@ body {
   min-height: 100vh;
 }
 
+summary {
+  list-style: none;
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}
+
 @keyframes rise-in {
   from {
     opacity: 0;

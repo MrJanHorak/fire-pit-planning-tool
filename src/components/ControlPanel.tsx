@@ -1,4 +1,5 @@
 import { useState, type Dispatch, type SetStateAction } from 'react';
+import HelpTip from './HelpTip';
 import { BRICK_PRESETS, CAPSTONE_PRESETS } from '../engine/MasonryEngine';
 import type { MasonryInput } from '../types';
 
@@ -16,6 +17,32 @@ interface ControlPanelProps {
     };
     bothMinimumNoCutDiameterIn: number;
   };
+}
+
+function FieldLabel({ label, tip }: { label: string; tip?: string }) {
+  return (
+    <span className='inline-flex items-center gap-2 text-sm font-medium text-amber-950'>
+      {label}
+      {tip && <HelpTip label={`About ${label}`}>{tip}</HelpTip>}
+    </span>
+  );
+}
+
+function SectionHeading({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className='sm:col-span-2'>
+      <h3 className='text-xs font-semibold uppercase tracking-[0.2em] text-amber-900/70'>
+        {title}
+      </h3>
+      <p className='mt-1 text-xs leading-5 text-amber-900/70'>{description}</p>
+    </div>
+  );
 }
 
 export default function ControlPanel({
@@ -49,15 +76,35 @@ export default function ControlPanel({
 
   return (
     <section className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/70 p-5 shadow-lg backdrop-blur'>
-      <h2 className='mb-4 text-lg font-semibold tracking-tight'>
-        Design Inputs
-      </h2>
+      <div className='mb-4 flex items-start justify-between gap-3'>
+        <div>
+          <h2 className='text-lg font-semibold tracking-tight'>
+            Design Inputs
+          </h2>
+          <p className='mt-1 text-sm text-amber-900/75'>
+            Core decisions first. Field help lives behind the ? buttons.
+          </p>
+        </div>
+        <div className='rounded-full border border-amber-900/15 bg-white/70 px-3 py-1 text-xs font-medium text-amber-900/75'>
+          Fewer hints, same engine
+        </div>
+      </div>
 
       <div className='grid gap-3 sm:grid-cols-2'>
+        <SectionHeading
+          title='Layout'
+          description='Set the shape, opening size, and overall wall mass.'
+        />
+
         <label className='flex flex-col gap-1 sm:col-span-2'>
-          <span className='text-sm font-medium'>Plan Shape</span>
+          <FieldLabel
+            label='Plan Shape'
+            tip='Circular is the strongest path today. Square and rectangular inputs are available, but circular layouts still have the most mature build guidance.'
+          />
           <select
             className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label='Plan Shape'
+            title='Plan Shape'
             value={input.planShape}
             onChange={(event) =>
               setInput((prev) => {
@@ -81,7 +128,10 @@ export default function ControlPanel({
         </label>
 
         <label className='flex flex-col gap-1 sm:col-span-2'>
-          <span className='text-sm font-medium'>Brick Type</span>
+          <FieldLabel
+            label='Brick Type'
+            tip='Use actual unit dimensions, not nominal sizes. Switch to a custom or radial option only when you know the exact unit you plan to buy.'
+          />
           <select
             className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
             value={input.brickPresetKey ?? 'modular'}
@@ -105,11 +155,6 @@ export default function ControlPanel({
             L&nbsp;{currentPreset.lengthIn}&Prime; &times; W&nbsp;
             {currentPreset.widthIn}&Prime; &times; H&nbsp;
             {currentPreset.heightIn}&Prime; (actual dimensions)
-          </span>
-          <span className='text-xs text-amber-700/80'>
-            Expanded catalog includes common face bricks, fire brick sizes,
-            paver-style units, and rounded/radial choices used for firepit rims
-            and curves.
           </span>
           {usingCustomBrick && (
             <div className='mt-2 grid gap-2 rounded-md border border-amber-700/20 bg-white/60 p-3 sm:grid-cols-3'>
@@ -213,7 +258,10 @@ export default function ControlPanel({
         </label>
 
         <label className='flex flex-col gap-1 sm:col-span-2'>
-          <span className='text-sm font-medium'>Capstone Type</span>
+          <FieldLabel
+            label='Capstone Type'
+            tip='Cap units affect the finished top course, overhang, and cut planning. Matching wall units are the simplest starting point.'
+          />
           <select
             className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
             value={input.capstonePresetKey ?? 'matching'}
@@ -238,10 +286,6 @@ export default function ControlPanel({
             <option value='custom'>Custom Cap Unit (Rectangular)</option>
             <option value='custom-radial'>Custom Cap Unit (Radial)</option>
           </select>
-          <span className='text-xs text-amber-700/70'>
-            Includes matching units, flat cap stone, cap blocks, rowlock,
-            bullnose cap, and radius wall cap options for curved edges.
-          </span>
           {usingCustomCap && (
             <div className='mt-2 grid gap-2 rounded-md border border-amber-700/20 bg-white/60 p-3 sm:grid-cols-3'>
               {usingCustomCapRadial ? (
@@ -344,7 +388,10 @@ export default function ControlPanel({
         </label>
 
         <div className='flex flex-col gap-1 sm:col-span-2'>
-          <span className='text-sm font-medium'>Capstone Orientation</span>
+          <FieldLabel
+            label='Capstone Orientation'
+            tip='This only changes cap module spacing. The wall still follows running bond.'
+          />
           <div
             className='grid grid-cols-3 gap-1 rounded-lg border border-amber-700/25 bg-white p-1'
             role='group'
@@ -396,19 +443,29 @@ export default function ControlPanel({
               );
             })}
           </div>
-          <span className='text-xs text-amber-700/70'>
-            Affects cap module spacing only. Wall courses remain running bond.
-          </span>
         </div>
 
         <label className='flex flex-col gap-1'>
-          <span className='text-sm font-medium'>
-            {input.planShape === 'circular'
-              ? 'Inner Diameter (in)'
-              : 'Inner Width (in)'}
-          </span>
+          <FieldLabel
+            label={
+              input.planShape === 'circular'
+                ? 'Inner Diameter (in)'
+                : 'Inner Width (in)'
+            }
+            tip='Use the firebox opening as the primary dimension. The engine derives outer wall and centerline geometry from this value.'
+          />
           <input
             className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label={
+              input.planShape === 'circular'
+                ? 'Inner Diameter in inches'
+                : 'Inner Width in inches'
+            }
+            title={
+              input.planShape === 'circular'
+                ? 'Inner Diameter in inches'
+                : 'Inner Width in inches'
+            }
             type='number'
             min={18}
             value={
@@ -437,20 +494,16 @@ export default function ControlPanel({
           />
           {input.planShape === 'circular' && noCutGuidance && (
             <div className='mt-1 rounded-md border border-amber-900/15 bg-amber-50/80 px-2 py-1.5 text-xs text-amber-900'>
-              <div>
-                <button
-                  type='button'
-                  className='rounded-full border border-amber-900/25 bg-white px-2 py-0.5 font-semibold text-amber-950'
-                  onClick={() => setShowNoCutDetails((value) => !value)}
-                >
-                  {showNoCutDetails
-                    ? 'Hide No-Cut Suggestions'
-                    : 'Show No-Cut Suggestions'}
-                </button>
-              </div>
+              <button
+                type='button'
+                className='rounded-full border border-amber-900/25 bg-white px-2 py-0.5 font-semibold text-amber-950'
+                onClick={() => setShowNoCutDetails((value) => !value)}
+              >
+                {showNoCutDetails ? 'Hide No-Cut Sizes' : 'Show No-Cut Sizes'}
+              </button>
 
               {showNoCutDetails && (
-                <div className='mt-1 flex flex-wrap gap-1'>
+                <div className='mt-2 flex flex-wrap gap-1'>
                   <button
                     type='button'
                     className='rounded-full border border-amber-900/25 bg-white px-2 py-0.5 font-medium text-amber-950'
@@ -463,8 +516,8 @@ export default function ControlPanel({
                       }))
                     }
                   >
-                    Wall no-cut:{' '}
-                    {noCutGuidance.wall.minimumNoCutDiameterIn.toFixed(2)} in
+                    Wall {noCutGuidance.wall.minimumNoCutDiameterIn.toFixed(2)}{' '}
+                    in
                   </button>
                   <button
                     type='button'
@@ -478,8 +531,7 @@ export default function ControlPanel({
                       }))
                     }
                   >
-                    Cap no-cut:{' '}
-                    {noCutGuidance.cap.minimumNoCutDiameterIn.toFixed(2)} in
+                    Cap {noCutGuidance.cap.minimumNoCutDiameterIn.toFixed(2)} in
                   </button>
                   <button
                     type='button'
@@ -493,8 +545,8 @@ export default function ControlPanel({
                       }))
                     }
                   >
-                    Both no-cut:{' '}
-                    {noCutGuidance.bothMinimumNoCutDiameterIn.toFixed(2)} in
+                    Both {noCutGuidance.bothMinimumNoCutDiameterIn.toFixed(2)}{' '}
+                    in
                   </button>
                 </div>
               )}
@@ -504,9 +556,14 @@ export default function ControlPanel({
 
         {input.planShape === 'rectangular' && (
           <label className='flex flex-col gap-1'>
-            <span className='text-sm font-medium'>Inner Depth (in)</span>
+            <FieldLabel
+              label='Inner Depth (in)'
+              tip='Only used for rectangular plans. Square plans keep width and depth locked together.'
+            />
             <input
               className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+              aria-label='Inner Depth in inches'
+              title='Inner Depth in inches'
               type='number'
               min={18}
               value={input.innerDepthIn}
@@ -521,9 +578,14 @@ export default function ControlPanel({
         )}
 
         <label className='flex flex-col gap-1'>
-          <span className='text-sm font-medium'>Wall Height (in)</span>
+          <FieldLabel
+            label='Wall Height (in)'
+            tip='This controls course count. Very tall walls can reduce comfort and may call for heavier-looking cap proportions.'
+          />
           <input
             className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label='Wall Height in inches'
+            title='Wall Height in inches'
             type='number'
             min={8}
             value={input.wallHeightIn}
@@ -537,9 +599,14 @@ export default function ControlPanel({
         </label>
 
         <label className='flex flex-col gap-1'>
-          <span className='text-sm font-medium'>Mortar Joint (in)</span>
+          <FieldLabel
+            label='Mortar Joint (in)'
+            tip='The default 3/8 in joint matches the core engineering baseline. Changing it will affect counts, spacing, and cut guidance.'
+          />
           <input
             className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label='Mortar Joint in inches'
+            title='Mortar Joint in inches'
             type='number'
             min={0.25}
             step={0.125}
@@ -554,9 +621,14 @@ export default function ControlPanel({
         </label>
 
         <label className='flex flex-col gap-1'>
-          <span className='text-sm font-medium'>Structure Proximity (ft)</span>
+          <FieldLabel
+            label='Structure Proximity (ft)'
+            tip='This is the horizontal setback to combustibles. Anything below 10 ft triggers a warning.'
+          />
           <input
             className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label='Structure Proximity in feet'
+            title='Structure Proximity in feet'
             type='number'
             min={1}
             value={input.proximityToStructuresFt}
@@ -569,10 +641,20 @@ export default function ControlPanel({
           />
         </label>
 
+        <SectionHeading
+          title='Fuel And Thermal'
+          description='Choose how the pit behaves under heat and how it vents.'
+        />
+
         <label className='flex flex-col gap-1'>
-          <span className='text-sm font-medium'>Fuel Type</span>
+          <FieldLabel
+            label='Fuel Type'
+            tip='Fuel type drives vent placement rules. Propane vents low, natural gas vents high, and wood focuses on combustion airflow.'
+          />
           <select
             className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label='Fuel Type'
+            title='Fuel Type'
             value={input.fuelType}
             onChange={(event) =>
               setInput((prev) => ({
@@ -588,9 +670,14 @@ export default function ControlPanel({
         </label>
 
         <label className='flex flex-col gap-1'>
-          <span className='text-sm font-medium'>Thermal Liner</span>
+          <FieldLabel
+            label='Thermal Liner'
+            tip='Wood pits should generally use a liner or ring to protect the outer decorative shell from direct heat.'
+          />
           <select
             className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label='Thermal Liner'
+            title='Thermal Liner'
             value={input.linerType}
             onChange={(event) =>
               setInput((prev) => ({
@@ -606,9 +693,14 @@ export default function ControlPanel({
         </label>
 
         <label className='flex flex-col gap-1'>
-          <span className='text-sm font-medium'>Orientation</span>
+          <FieldLabel
+            label='Orientation'
+            tip='Stretcher uses the long face along the wall run. Header rotates the unit and increases wall thickness.'
+          />
           <select
             className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label='Orientation'
+            title='Orientation'
             value={input.orientation}
             onChange={(event) =>
               setInput((prev) => ({
@@ -623,9 +715,14 @@ export default function ControlPanel({
         </label>
 
         <label className='flex flex-col gap-1'>
-          <span className='text-sm font-medium'>Expansion Gap (in)</span>
+          <FieldLabel
+            label='Expansion Gap (in)'
+            tip='This affects liner geometry. It matters most when a steel ring or fire-brick liner needs room to move independently of the outer shell.'
+          />
           <input
             className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label='Expansion Gap in inches'
+            title='Expansion Gap in inches'
             type='number'
             min={0}
             step={0.125}
@@ -637,16 +734,17 @@ export default function ControlPanel({
               }))
             }
           />
-          <span className='text-xs text-amber-700/70'>
-            Applies to liner geometry; effect is visible when liner is Fire
-            Brick or Steel Ring.
-          </span>
         </label>
 
         <label className='flex flex-col gap-1'>
-          <span className='text-sm font-medium'>Vent Count</span>
+          <FieldLabel
+            label='Vent Count'
+            tip='Use enough vents to satisfy total open area and to support balanced airflow around the firebox.'
+          />
           <input
             className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label='Vent Count'
+            title='Vent Count'
             type='number'
             min={2}
             value={input.ventCount}
@@ -660,9 +758,14 @@ export default function ControlPanel({
         </label>
 
         <label className='flex flex-col gap-1'>
-          <span className='text-sm font-medium'>Vent Opening Area (sq in)</span>
+          <FieldLabel
+            label='Vent Opening Area (sq in)'
+            tip='The engine uses this to calculate total open area. Gas features often target a broader 18 to 36 sq in range depending on hardware.'
+          />
           <input
             className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label='Vent Opening Area in square inches'
+            title='Vent Opening Area in square inches'
             type='number'
             min={1}
             step={0.5}
@@ -674,15 +777,22 @@ export default function ControlPanel({
               }))
             }
           />
-          <span className='text-xs text-amber-700/70'>
-            3D vent void scales with this value.
-          </span>
         </label>
 
+        <SectionHeading
+          title='Cap And Routing'
+          description='Finish the top profile and keep utilities clear of vent openings.'
+        />
+
         <label className='flex flex-col gap-1'>
-          <span className='text-sm font-medium'>Capstone Overhang (in)</span>
+          <FieldLabel
+            label='Capstone Overhang (in)'
+            tip='A modest 1 to 2 in overhang usually improves water shedding and gives the cap more visual presence.'
+          />
           <input
             className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label='Capstone Overhang in inches'
+            title='Capstone Overhang in inches'
             type='number'
             min={0}
             step={0.25}
@@ -697,9 +807,14 @@ export default function ControlPanel({
         </label>
 
         <label className='flex flex-col gap-1'>
-          <span className='text-sm font-medium'>Cap Placement</span>
+          <FieldLabel
+            label='Cap Placement'
+            tip='Outward-only keeps the overhang outside the wall. Symmetric splits the cap extension inward and outward.'
+          />
           <select
             className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label='Cap Placement'
+            title='Cap Placement'
             value={input.capPlacementMode}
             onChange={(event) =>
               setInput((prev) => ({
@@ -716,11 +831,14 @@ export default function ControlPanel({
 
         {input.fuelType !== 'wood' && (
           <label className='flex flex-col gap-1 sm:col-span-2'>
-            <span className='text-sm font-medium'>
-              Gas Line Entry Angle (deg)
-            </span>
+            <FieldLabel
+              label='Gas Line Entry Angle (deg)'
+              tip='Use this to route the gas line away from planned vent axes. The engine can auto-shift the entry if it conflicts with a vent.'
+            />
             <input
               className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+              aria-label='Gas Line Entry Angle in degrees'
+              title='Gas Line Entry Angle in degrees'
               type='number'
               min={0}
               max={359}
@@ -732,9 +850,6 @@ export default function ControlPanel({
                 }))
               }
             />
-            <span className='text-xs text-amber-700/70'>
-              Use this to keep gas line routing off the planned vent axes.
-            </span>
           </label>
         )}
       </div>
