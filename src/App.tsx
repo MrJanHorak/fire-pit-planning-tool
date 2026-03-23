@@ -1,27 +1,63 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import ControlPanel from './components/ControlPanel';
 import ConstructionMode from './components/ConstructionMode';
+import {
+  FoundationRiskBadge,
+  FoundationRiskLegend,
+} from './components/FoundationReview';
 import KnowledgeCenter from './components/KnowledgeCenter';
 import SafetyClearanceDiagram from './components/SafetyClearanceDiagram';
 import Stage3D from './components/Stage3D';
 import { MasonryEngine } from './engine/MasonryEngine';
 import type { MasonryInput } from './types';
+import { DEFAULT_MASONRY_INPUT } from './utils/defaultInput';
 import { buildFoundationAdvisory } from './utils/foundationAdvisory';
+import {
+  buildProjectFile,
+  parseProjectFile,
+  readStoredProject,
+  writeStoredProject,
+} from './utils/projectFile';
 
 const engine = new MasonryEngine();
+const PROJECT_STORAGE_KEY = 'firepit-parametric-masonry-designer-project';
+const DEFAULT_PROJECT_NAME = 'Untitled Firepit';
 
-function getFoundationRiskBadgeClasses(risk: 'low' | 'moderate' | 'high') {
-  if (risk === 'high') {
-    return 'border-red-800/25 bg-red-100 text-red-900';
-  }
-  if (risk === 'moderate') {
-    return 'border-amber-900/20 bg-amber-100 text-amber-950';
-  }
-  return 'border-emerald-800/25 bg-emerald-100 text-emerald-900';
+type ProjectStatus = {
+  label: string;
+  timestamp: string | null;
+};
+
+function slugifyProjectName(projectName: string): string {
+  const slug = projectName
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return slug || 'firepit-project';
 }
 
 function roundUpToHundredth(value: number): number {
   return Math.ceil(value * 100) / 100;
+}
+
+function formatProjectTimestamp(timestamp: string | null): string {
+  if (!timestamp) {
+    return 'time unavailable';
+  }
+
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) {
+    return 'time unavailable';
+  }
+
+  return date.toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 }
 
 function findNoCutDiameterIn(
@@ -74,46 +110,120 @@ function findNoCutDiameterIn(
 type ViewMode = '3d' | 'construction';
 type SiteView = 'designer' | 'guide' | 'tips' | 'research';
 
-const initialInput: MasonryInput = {
-  planShape: 'circular',
-  innerDiameterIn: 36,
-  innerWidthIn: 36,
-  innerDepthIn: 30,
-  wallHeightIn: 18,
-  proximityToStructuresFt: 12,
-  fuelType: 'propane',
-  linerType: 'steel-ring',
-  expansionGapIn: 0.5,
-  mortarJointIn: 0.375,
-  orientation: 'stretcher',
-  capOrientation: 'match-wall',
-  bondPattern: 'running-bond',
-  ventCount: 4,
-  ventOpeningAreaSqIn: 5,
-  gasLineEntryAngleDeg: 225,
-  capstoneOverhangIn: 2,
-  capPlacementMode: 'outward-only',
-  soilType: 'unknown',
-  drainageCondition: 'unknown',
-  frostClimate: false,
-  capstonePresetKey: 'matching',
-  brickPresetKey: 'modular',
-  customBrickLengthIn: 7.625,
-  customBrickWidthIn: 3.625,
-  customBrickHeightIn: 2.25,
-  customBrickInnerLengthIn: 7.25,
-  customBrickOuterLengthIn: 8,
-  customCapLengthIn: 14,
-  customCapWidthIn: 10,
-  customCapHeightIn: 2,
-  customCapInnerLengthIn: 13.5,
-  customCapOuterLengthIn: 14.5,
-};
-
 export default function App() {
-  const [input, setInput] = useState<MasonryInput>(initialInput);
+  const initialProject = useMemo(
+    () => readStoredProject(PROJECT_STORAGE_KEY, DEFAULT_MASONRY_INPUT),
+    [],
+  );
+  const [input, setInput] = useState<MasonryInput>(
+    () => initialProject?.input ?? DEFAULT_MASONRY_INPUT,
+  );
+  const [projectName, setProjectName] = useState<string>(
+    () => initialProject?.projectName ?? DEFAULT_PROJECT_NAME,
+  );
   const [view, setView] = useState<ViewMode>('3d');
   const [siteView, setSiteView] = useState<SiteView>('designer');
+  const [projectNotice, setProjectNotice] = useState<string | null>(null);
+  const [projectStatus, setProjectStatus] = useState<ProjectStatus | null>(
+    initialProject
+      ? {
+          label: 'Restored autosave',
+          timestamp: initialProject.savedAt,
+        }
+      : null,
+  );
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const hasInitializedAutosave = useRef(false);
+
+  useEffect(() => {
+    if (initialProject) {
+      setProjectNotice(
+        `Restored autosaved browser project${initialProject.projectName ? `: ${initialProject.projectName}` : '.'}`,
+      );
+    }
+  }, [initialProject]);
+
+  useEffect(() => {
+    writeStoredProject(PROJECT_STORAGE_KEY, input, projectName);
+    if (!hasInitializedAutosave.current) {
+      hasInitializedAutosave.current = true;
+      return;
+    }
+
+    setProjectStatus({
+      label: 'Autosaved',
+      timestamp: new Date().toISOString(),
+    });
+  }, [input, projectName]);
+
+  const handleExportProject = () => {
+    const projectFile = buildProjectFile(input, projectName);
+    const blob = new Blob([JSON.stringify(projectFile, null, 2)], {
+      type: 'application/json;charset=utf-8',
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0, 10);
+    const fileNameBase = slugifyProjectName(projectName);
+
+    link.href = url;
+    link.download = `${fileNameBase}-${stamp}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setProjectNotice(`Downloaded project JSON for ${projectName}.`);
+  };
+
+  const handleImportButtonClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImportProject = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    try {
+      const content = await file.text();
+      const parsedProject = parseProjectFile(content, DEFAULT_MASONRY_INPUT);
+      setInput(parsedProject.input);
+      setProjectName(
+        parsedProject.projectName ??
+          (file.name.replace(/\.[^.]+$/, '') || DEFAULT_PROJECT_NAME),
+      );
+      setSiteView('designer');
+      setView('3d');
+      setProjectNotice(`Imported project from ${file.name}.`);
+      setProjectStatus({
+        label: 'Imported project',
+        timestamp: parsedProject.savedAt ?? new Date().toISOString(),
+      });
+    } catch (error) {
+      setProjectNotice(
+        error instanceof Error
+          ? `Import failed: ${error.message}`
+          : 'Import failed: unsupported project file.',
+      );
+    } finally {
+      event.target.value = '';
+    }
+  };
+
+  const handleResetProject = () => {
+    setInput(DEFAULT_MASONRY_INPUT);
+    setProjectName(DEFAULT_PROJECT_NAME);
+    setSiteView('designer');
+    setView('3d');
+    setProjectNotice('Started a new project from the default baseline.');
+    setProjectStatus({
+      label: 'Started new project',
+      timestamp: new Date().toISOString(),
+    });
+  };
 
   const output = useMemo(() => engine.calculateDesign(input), [input]);
   const foundationAdvisory = useMemo(
@@ -196,6 +306,67 @@ export default function App() {
             })}
           </nav>
         </div>
+
+        <div className='mt-4 flex flex-wrap items-center gap-2'>
+          <label className='flex min-w-[240px] flex-1 flex-col gap-1'>
+            <span className='text-xs font-semibold uppercase tracking-[0.2em] text-amber-900/70'>
+              Project Name
+            </span>
+            <input
+              className='rounded-xl border border-amber-900/20 bg-white/80 px-3 py-2 text-sm font-medium text-amber-950'
+              aria-label='Project Name'
+              title='Project Name'
+              value={projectName}
+              onChange={(event) => setProjectName(event.target.value)}
+            />
+          </label>
+          <button
+            type='button'
+            className='rounded-full border border-amber-900/20 bg-white/80 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-white'
+            onClick={handleExportProject}
+          >
+            Save Project JSON
+          </button>
+          <button
+            type='button'
+            className='rounded-full border border-amber-900/20 bg-white/80 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-white'
+            onClick={handleImportButtonClick}
+          >
+            Import Project
+          </button>
+          <button
+            type='button'
+            className='rounded-full border border-amber-900/20 bg-amber-50/80 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-amber-50'
+            onClick={handleResetProject}
+          >
+            New Project
+          </button>
+          <input
+            ref={fileInputRef}
+            type='file'
+            accept='application/json,.json'
+            className='hidden'
+            aria-label='Import project JSON'
+            onChange={handleImportProject}
+          />
+          <p className='text-sm text-amber-900/75'>
+            Projects autosave in this browser and can also be exported or
+            imported as JSON.
+          </p>
+        </div>
+
+        {projectStatus && (
+          <div className='mt-3 rounded-xl border border-amber-900/15 bg-white/70 px-3 py-2 text-sm text-amber-950/85'>
+            <strong>{projectStatus.label}</strong>: {projectName} at{' '}
+            {formatProjectTimestamp(projectStatus.timestamp)}.
+          </div>
+        )}
+
+        {projectNotice && (
+          <div className='mt-3 rounded-xl border border-amber-900/15 bg-white/70 px-3 py-2 text-sm text-amber-950/85'>
+            {projectNotice}
+          </div>
+        )}
       </header>
 
       {siteView === 'designer' ? (
@@ -256,15 +427,13 @@ export default function App() {
                   {output.foundation.stoneVolumeCubicYards.toFixed(2)}
                 </p>
                 <p className='mt-1'>
-                  <span
-                    className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${getFoundationRiskBadgeClasses(
-                      foundationAdvisory.risk,
-                    )}`}
-                  >
-                    {foundationAdvisory.risk} review
-                  </span>
+                  <FoundationRiskBadge risk={foundationAdvisory.risk} />
                 </p>
               </div>
+            </div>
+
+            <div className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg'>
+              <FoundationRiskLegend />
             </div>
 
             <div className='card-rise grid gap-3 rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg sm:grid-cols-2 lg:grid-cols-5'>

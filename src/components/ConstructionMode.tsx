@@ -8,6 +8,7 @@ import {
   buildWallBrickTaperCutSvg,
 } from '../utils/constructionPacket';
 import { buildFoundationAdvisory } from '../utils/foundationAdvisory';
+import { FoundationRiskBadge, FoundationRiskLegend } from './FoundationReview';
 
 interface ConstructionModeProps {
   input: MasonryInput;
@@ -25,13 +26,6 @@ export default function ConstructionMode({
   const wallBrickCutMarkup = buildWallBrickTaperCutSvg(output);
   const capstonePlacementMarkup = buildCapstonePlacementSampleSvg(output);
   const foundationAdvisory = buildFoundationAdvisory(input, output);
-
-  const foundationRiskBadgeClass =
-    foundationAdvisory.risk === 'high'
-      ? 'border-red-800/25 bg-red-100 text-red-900'
-      : foundationAdvisory.risk === 'moderate'
-        ? 'border-amber-900/20 bg-amber-100 text-amber-950'
-        : 'border-emerald-800/25 bg-emerald-100 text-emerald-900';
 
   const downloadPacket = () => {
     const html = buildConstructionPacketHtml(input, output);
@@ -74,11 +68,12 @@ export default function ConstructionMode({
           <h4 className='text-sm font-semibold text-amber-950'>
             Site Guidance
           </h4>
-          <span
-            className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${foundationRiskBadgeClass}`}
-          >
+          <FoundationRiskBadge risk={foundationAdvisory.risk}>
             {foundationAdvisory.risk} foundation review
-          </span>
+          </FoundationRiskBadge>
+        </div>
+        <div className='mt-2'>
+          <FoundationRiskLegend />
         </div>
         <p className='mt-2 text-sm text-amber-950/85'>
           {foundationAdvisory.heading}. Baseline foundation math remains fixed

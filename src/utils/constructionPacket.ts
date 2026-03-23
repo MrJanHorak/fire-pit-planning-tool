@@ -439,6 +439,8 @@ export function buildConstructionPacketHtml(
 
     <section class="block avoid-break">
       <h2>Foundation Review</h2>
+      <p>Review scale: Low = baseline-friendly site, Moderate = verify field conditions, High = footing/drainage/frost review recommended before construction.</p>
+      <p>This review level combines footprint size with soil, drainage, and freeze-thaw context. It does not override the locked base quantity calculation.</p>
       <div class="grid">
         <p>Foundation advisory: ${foundationAdvisory.heading}</p>
         <p>Risk level: ${foundationAdvisory.risk}</p>
