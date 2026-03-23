@@ -14,6 +14,7 @@ const baseInput: MasonryInput = {
   expansionGapIn: 0.5,
   mortarJointIn: 0.375,
   orientation: 'stretcher',
+  capOrientation: 'match-wall',
   bondPattern: 'running-bond',
   ventCount: 4,
   ventOpeningAreaSqIn: 5,
@@ -241,6 +242,35 @@ describe('MasonryEngine', () => {
     expect(output.resolvedCapUnit.lengthIn).toBeCloseTo(16);
     expect(output.logistics.estimatedCapWeightLb).toBeGreaterThan(
       output.logistics.purchasedCapUnits * 10,
+    );
+  });
+
+  it('supports independent capstone orientation selection', () => {
+    const engine = new MasonryEngine();
+    const matchWall = engine.calculateDesign({
+      ...baseInput,
+      orientation: 'stretcher',
+      capOrientation: 'match-wall',
+      capstonePresetKey: 'matching',
+    });
+    const capHeader = engine.calculateDesign({
+      ...baseInput,
+      orientation: 'stretcher',
+      capOrientation: 'header',
+      capstonePresetKey: 'matching',
+    });
+
+    expect(matchWall.resolvedCapUnit.lengthIn).toBeCloseTo(
+      matchWall.resolvedUnit.lengthIn,
+    );
+    expect(capHeader.resolvedCapUnit.lengthIn).toBeCloseTo(
+      matchWall.resolvedUnit.widthIn,
+    );
+    expect(capHeader.capstone.capUnitsPerCourseRounded).toBeGreaterThan(
+      matchWall.capstone.capUnitsPerCourseRounded,
+    );
+    expect(capHeader.courses[1].offsetIn).toBeCloseTo(
+      (matchWall.resolvedUnit.lengthIn + baseInput.mortarJointIn) / 2,
     );
   });
 

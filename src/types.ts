@@ -1,6 +1,7 @@
 export type FuelType = 'wood' | 'propane' | 'natural-gas';
 export type BondPattern = 'running-bond';
 export type UnitOrientation = 'stretcher' | 'header';
+export type CapOrientation = 'match-wall' | UnitOrientation;
 export type LinerType = 'none' | 'fire-brick' | 'steel-ring';
 export type PlanShape = 'circular' | 'square' | 'rectangular';
 export type CapPlacementMode = 'outward-only' | 'symmetric';
@@ -24,6 +25,7 @@ export interface MasonryInput {
   expansionGapIn: number;
   mortarJointIn: number;
   orientation: UnitOrientation;
+  capOrientation?: CapOrientation;
   bondPattern: BondPattern;
   ventCount: number;
   ventOpeningAreaSqIn: number;

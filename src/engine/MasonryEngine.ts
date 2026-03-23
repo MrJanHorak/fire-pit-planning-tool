@@ -359,13 +359,21 @@ export class MasonryEngine {
   }
 
   private resolveUnit(input: MasonryInput, unit: MasonryUnit): MasonryUnit {
-    if (input.orientation === 'header') {
+    return this.resolveOrientedUnit(unit, input.orientation);
+  }
+
+  private resolveOrientedUnit(
+    unit: MasonryUnit,
+    orientation: MasonryInput['orientation'],
+  ): MasonryUnit {
+    if (orientation === 'header') {
       return {
         ...unit,
         widthIn: unit.lengthIn,
         lengthIn: unit.widthIn,
       };
     }
+
     return unit;
   }
 
@@ -373,25 +381,37 @@ export class MasonryEngine {
     input: MasonryInput,
     wallUnit: MasonryUnit,
   ): CapstonePreset {
+    const requestedCapOrientation = input.capOrientation ?? 'match-wall';
+    const capOrientation =
+      requestedCapOrientation === 'match-wall'
+        ? input.orientation
+        : requestedCapOrientation;
+
     if (!input.capstonePresetKey || input.capstonePresetKey === 'matching') {
-      return {
-        unit: {
+      const capUnit = this.resolveOrientedUnit(
+        {
           name: 'Matching Brick',
           widthIn: wallUnit.widthIn,
           heightIn: wallUnit.heightIn,
           lengthIn: wallUnit.lengthIn,
         },
-        unitWeightLb: this.calculateUnitWeightLb(wallUnit),
+        capOrientation,
+      );
+
+      return {
+        unit: capUnit,
+        unitWeightLb: this.calculateUnitWeightLb(capUnit),
       };
     }
 
     if (input.capstonePresetKey === 'custom') {
-      const unit: MasonryUnit = {
+      const baseUnit: MasonryUnit = {
         name: 'Custom Cap Unit',
         lengthIn: this.sanitizeDim(input.customCapLengthIn, 14),
         widthIn: this.sanitizeDim(input.customCapWidthIn, 10),
         heightIn: this.sanitizeDim(input.customCapHeightIn, 2),
       };
+      const unit = this.resolveOrientedUnit(baseUnit, capOrientation);
 
       return {
         unit,
@@ -408,12 +428,13 @@ export class MasonryEngine {
         input.customCapOuterLengthIn,
         14.5,
       );
-      const unit: MasonryUnit = {
+      const baseUnit: MasonryUnit = {
         name: 'Custom Radial Cap (Avg)',
         lengthIn: (innerLengthIn + outerLengthIn) / 2,
         widthIn: this.sanitizeDim(input.customCapWidthIn, 10),
         heightIn: this.sanitizeDim(input.customCapHeightIn, 2),
       };
+      const unit = this.resolveOrientedUnit(baseUnit, capOrientation);
 
       return {
         unit,
@@ -421,9 +442,14 @@ export class MasonryEngine {
       };
     }
 
-    return (
-      CAPSTONE_PRESETS[input.capstonePresetKey] ?? CAPSTONE_PRESETS.matching
-    );
+    const preset =
+      CAPSTONE_PRESETS[input.capstonePresetKey] ?? CAPSTONE_PRESETS.matching;
+    const unit = this.resolveOrientedUnit(preset.unit, capOrientation);
+
+    return {
+      unit,
+      unitWeightLb: this.calculateUnitWeightLb(unit),
+    };
   }
 
   private buildRunningBondCourses(

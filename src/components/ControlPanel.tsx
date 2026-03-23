@@ -343,6 +343,64 @@ export default function ControlPanel({
           )}
         </label>
 
+        <div className='flex flex-col gap-1 sm:col-span-2'>
+          <span className='text-sm font-medium'>Capstone Orientation</span>
+          <div
+            className='grid grid-cols-3 gap-1 rounded-lg border border-amber-700/25 bg-white p-1'
+            role='group'
+            aria-label='Capstone orientation'
+          >
+            {[
+              {
+                value: 'match-wall' as const,
+                label: 'Match Wall',
+                hint: input.orientation === 'header' ? 'Header' : 'Stretcher',
+              },
+              {
+                value: 'stretcher' as const,
+                label: 'Stretcher',
+                hint: 'Long face',
+              },
+              { value: 'header' as const, label: 'Header', hint: 'Short face' },
+            ].map((option) => {
+              const selected =
+                (input.capOrientation ?? 'match-wall') === option.value;
+
+              return (
+                <button
+                  key={option.value}
+                  type='button'
+                  className={`rounded-md px-2 py-2 text-left transition-colors ${
+                    selected
+                      ? 'bg-amber-900 text-amber-50 shadow-sm'
+                      : 'bg-white text-amber-900 hover:bg-amber-100/80'
+                  }`}
+                  onClick={() =>
+                    setInput((prev) => ({
+                      ...prev,
+                      capOrientation: option.value,
+                    }))
+                  }
+                >
+                  <span className='block text-sm font-semibold leading-tight'>
+                    {option.label}
+                  </span>
+                  <span
+                    className={`block text-xs leading-tight ${
+                      selected ? 'text-amber-100/90' : 'text-amber-700/80'
+                    }`}
+                  >
+                    {option.hint}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <span className='text-xs text-amber-700/70'>
+            Affects cap module spacing only. Wall courses remain running bond.
+          </span>
+        </div>
+
         <label className='flex flex-col gap-1'>
           <span className='text-sm font-medium'>
             {input.planShape === 'circular'
@@ -379,20 +437,7 @@ export default function ControlPanel({
           />
           {input.planShape === 'circular' && noCutGuidance && (
             <div className='mt-1 rounded-md border border-amber-900/15 bg-amber-50/80 px-2 py-1.5 text-xs text-amber-900'>
-              <p className='font-semibold'>
-                Wall brick:{' '}
-                {noCutGuidance.wall.requiresCutting
-                  ? `cuts required (no-cut near ${noCutGuidance.wall.minimumNoCutDiameterIn.toFixed(2)} in).`
-                  : 'no taper cuts required.'}
-              </p>
-              <p className='mt-1 font-semibold'>
-                Capstone:{' '}
-                {noCutGuidance.cap.requiresCutting
-                  ? `cuts required (no-cut near ${noCutGuidance.cap.minimumNoCutDiameterIn.toFixed(2)} in).`
-                  : 'no taper cuts required.'}
-              </p>
-
-              <div className='mt-1'>
+              <div>
                 <button
                   type='button'
                   className='rounded-full border border-amber-900/25 bg-white px-2 py-0.5 font-semibold text-amber-950'

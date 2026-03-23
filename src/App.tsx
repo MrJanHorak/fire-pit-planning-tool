@@ -73,6 +73,7 @@ const initialInput: MasonryInput = {
   expansionGapIn: 0.5,
   mortarJointIn: 0.375,
   orientation: 'stretcher',
+  capOrientation: 'match-wall',
   bondPattern: 'running-bond',
   ventCount: 4,
   ventOpeningAreaSqIn: 5,
