@@ -7,20 +7,40 @@ import { MasonryEngine } from './engine/MasonryEngine';
 import type { MasonryInput } from './types';
 
 const engine = new MasonryEngine();
+const NO_CUT_SAFETY_MARGIN_IN = 0.02;
 
 type ViewMode = '3d' | 'construction';
 
 const initialInput: MasonryInput = {
+  planShape: 'circular',
   innerDiameterIn: 36,
+  innerWidthIn: 36,
+  innerDepthIn: 30,
   wallHeightIn: 18,
   proximityToStructuresFt: 12,
   fuelType: 'propane',
+  linerType: 'steel-ring',
+  expansionGapIn: 0.5,
   mortarJointIn: 0.375,
   orientation: 'stretcher',
   bondPattern: 'running-bond',
   ventCount: 4,
+  ventOpeningAreaSqIn: 5,
+  gasLineEntryAngleDeg: 225,
   capstoneOverhangIn: 2,
+  capPlacementMode: 'outward-only',
+  capstonePresetKey: 'matching',
   brickPresetKey: 'modular',
+  customBrickLengthIn: 7.625,
+  customBrickWidthIn: 3.625,
+  customBrickHeightIn: 2.25,
+  customBrickInnerLengthIn: 7.25,
+  customBrickOuterLengthIn: 8,
+  customCapLengthIn: 14,
+  customCapWidthIn: 10,
+  customCapHeightIn: 2,
+  customCapInnerLengthIn: 13.5,
+  customCapOuterLengthIn: 14.5,
 };
 
 export default function App() {
@@ -28,6 +48,42 @@ export default function App() {
   const [view, setView] = useState<ViewMode>('3d');
 
   const output = useMemo(() => engine.calculateDesign(input), [input]);
+  const noCutGuidance = useMemo(() => {
+    if (output.planShape !== 'circular') {
+      return undefined;
+    }
+
+    const targetInnerJointIn = 0.125;
+    const roundUpToHundredth = (value: number) =>
+      Math.ceil(value * 100) / 100;
+    const wallMinimumNoCutDiameterIn = roundUpToHundredth(
+      output.cutPlan.minimumRecommendedInnerDiameterIn + NO_CUT_SAFETY_MARGIN_IN,
+    );
+
+    const capRequiresCutting = output.capstone.joint.innerJointIn < 0;
+    const capMinimumNoCutDiameterIn = roundUpToHundredth(
+      (output.capstone.capUnitsPerCourseRounded *
+        (output.resolvedCapUnit.lengthIn + targetInnerJointIn)) /
+        Math.PI +
+        output.capstone.innerExtensionIn * 2 +
+        NO_CUT_SAFETY_MARGIN_IN,
+    );
+    const bothMinimumNoCutDiameterIn = roundUpToHundredth(
+      Math.max(wallMinimumNoCutDiameterIn, capMinimumNoCutDiameterIn),
+    );
+
+    return {
+      wall: {
+        requiresCutting: output.cutPlan.requiresCutting,
+        minimumNoCutDiameterIn: wallMinimumNoCutDiameterIn,
+      },
+      cap: {
+        requiresCutting: capRequiresCutting,
+        minimumNoCutDiameterIn: capMinimumNoCutDiameterIn,
+      },
+      bothMinimumNoCutDiameterIn,
+    };
+  }, [output]);
 
   return (
     <main className='mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:py-10'>
@@ -37,12 +93,17 @@ export default function App() {
         </h1>
         <p className='mt-2 text-sm sm:text-base'>
           Engineering-accurate firepit layout with running bond logic, vent
-          placement rules, and real-time foundation quantities.
+          placement rules, shape-aware geometry, and real-time foundation
+          quantities.
         </p>
       </header>
 
       <div className='grid gap-4 lg:grid-cols-[360px_1fr]'>
-        <ControlPanel input={input} setInput={setInput} />
+        <ControlPanel
+          input={input}
+          setInput={setInput}
+          noCutGuidance={noCutGuidance}
+        />
 
         <section className='space-y-4'>
           <div className='card-rise grid gap-3 rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg sm:grid-cols-3'>
@@ -62,11 +123,9 @@ export default function App() {
             </div>
             <div>
               <p className='text-xs uppercase tracking-wide text-amber-950/75'>
-                Stone Base (yd3)
+                Plan Shape
               </p>
-              <p className='text-2xl font-bold'>
-                {output.foundation.stoneVolumeCubicYards.toFixed(2)}
-              </p>
+              <p className='text-2xl font-bold'>{output.planShape}</p>
             </div>
             <div>
               <p className='text-xs uppercase tracking-wide text-amber-950/75'>
@@ -74,6 +133,26 @@ export default function App() {
               </p>
               <p className='text-2xl font-bold'>
                 {output.capstone.capUnitsPerCourseRounded}
+              </p>
+            </div>
+            <div>
+              <p className='text-xs uppercase tracking-wide text-amber-950/75'>
+                Liner
+              </p>
+              <p className='text-lg font-bold'>
+                {output.linerSpec.type === 'none'
+                  ? 'None'
+                  : output.linerSpec.type === 'fire-brick'
+                    ? 'Fire Brick'
+                    : 'Steel Ring'}
+              </p>
+            </div>
+            <div>
+              <p className='text-xs uppercase tracking-wide text-amber-950/75'>
+                Stone Base (yd3)
+              </p>
+              <p className='text-2xl font-bold'>
+                {output.foundation.stoneVolumeCubicYards.toFixed(2)}
               </p>
             </div>
           </div>
@@ -131,8 +210,19 @@ export default function App() {
             <div className='card-rise rounded-2xl border border-red-800/25 bg-red-50 p-4 text-red-900 shadow-lg'>
               {output.warnings.map((warning) => (
                 <p key={warning.code} className='text-sm font-medium'>
-                  {warning.message} Entered: {warning.actualValue.toFixed(1)}{' '}
-                  ft.
+                  {warning.message}
+                  {warning.actualValue !== undefined && (
+                    <>
+                      {' '}
+                      Entered: {warning.actualValue.toFixed(1)}
+                      {warning.code === 'clearance-too-low'
+                        ? ' ft'
+                        : warning.code === 'gas-line-near-vent'
+                          ? ' deg'
+                          : ''}
+                      .
+                    </>
+                  )}
                 </p>
               ))}
             </div>
@@ -163,6 +253,22 @@ export default function App() {
 
           <div className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 text-sm shadow-lg'>
             <p>
+              Unit basis:{' '}
+              <strong>
+                {output.resolvedUnit.name}{' '}
+                {output.resolvedUnit.lengthIn.toFixed(3)}
+                in x {output.resolvedUnit.widthIn.toFixed(3)} in x{' '}
+                {output.resolvedUnit.heightIn.toFixed(3)} in
+              </strong>
+            </p>
+            <p>
+              Plan footprint:{' '}
+              <strong>
+                {output.innerSpanWidthIn.toFixed(2)} in x{' '}
+                {output.innerSpanDepthIn.toFixed(2)} in inner
+              </strong>
+            </p>
+            <p>
               Vent rule:{' '}
               <strong>
                 {output.ventSpec.placement === 'base'
@@ -170,21 +276,54 @@ export default function App() {
                   : 'Upper Venting'}
               </strong>{' '}
               ({output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in total open
-              area)
+              area, {output.ventSpec.layout})
             </p>
             <p>
-              Foundation footprint diameter:{' '}
+              Vent brick indexes:{' '}
+              <strong>{output.ventSpec.ventBrickIndexes.join(', ')}</strong>
+            </p>
+            <p>
+              Liner system: <strong>{output.linerSpec.description}</strong>
+            </p>
+            {input.fuelType !== 'wood' &&
+              output.ventSpec.gasLineEntryAngleDeg !== undefined && (
+                <p>
+                  Gas line entry:{' '}
+                  <strong>
+                    {output.ventSpec.gasLineEntryAngleDeg.toFixed(0)} deg at
+                    brick {output.ventSpec.gasLineEntryBrickIndex}
+                  </strong>
+                  {output.ventSpec.gasLineAutoAdjusted &&
+                    ' (auto-shifted off vent gap)'}
+                </p>
+              )}
+            <p>
+              Foundation footprint:{' '}
               <strong>
-                {output.foundation.footprintDiameterIn.toFixed(2)} in
+                {output.foundation.footprintWidthIn.toFixed(2)} in x{' '}
+                {output.foundation.footprintDepthIn.toFixed(2)} in
               </strong>{' '}
               with 8 in angular stone depth.
             </p>
             <p>
-              Capstone diameter:{' '}
+              Capstone span:{' '}
               <strong>
-                {output.capstone.capOuterDiameterIn.toFixed(2)} in
+                {output.capstone.capOuterWidthIn.toFixed(2)} in x{' '}
+                {output.capstone.capOuterDepthIn.toFixed(2)} in
               </strong>{' '}
               ({input.capstoneOverhangIn.toFixed(2)} in overhang each side).
+            </p>
+            <p>
+              Capstone type: <strong>{output.resolvedCapUnit.name}</strong> (
+              {input.capPlacementMode})
+            </p>
+            <p>
+              Cut guidance:{' '}
+              <strong>
+                {output.cutPlan.requiresCutting
+                  ? `Taper each brick by ${output.cutPlan.recommendedTaperPerBrickIn.toFixed(3)} in (${output.cutPlan.recommendedCutPerSideIn.toFixed(3)} in per side)`
+                  : 'No taper cuts required at this diameter'}
+              </strong>
             </p>
           </div>
         </section>
