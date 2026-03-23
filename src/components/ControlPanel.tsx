@@ -86,9 +86,6 @@ export default function ControlPanel({
             Set the size, fuel, and finish details for your fire pit.
           </p>
         </div>
-        <div className='rounded-full border border-amber-900/15 bg-white/70 px-3 py-1 text-xs font-medium text-amber-900/75'>
-          Masonry planning
-        </div>
       </div>
 
       <div className='control-panel-grid grid gap-3 sm:grid-cols-2'>
@@ -152,11 +149,11 @@ export default function ControlPanel({
             <option value='custom'>Custom Brick (Rectangular)</option>
             <option value='custom-radial'>Custom Brick (Radial)</option>
           </select>
-          <span className='text-xs text-amber-700/70'>
+          {/* <span className='text-xs text-amber-700/70'>
             L&nbsp;{currentPreset.lengthIn}&Prime; &times; W&nbsp;
             {currentPreset.widthIn}&Prime; &times; H&nbsp;
             {currentPreset.heightIn}&Prime; (actual dimensions)
-          </span>
+          </span> */}
           {usingCustomBrick && (
             <div className='mt-2 grid gap-2 rounded-md border border-amber-700/20 bg-white/60 p-3 sm:grid-cols-3'>
               {usingCustomBrickRadial ? (
