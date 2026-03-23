@@ -167,11 +167,15 @@ export function buildCapstonePlacementSampleSvg(output: MasonryOutput): string {
     <polygon points="372,95 500,95 480,165 324,165" fill="#ccb085" stroke="#6e4728" stroke-width="2" />
     <polygon points="300,95 372,95 324,165 282,165" fill="#c6b39a" stroke="#4a3a28" stroke-width="1.5" />
 
-    ${capCut.requiresCutting ? `<line x1="150" y1="95" x2="170" y2="165" stroke="#a01d1d" stroke-width="3" />
+    ${
+      capCut.requiresCutting
+        ? `<line x1="150" y1="95" x2="170" y2="165" stroke="#a01d1d" stroke-width="3" />
     <line x1="300" y1="95" x2="282" y2="165" stroke="#a01d1d" stroke-width="3" />
     <text x="18" y="102" font-size="12" fill="#a01d1d">Cap side cut A: ${capCutPerSide} in</text>
     <text x="18" y="120" font-size="12" fill="#a01d1d">Angle: ${capCutAngle} deg</text>
-    <text x="18" y="138" font-size="12" fill="#a01d1d">Cap side cut B: ${capCutPerSide} in</text>` : ''}
+    <text x="18" y="138" font-size="12" fill="#a01d1d">Cap side cut B: ${capCutPerSide} in</text>`
+        : ''
+    }
 
     <text x="188" y="184" font-size="12" fill="#4a3720">Capstone unit</text>
     <text x="392" y="184" font-size="12" fill="#4a3720">Capstone unit</text>
@@ -427,7 +431,7 @@ export function buildConstructionPacketHtml(
         <p>Inner cap joint: ${output.capstone.joint.innerJointIn.toFixed(3)} in</p>
         <p>Outer cap joint: ${output.capstone.joint.outerJointIn.toFixed(3)} in</p>
       </div>
-      <p>${output.planShape === 'circular' ? capCut.requiresCutting ? `Capstone inner-edge overlap detected. Taper each cap unit by about ${capCut.recommendedCutPerSideIn.toFixed(3)} in per side at ${capCut.recommendedCutAngleDeg.toFixed(2)} deg.` : 'Capstone joints are buildable without taper cuts at this current diameter.' : 'Cap joints are shown at their resolved installed width.'}</p>
+      <p>${output.planShape === 'circular' ? (capCut.requiresCutting ? `Capstone inner-edge overlap detected. Taper each cap unit by about ${capCut.recommendedCutPerSideIn.toFixed(3)} in per side at ${capCut.recommendedCutAngleDeg.toFixed(2)} deg.` : 'Capstone joints are buildable without taper cuts at this current diameter.') : 'Cap joints are shown at their resolved installed width.'}</p>
       ${output.planShape === 'circular' ? `<p>Approximate pit inner diameter for no cap taper cuts at this cap count: ${capCut.minimumRecommendedPitInnerDiameterIn.toFixed(2)} in.</p>` : ''}
       <h3>Capstone Placement Detail</h3>
       ${capstonePlacementSample}

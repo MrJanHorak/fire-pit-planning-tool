@@ -637,7 +637,10 @@ export default function Stage3D({ output }: Stage3DProps) {
   );
   const safeCapBrickLengthFt = Math.max(
     0.08,
-    Math.min(capBrickLengthFt, capModuleSpacingFt - capJointLengthFt - overlapSafetyFt),
+    Math.min(
+      capBrickLengthFt,
+      capModuleSpacingFt - capJointLengthFt - overlapSafetyFt,
+    ),
   );
   const visBrickWidthFt = brickWidthFt - mortarJointFt * 0.8;
   const ventAreaScale = Math.sqrt(
@@ -986,15 +989,14 @@ export default function Stage3D({ output }: Stage3DProps) {
                 brickHeightFt / 2 +
                 course.courseIndex * geometry.courseRiseFt +
                 mortarJointFt / 2;
-              const wallBrickQuad =
-                wallRequiresTaperCut
-                  ? buildCircularCapBrickQuad({
-                      centerlineRadiusFt: geometry.wallRadiusFt,
-                      innerRadiusFt: renderedWallInnerRadiusFt,
-                      outerRadiusFt: renderedWallOuterRadiusFt,
-                      brickLengthIn: safeWallBrickLengthFt * 12,
-                    })
-                  : undefined;
+              const wallBrickQuad = wallRequiresTaperCut
+                ? buildCircularCapBrickQuad({
+                    centerlineRadiusFt: geometry.wallRadiusFt,
+                    innerRadiusFt: renderedWallInnerRadiusFt,
+                    outerRadiusFt: renderedWallOuterRadiusFt,
+                    brickLengthIn: safeWallBrickLengthFt * 12,
+                  })
+                : undefined;
 
               return isVentOpening ? (
                 <group key={`${course.courseIndex}-${brickIdx}-vent`}>
@@ -1052,7 +1054,9 @@ export default function Stage3D({ output }: Stage3DProps) {
                     <CircularCapJointFiller
                       polygonPoints={wallBrickQuad.polygonPoints}
                       heightFt={visBrickHeightFt}
-                      color={course.courseIndex % 2 === 0 ? '#924018' : '#7d3512'}
+                      color={
+                        course.courseIndex % 2 === 0 ? '#924018' : '#7d3512'
+                      }
                       wireframe={wireframe}
                       showEdges={showBrickOutlines}
                     />
@@ -1066,7 +1070,9 @@ export default function Stage3D({ output }: Stage3DProps) {
                         ]}
                       />
                       <meshStandardMaterial
-                        color={course.courseIndex % 2 === 0 ? '#924018' : '#7d3512'}
+                        color={
+                          course.courseIndex % 2 === 0 ? '#924018' : '#7d3512'
+                        }
                         roughness={0.82}
                         wireframe={wireframe}
                       />
@@ -1107,15 +1113,14 @@ export default function Stage3D({ output }: Stage3DProps) {
               );
               const y =
                 geometry.capRiseFt + capBrickHeightFt / 2 + mortarJointFt / 2;
-              const brickQuad =
-                capRequiresTaperCut
-                  ? buildCircularCapBrickQuad({
-                      centerlineRadiusFt: geometry.capRadiusFt,
-                      innerRadiusFt: renderedCapInnerRadiusFt,
-                      outerRadiusFt: renderedCapOuterRadiusFt,
-                      brickLengthIn: safeCapBrickLengthFt * 12,
-                    })
-                  : undefined;
+              const brickQuad = capRequiresTaperCut
+                ? buildCircularCapBrickQuad({
+                    centerlineRadiusFt: geometry.capRadiusFt,
+                    innerRadiusFt: renderedCapInnerRadiusFt,
+                    outerRadiusFt: renderedCapOuterRadiusFt,
+                    brickLengthIn: safeCapBrickLengthFt * 12,
+                  })
+                : undefined;
 
               return (
                 <mesh
@@ -1338,11 +1343,7 @@ export default function Stage3D({ output }: Stage3DProps) {
             position={[0, capMortarBedY, 0]}
           >
             <ringGeometry
-              args={[
-                renderedCapInnerRadiusFt,
-                renderedCapOuterRadiusFt,
-                128,
-              ]}
+              args={[renderedCapInnerRadiusFt, renderedCapOuterRadiusFt, 128]}
             />
             <meshStandardMaterial
               color='#c6b39a'

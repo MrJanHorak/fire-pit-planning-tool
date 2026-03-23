@@ -63,7 +63,9 @@ describe('construction packet export', () => {
     expect(html).toContain('Inner cap joint');
     expect(html).toContain('Outer cap joint');
     expect(html).toContain('Capstone inner-edge overlap detected');
-    expect(html).toContain('Approximate pit inner diameter for no cap taper cuts');
+    expect(html).toContain(
+      'Approximate pit inner diameter for no cap taper cuts',
+    );
     expect(html).toContain('Cut Guidance');
     expect(html).toContain('Recommended taper');
     expect(html).toContain('Cut Schedule');

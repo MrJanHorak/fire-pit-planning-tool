@@ -54,10 +54,10 @@ export default function App() {
     }
 
     const targetInnerJointIn = 0.125;
-    const roundUpToHundredth = (value: number) =>
-      Math.ceil(value * 100) / 100;
+    const roundUpToHundredth = (value: number) => Math.ceil(value * 100) / 100;
     const wallMinimumNoCutDiameterIn = roundUpToHundredth(
-      output.cutPlan.minimumRecommendedInnerDiameterIn + NO_CUT_SAFETY_MARGIN_IN,
+      output.cutPlan.minimumRecommendedInnerDiameterIn +
+        NO_CUT_SAFETY_MARGIN_IN,
     );
 
     const capRequiresCutting = output.capstone.joint.innerJointIn < 0;

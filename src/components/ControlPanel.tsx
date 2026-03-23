@@ -398,7 +398,9 @@ export default function ControlPanel({
                   className='rounded-full border border-amber-900/25 bg-white px-2 py-0.5 font-semibold text-amber-950'
                   onClick={() => setShowNoCutDetails((value) => !value)}
                 >
-                  {showNoCutDetails ? 'Hide No-Cut Suggestions' : 'Show No-Cut Suggestions'}
+                  {showNoCutDetails
+                    ? 'Hide No-Cut Suggestions'
+                    : 'Show No-Cut Suggestions'}
                 </button>
               </div>
 
@@ -416,7 +418,8 @@ export default function ControlPanel({
                       }))
                     }
                   >
-                    Wall no-cut: {noCutGuidance.wall.minimumNoCutDiameterIn.toFixed(2)} in
+                    Wall no-cut:{' '}
+                    {noCutGuidance.wall.minimumNoCutDiameterIn.toFixed(2)} in
                   </button>
                   <button
                     type='button'
@@ -430,7 +433,8 @@ export default function ControlPanel({
                       }))
                     }
                   >
-                    Cap no-cut: {noCutGuidance.cap.minimumNoCutDiameterIn.toFixed(2)} in
+                    Cap no-cut:{' '}
+                    {noCutGuidance.cap.minimumNoCutDiameterIn.toFixed(2)} in
                   </button>
                   <button
                     type='button'
@@ -444,7 +448,8 @@ export default function ControlPanel({
                       }))
                     }
                   >
-                    Both no-cut: {noCutGuidance.bothMinimumNoCutDiameterIn.toFixed(2)} in
+                    Both no-cut:{' '}
+                    {noCutGuidance.bothMinimumNoCutDiameterIn.toFixed(2)} in
                   </button>
                 </div>
               )}
