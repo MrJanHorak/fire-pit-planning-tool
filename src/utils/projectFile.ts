@@ -17,6 +17,10 @@ export interface ParsedFirepitProject {
   savedAt: string | null;
 }
 
+export interface StoredFirepitProjectSnapshot extends FirepitProjectFile {
+  id: string;
+}
+
 function coerceNumber(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
@@ -258,4 +262,84 @@ export function writeStoredProjectInput(
   input: MasonryInput,
 ) {
   writeStoredProject(storageKey, input);
+}
+
+export function readStoredProjectSnapshots(
+  storageKey: string,
+): StoredFirepitProjectSnapshot[] {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  const raw = window.localStorage.getItem(storageKey);
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed
+      .filter(
+        (item): item is Record<string, unknown> =>
+          !!item && typeof item === 'object',
+      )
+      .map((item) => ({
+        id: coerceString(item.id, crypto.randomUUID()),
+        kind: FIREPIT_PROJECT_KIND,
+        version: FIREPIT_PROJECT_VERSION,
+        savedAt: coerceString(item.savedAt, new Date().toISOString()),
+        projectName: coerceString(item.projectName, 'Untitled Firepit'),
+        input: item.input as MasonryInput,
+      }))
+      .filter((item) => item.kind === FIREPIT_PROJECT_KIND)
+      .sort((left, right) => right.savedAt.localeCompare(left.savedAt));
+  } catch {
+    return [];
+  }
+}
+
+export function writeStoredProjectSnapshot(
+  storageKey: string,
+  input: MasonryInput,
+  projectName: string,
+  snapshotId?: string,
+): StoredFirepitProjectSnapshot {
+  if (typeof window === 'undefined') {
+    return {
+      ...buildProjectFile(input, projectName),
+      id: snapshotId ?? 'snapshot',
+    };
+  }
+
+  const nextSnapshot: StoredFirepitProjectSnapshot = {
+    ...buildProjectFile(input, projectName),
+    id: snapshotId ?? crypto.randomUUID(),
+  };
+  const existing = readStoredProjectSnapshots(storageKey).filter(
+    (snapshot) => snapshot.id !== nextSnapshot.id,
+  );
+  const nextSnapshots = [nextSnapshot, ...existing];
+
+  window.localStorage.setItem(storageKey, JSON.stringify(nextSnapshots));
+
+  return nextSnapshot;
+}
+
+export function deleteStoredProjectSnapshot(
+  storageKey: string,
+  snapshotId: string,
+) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const nextSnapshots = readStoredProjectSnapshots(storageKey).filter(
+    (snapshot) => snapshot.id !== snapshotId,
+  );
+
+  window.localStorage.setItem(storageKey, JSON.stringify(nextSnapshots));
 }

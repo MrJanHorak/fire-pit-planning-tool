@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import ConfirmDialog from './components/ConfirmDialog';
 import ControlPanel from './components/ControlPanel';
 import ConstructionMode from './components/ConstructionMode';
 import {
@@ -14,19 +15,30 @@ import { DEFAULT_MASONRY_INPUT } from './utils/defaultInput';
 import { buildFoundationAdvisory } from './utils/foundationAdvisory';
 import {
   buildProjectFile,
+  deleteStoredProjectSnapshot,
   parseProjectFile,
   readStoredProject,
+  readStoredProjectSnapshots,
+  type StoredFirepitProjectSnapshot,
   writeStoredProject,
+  writeStoredProjectSnapshot,
 } from './utils/projectFile';
 
 const engine = new MasonryEngine();
 const PROJECT_STORAGE_KEY = 'firepit-parametric-masonry-designer-project';
+const PROJECT_SNAPSHOTS_STORAGE_KEY =
+  'firepit-parametric-masonry-designer-project-snapshots';
 const DEFAULT_PROJECT_NAME = 'Untitled Firepit';
 
 type ProjectStatus = {
   label: string;
   timestamp: string | null;
 };
+
+type PendingSnapshotAction = {
+  type: 'overwrite' | 'delete';
+  snapshot: StoredFirepitProjectSnapshot;
+} | null;
 
 function slugifyProjectName(projectName: string): string {
   const slug = projectName
@@ -132,6 +144,12 @@ export default function App() {
         }
       : null,
   );
+  const [snapshots, setSnapshots] = useState<StoredFirepitProjectSnapshot[]>(
+    () => readStoredProjectSnapshots(PROJECT_SNAPSHOTS_STORAGE_KEY),
+  );
+  const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('');
+  const [pendingSnapshotAction, setPendingSnapshotAction] =
+    useState<PendingSnapshotAction>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const hasInitializedAutosave = useRef(false);
 
@@ -177,6 +195,140 @@ export default function App() {
 
   const handleImportButtonClick = () => {
     fileInputRef.current?.click();
+  };
+
+  const refreshSnapshots = () => {
+    const nextSnapshots = readStoredProjectSnapshots(
+      PROJECT_SNAPSHOTS_STORAGE_KEY,
+    );
+    setSnapshots(nextSnapshots);
+    if (
+      selectedSnapshotId &&
+      !nextSnapshots.some((snapshot) => snapshot.id === selectedSnapshotId)
+    ) {
+      setSelectedSnapshotId(nextSnapshots[0]?.id ?? '');
+    }
+    if (!selectedSnapshotId && nextSnapshots[0]?.id) {
+      setSelectedSnapshotId(nextSnapshots[0].id);
+    }
+  };
+
+  const handleSaveSnapshot = () => {
+    const requestedName = window.prompt(
+      'Save snapshot as',
+      projectName || DEFAULT_PROJECT_NAME,
+    );
+
+    if (requestedName === null) {
+      return;
+    }
+
+    const trimmedName = requestedName.trim() || DEFAULT_PROJECT_NAME;
+    const snapshot = writeStoredProjectSnapshot(
+      PROJECT_SNAPSHOTS_STORAGE_KEY,
+      input,
+      trimmedName,
+    );
+
+    setSnapshots(readStoredProjectSnapshots(PROJECT_SNAPSHOTS_STORAGE_KEY));
+    setSelectedSnapshotId(snapshot.id);
+    setProjectNotice(`Saved browser snapshot: ${trimmedName}.`);
+    setProjectStatus({
+      label: 'Saved snapshot',
+      timestamp: snapshot.savedAt,
+    });
+  };
+
+  const handleLoadSnapshot = () => {
+    const snapshot = snapshots.find(
+      (candidate) => candidate.id === selectedSnapshotId,
+    );
+
+    if (!snapshot) {
+      return;
+    }
+
+    setInput(snapshot.input);
+    setProjectName(snapshot.projectName ?? DEFAULT_PROJECT_NAME);
+    setSiteView('designer');
+    setView('3d');
+    setProjectNotice(`Loaded browser snapshot: ${snapshot.projectName}.`);
+    setProjectStatus({
+      label: 'Loaded snapshot',
+      timestamp: snapshot.savedAt,
+    });
+  };
+
+  const handleOverwriteSnapshot = () => {
+    const snapshot = snapshots.find(
+      (candidate) => candidate.id === selectedSnapshotId,
+    );
+
+    if (!snapshot) {
+      return;
+    }
+
+    setPendingSnapshotAction({
+      type: 'overwrite',
+      snapshot,
+    });
+  };
+
+  const handleDeleteSnapshot = () => {
+    const snapshot = snapshots.find(
+      (candidate) => candidate.id === selectedSnapshotId,
+    );
+
+    if (!snapshot) {
+      return;
+    }
+
+    setPendingSnapshotAction({
+      type: 'delete',
+      snapshot,
+    });
+  };
+
+  const handleCancelSnapshotAction = () => {
+    setPendingSnapshotAction(null);
+  };
+
+  const handleConfirmSnapshotAction = () => {
+    if (!pendingSnapshotAction) {
+      return;
+    }
+
+    if (pendingSnapshotAction.type === 'overwrite') {
+      const nextSnapshot = writeStoredProjectSnapshot(
+        PROJECT_SNAPSHOTS_STORAGE_KEY,
+        input,
+        projectName ||
+          pendingSnapshotAction.snapshot.projectName ||
+          DEFAULT_PROJECT_NAME,
+        pendingSnapshotAction.snapshot.id,
+      );
+
+      refreshSnapshots();
+      setSelectedSnapshotId(nextSnapshot.id);
+      setProjectNotice(
+        `Updated browser snapshot: ${nextSnapshot.projectName}.`,
+      );
+      setProjectStatus({
+        label: 'Updated snapshot',
+        timestamp: nextSnapshot.savedAt,
+      });
+    } else {
+      deleteStoredProjectSnapshot(
+        PROJECT_SNAPSHOTS_STORAGE_KEY,
+        pendingSnapshotAction.snapshot.id,
+      );
+      refreshSnapshots();
+      setProjectNotice(
+        `Deleted browser snapshot: ${pendingSnapshotAction.snapshot.projectName}.`,
+      );
+    }
+
+    setPendingSnapshotAction(null);
   };
 
   const handleImportProject = async (
@@ -225,6 +377,12 @@ export default function App() {
     });
   };
 
+  useEffect(() => {
+    if (!selectedSnapshotId && snapshots[0]?.id) {
+      setSelectedSnapshotId(snapshots[0].id);
+    }
+  }, [selectedSnapshotId, snapshots]);
+
   const output = useMemo(() => engine.calculateDesign(input), [input]);
   const foundationAdvisory = useMemo(
     () => buildFoundationAdvisory(input, output),
@@ -269,6 +427,26 @@ export default function App() {
 
   return (
     <main className='mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:py-10'>
+      <ConfirmDialog
+        open={pendingSnapshotAction !== null}
+        title={
+          pendingSnapshotAction?.type === 'overwrite'
+            ? 'Overwrite Snapshot'
+            : 'Delete Snapshot'
+        }
+        message={
+          pendingSnapshotAction?.type === 'overwrite'
+            ? `Replace "${pendingSnapshotAction.snapshot.projectName ?? DEFAULT_PROJECT_NAME}" with the current project state?`
+            : `Delete "${pendingSnapshotAction?.snapshot.projectName ?? DEFAULT_PROJECT_NAME}"? This cannot be undone.`
+        }
+        confirmLabel={
+          pendingSnapshotAction?.type === 'overwrite' ? 'Overwrite' : 'Delete'
+        }
+        tone={pendingSnapshotAction?.type === 'delete' ? 'danger' : 'default'}
+        onConfirm={handleConfirmSnapshotAction}
+        onCancel={handleCancelSnapshotAction}
+      />
+
       <header className='mb-5 card-rise rounded-2xl border border-amber-900/20 bg-amber-100/70 p-5 shadow-lg backdrop-blur'>
         <div className='flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between'>
           <div>
@@ -341,6 +519,13 @@ export default function App() {
           >
             New Project
           </button>
+          <button
+            type='button'
+            className='rounded-full border border-amber-900/20 bg-amber-900 px-4 py-2 text-sm font-semibold text-amber-50 hover:bg-amber-950'
+            onClick={handleSaveSnapshot}
+          >
+            Save As Snapshot
+          </button>
           <input
             ref={fileInputRef}
             type='file'
@@ -353,6 +538,53 @@ export default function App() {
             Projects autosave in this browser and can also be exported or
             imported as JSON.
           </p>
+        </div>
+
+        <div className='mt-3 flex flex-wrap items-end gap-2'>
+          <label className='flex min-w-[260px] flex-1 flex-col gap-1'>
+            <span className='text-xs font-semibold uppercase tracking-[0.2em] text-amber-900/70'>
+              Browser Snapshots
+            </span>
+            <select
+              className='rounded-xl border border-amber-900/20 bg-white/80 px-3 py-2 text-sm text-amber-950'
+              aria-label='Browser Snapshots'
+              title='Browser Snapshots'
+              value={selectedSnapshotId}
+              onChange={(event) => setSelectedSnapshotId(event.target.value)}
+            >
+              <option value=''>No snapshot selected</option>
+              {snapshots.map((snapshot) => (
+                <option key={snapshot.id} value={snapshot.id}>
+                  {snapshot.projectName ?? DEFAULT_PROJECT_NAME} -{' '}
+                  {formatProjectTimestamp(snapshot.savedAt)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type='button'
+            className='rounded-full border border-amber-900/20 bg-white/80 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50'
+            onClick={handleLoadSnapshot}
+            disabled={!selectedSnapshotId}
+          >
+            Load Snapshot
+          </button>
+          <button
+            type='button'
+            className='rounded-full border border-amber-900/20 bg-amber-900 px-4 py-2 text-sm font-semibold text-amber-50 hover:bg-amber-950 disabled:cursor-not-allowed disabled:opacity-50'
+            onClick={handleOverwriteSnapshot}
+            disabled={!selectedSnapshotId}
+          >
+            Overwrite Snapshot
+          </button>
+          <button
+            type='button'
+            className='rounded-full border border-red-800/20 bg-red-50 px-4 py-2 text-sm font-semibold text-red-900 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50'
+            onClick={handleDeleteSnapshot}
+            disabled={!selectedSnapshotId}
+          >
+            Delete Snapshot
+          </button>
         </div>
 
         {projectStatus && (

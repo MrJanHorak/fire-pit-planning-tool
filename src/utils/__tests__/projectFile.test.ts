@@ -4,11 +4,76 @@ import {
   FIREPIT_PROJECT_KIND,
   FIREPIT_PROJECT_VERSION,
   buildProjectFile,
+  deleteStoredProjectSnapshot,
   parseProjectFile,
   parseProjectFileContent,
+  readStoredProjectSnapshots,
+  writeStoredProjectSnapshot,
 } from '../projectFile';
 
+const SNAPSHOT_STORAGE_KEY = 'firepit-project-test-snapshots';
+
 describe('projectFile utilities', () => {
+  it('stores and lists browser snapshots in reverse chronological order', () => {
+    window.localStorage.removeItem(SNAPSHOT_STORAGE_KEY);
+
+    const first = writeStoredProjectSnapshot(
+      SNAPSHOT_STORAGE_KEY,
+      DEFAULT_MASONRY_INPUT,
+      'Patio One',
+    );
+    const second = writeStoredProjectSnapshot(
+      SNAPSHOT_STORAGE_KEY,
+      { ...DEFAULT_MASONRY_INPUT, innerDiameterIn: 42 },
+      'Patio Two',
+    );
+
+    const snapshots = readStoredProjectSnapshots(SNAPSHOT_STORAGE_KEY);
+
+    expect(snapshots).toHaveLength(2);
+    expect(snapshots[0].id).toBe(second.id);
+    expect(snapshots[1].id).toBe(first.id);
+    expect(snapshots[0].projectName).toBe('Patio Two');
+  });
+
+  it('deletes a stored browser snapshot by id', () => {
+    window.localStorage.removeItem(SNAPSHOT_STORAGE_KEY);
+
+    const snapshot = writeStoredProjectSnapshot(
+      SNAPSHOT_STORAGE_KEY,
+      DEFAULT_MASONRY_INPUT,
+      'Delete Me',
+    );
+
+    deleteStoredProjectSnapshot(SNAPSHOT_STORAGE_KEY, snapshot.id);
+
+    expect(readStoredProjectSnapshots(SNAPSHOT_STORAGE_KEY)).toHaveLength(0);
+  });
+
+  it('overwrites a stored browser snapshot in place when the same id is reused', () => {
+    window.localStorage.removeItem(SNAPSHOT_STORAGE_KEY);
+
+    const snapshot = writeStoredProjectSnapshot(
+      SNAPSHOT_STORAGE_KEY,
+      DEFAULT_MASONRY_INPUT,
+      'Original Name',
+    );
+
+    const updated = writeStoredProjectSnapshot(
+      SNAPSHOT_STORAGE_KEY,
+      { ...DEFAULT_MASONRY_INPUT, innerDiameterIn: 48 },
+      'Updated Name',
+      snapshot.id,
+    );
+
+    const snapshots = readStoredProjectSnapshots(SNAPSHOT_STORAGE_KEY);
+
+    expect(updated.id).toBe(snapshot.id);
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0].projectName).toBe('Updated Name');
+    expect(snapshots[0].input.innerDiameterIn).toBe(48);
+  });
+
   it('builds a versioned firepit project file wrapper', () => {
     const project = buildProjectFile(
       DEFAULT_MASONRY_INPUT,
