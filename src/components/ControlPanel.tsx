@@ -642,6 +642,92 @@ export default function ControlPanel({
         </label>
 
         <SectionHeading
+          title='Foundation Context'
+          description='The engine keeps the baseline 8 in angular stone model; this context adds site-aware review guidance.'
+        />
+
+        <label className='flex flex-col gap-1 sm:col-span-2'>
+          <FieldLabel
+            label='Soil Type (Site Context)'
+            tip='Used for advisory guidance only. It does not override the locked baseline calculation of 8 in compacted angular stone.'
+          />
+          <select
+            className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label='Soil Type'
+            title='Soil Type'
+            value={input.soilType ?? 'unknown'}
+            onChange={(event) =>
+              setInput((prev) => ({
+                ...prev,
+                soilType: event.target.value as NonNullable<
+                  MasonryInput['soilType']
+                >,
+              }))
+            }
+          >
+            <option value='unknown'>Unknown / not assessed</option>
+            <option value='dense-granular'>
+              Dense granular (well-compacted gravel)
+            </option>
+            <option value='sandy'>Sandy soil</option>
+            <option value='silty'>Silty soil</option>
+            <option value='clay-expansive'>Clay / expansive soil</option>
+            <option value='organic-or-fill'>
+              Organic soil or uncontrolled fill
+            </option>
+          </select>
+        </label>
+
+        <label className='flex flex-col gap-1'>
+          <FieldLabel
+            label='Drainage'
+            tip='Also advisory-only. Slow drainage raises the chance of settlement, freeze-thaw trouble, and soft subgrade conditions.'
+          />
+          <select
+            className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label='Drainage'
+            title='Drainage'
+            value={input.drainageCondition ?? 'unknown'}
+            onChange={(event) =>
+              setInput((prev) => ({
+                ...prev,
+                drainageCondition: event.target.value as NonNullable<
+                  MasonryInput['drainageCondition']
+                >,
+              }))
+            }
+          >
+            <option value='unknown'>Unknown</option>
+            <option value='well-drained'>Well drained</option>
+            <option value='moderate'>Moderate</option>
+            <option value='slow-draining'>Slow draining</option>
+            <option value='poor-drainage'>Poor drainage</option>
+          </select>
+        </label>
+
+        <label className='flex flex-col gap-1'>
+          <FieldLabel
+            label='Freeze-Thaw Climate'
+            tip='Use this when seasonal frost is a real site condition. It only adjusts advisory guidance and does not change baseline quantities.'
+          />
+          <select
+            className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label='Freeze-Thaw Climate'
+            title='Freeze-Thaw Climate'
+            value={input.frostClimate ? 'yes' : 'no'}
+            onChange={(event) =>
+              setInput((prev) => ({
+                ...prev,
+                frostClimate: event.target.value === 'yes',
+              }))
+            }
+          >
+            <option value='no'>No / minimal frost risk</option>
+            <option value='yes'>Yes / seasonal freeze-thaw</option>
+          </select>
+        </label>
+
+        <SectionHeading
           title='Fuel And Thermal'
           description='Choose how the pit behaves under heat and how it vents.'
         />

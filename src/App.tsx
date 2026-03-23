@@ -6,8 +6,19 @@ import SafetyClearanceDiagram from './components/SafetyClearanceDiagram';
 import Stage3D from './components/Stage3D';
 import { MasonryEngine } from './engine/MasonryEngine';
 import type { MasonryInput } from './types';
+import { buildFoundationAdvisory } from './utils/foundationAdvisory';
 
 const engine = new MasonryEngine();
+
+function getFoundationRiskBadgeClasses(risk: 'low' | 'moderate' | 'high') {
+  if (risk === 'high') {
+    return 'border-red-800/25 bg-red-100 text-red-900';
+  }
+  if (risk === 'moderate') {
+    return 'border-amber-900/20 bg-amber-100 text-amber-950';
+  }
+  return 'border-emerald-800/25 bg-emerald-100 text-emerald-900';
+}
 
 function roundUpToHundredth(value: number): number {
   return Math.ceil(value * 100) / 100;
@@ -82,6 +93,9 @@ const initialInput: MasonryInput = {
   gasLineEntryAngleDeg: 225,
   capstoneOverhangIn: 2,
   capPlacementMode: 'outward-only',
+  soilType: 'unknown',
+  drainageCondition: 'unknown',
+  frostClimate: false,
   capstonePresetKey: 'matching',
   brickPresetKey: 'modular',
   customBrickLengthIn: 7.625,
@@ -102,6 +116,10 @@ export default function App() {
   const [siteView, setSiteView] = useState<SiteView>('designer');
 
   const output = useMemo(() => engine.calculateDesign(input), [input]);
+  const foundationAdvisory = useMemo(
+    () => buildFoundationAdvisory(input, output),
+    [input, output],
+  );
   const noCutGuidance = useMemo(() => {
     if (output.planShape !== 'circular') {
       return undefined;
@@ -236,6 +254,15 @@ export default function App() {
                 </p>
                 <p className='text-2xl font-bold'>
                   {output.foundation.stoneVolumeCubicYards.toFixed(2)}
+                </p>
+                <p className='mt-1'>
+                  <span
+                    className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${getFoundationRiskBadgeClasses(
+                      foundationAdvisory.risk,
+                    )}`}
+                  >
+                    {foundationAdvisory.risk} review
+                  </span>
                 </p>
               </div>
             </div>
@@ -389,6 +416,24 @@ export default function App() {
                 </strong>{' '}
                 with 8 in angular stone depth.
               </p>
+              <p>
+                Foundation advisory:{' '}
+                <strong>{foundationAdvisory.heading}</strong> (
+                {foundationAdvisory.risk} risk).
+              </p>
+              <p>
+                Site context:{' '}
+                <strong>
+                  {input.soilType ?? 'unknown'} soil,{' '}
+                  {input.drainageCondition ?? 'unknown'} drainage,{' '}
+                  {input.frostClimate
+                    ? 'freeze-thaw climate'
+                    : 'minimal frost risk'}
+                </strong>
+              </p>
+              {foundationAdvisory.checks.map((check) => (
+                <p key={check}>- {check}</p>
+              ))}
               <p>
                 Capstone span:{' '}
                 <strong>

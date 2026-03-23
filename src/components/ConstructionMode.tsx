@@ -7,6 +7,7 @@ import {
   buildCoursePlanSvg,
   buildWallBrickTaperCutSvg,
 } from '../utils/constructionPacket';
+import { buildFoundationAdvisory } from '../utils/foundationAdvisory';
 
 interface ConstructionModeProps {
   input: MasonryInput;
@@ -23,6 +24,14 @@ export default function ConstructionMode({
   const coursePlanMarkup = buildCoursePlanSvg(output);
   const wallBrickCutMarkup = buildWallBrickTaperCutSvg(output);
   const capstonePlacementMarkup = buildCapstonePlacementSampleSvg(output);
+  const foundationAdvisory = buildFoundationAdvisory(input, output);
+
+  const foundationRiskBadgeClass =
+    foundationAdvisory.risk === 'high'
+      ? 'border-red-800/25 bg-red-100 text-red-900'
+      : foundationAdvisory.risk === 'moderate'
+        ? 'border-amber-900/20 bg-amber-100 text-amber-950'
+        : 'border-emerald-800/25 bg-emerald-100 text-emerald-900';
 
   const downloadPacket = () => {
     const html = buildConstructionPacketHtml(input, output);
@@ -59,6 +68,40 @@ export default function ConstructionMode({
         className='overflow-x-auto rounded-lg border border-amber-900/20 bg-white p-2'
         dangerouslySetInnerHTML={{ __html: coursePlanMarkup }}
       />
+
+      <div className='mt-4 rounded-lg border border-amber-900/20 bg-white p-3'>
+        <div className='flex flex-wrap items-center justify-between gap-2'>
+          <h4 className='text-sm font-semibold text-amber-950'>
+            Site Guidance
+          </h4>
+          <span
+            className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${foundationRiskBadgeClass}`}
+          >
+            {foundationAdvisory.risk} foundation review
+          </span>
+        </div>
+        <p className='mt-2 text-sm text-amber-950/85'>
+          {foundationAdvisory.heading}. Baseline foundation math remains fixed
+          at {output.foundation.stoneDepthIn.toFixed(0)} in compacted angular
+          stone with a footprint extension of 6 in per side.
+        </p>
+        <p className='mt-2 text-sm text-amber-950/80'>
+          Site context: {input.soilType ?? 'unknown'} soil,{' '}
+          {input.drainageCondition ?? 'unknown'} drainage,{' '}
+          {input.frostClimate ? 'freeze-thaw climate' : 'minimal frost risk'}.
+        </p>
+        <ul className='mt-2 list-disc space-y-1 pl-5 text-sm text-amber-950/80'>
+          {foundationAdvisory.checks.map((check) => (
+            <li key={check}>{check}</li>
+          ))}
+        </ul>
+        <p className='mt-3 text-sm text-amber-950/80'>
+          Liner venting note: in this model, primary airflow is handled by wall
+          vent gaps. Keep the cavity and expansion space clear, and verify any
+          dedicated vent or drain requirements from the liner, ring, or burner
+          manufacturer before installation.
+        </p>
+      </div>
 
       <div className='mt-4 space-y-4'>
         <div className='rounded-lg border border-amber-900/20 bg-white p-3'>

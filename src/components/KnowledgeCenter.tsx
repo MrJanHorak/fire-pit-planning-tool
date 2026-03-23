@@ -53,10 +53,9 @@ export default function KnowledgeCenter({ view }: KnowledgeCenterProps) {
           }
         : {
             eyebrow: 'Field Notes',
-            title:
-              'Field notes for planning, locating, and building a fire pit',
+            title: 'Research-backed field notes for smarter fire pit decisions',
             intro:
-              'Use these notes when you are comparing layouts, checking site conditions, or thinking through the build before materials are ordered.',
+              "Use this like a builder's brief: each section explains the engineering logic in plain language so your design choices hold up in the field.",
             sections: researchHighlights,
           };
 

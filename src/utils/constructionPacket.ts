@@ -1,4 +1,5 @@
 import type { MasonryInput, MasonryOutput } from '../types';
+import { buildFoundationAdvisory } from './foundationAdvisory';
 
 function formatFuelName(fuelType: MasonryInput['fuelType']): string {
   if (fuelType === 'natural-gas') {
@@ -198,6 +199,7 @@ export function buildCapstonePlacementSampleSvg(output: MasonryOutput): string {
 
 function buildDiyStepsHtml(input: MasonryInput, output: MasonryOutput): string {
   const capCut = getCapstoneCutMetrics(output);
+  const foundationAdvisory = buildFoundationAdvisory(input, output);
   const ventCourses = output.ventSpec.targetCourseIndexes
     .map((courseIndex) => `C${courseIndex + 1}`)
     .join(', ');
@@ -220,6 +222,7 @@ function buildDiyStepsHtml(input: MasonryInput, output: MasonryOutput): string {
     `Call for utility locates, verify the firepit location, and confirm at least 10 ft of clearance from combustible structures.`,
     `Mark the excavation using the foundation footprint of ${output.foundation.footprintWidthIn.toFixed(2)} in x ${output.foundation.footprintDepthIn.toFixed(2)} in. Mark the wall footprint and cap outline separately so layout stays centered.`,
     `Excavate for the base and install ${output.foundation.stoneDepthIn} in of compacted angular stone. Screed the surface level before starting the first masonry course.`,
+    `Foundation review status: ${foundationAdvisory.heading.toLowerCase()}. ${foundationAdvisory.checks[0]}`,
     `Dry-lay Course C1 with ${output.unitsPerCourseRounded} units around the ${formatShapeName(output.planShape).toLowerCase()} centerline. Use the resolved wall unit dimensions and hold mortar joints to ${output.mortarJointIn.toFixed(3)} in.`,
     cutStep,
     `Lay the wall courses to a total of ${output.courses.length} courses. Keep running bond by starting every other course with a half-module offset of ${output.courses[1]?.offsetIn.toFixed(3) ?? '0.000'} in.`,
@@ -349,6 +352,7 @@ export function buildConstructionPacketHtml(
   output: MasonryOutput,
 ): string {
   const capCut = getCapstoneCutMetrics(output);
+  const foundationAdvisory = buildFoundationAdvisory(input, output);
   const svg = buildCoursePlanSvg(output);
   const clearanceSvg = buildSafetyClearanceSvg(input, output);
   const warnings =
@@ -434,6 +438,19 @@ export function buildConstructionPacketHtml(
     </section>
 
     <section class="block avoid-break">
+      <h2>Foundation Review</h2>
+      <div class="grid">
+        <p>Foundation advisory: ${foundationAdvisory.heading}</p>
+        <p>Risk level: ${foundationAdvisory.risk}</p>
+        <p>Soil type: ${input.soilType ?? 'unknown'}</p>
+        <p>Drainage: ${input.drainageCondition ?? 'unknown'}</p>
+        <p>Freeze-thaw climate: ${input.frostClimate ? 'Yes' : 'No'}</p>
+        <p>Baseline stone depth: ${output.foundation.stoneDepthIn.toFixed(2)} in</p>
+      </div>
+      <ul>${foundationAdvisory.checks.map((check) => `<li>${check}</li>`).join('')}</ul>
+    </section>
+
+    <section class="block avoid-break">
       <h2>Cap Layout</h2>
       <div class="grid">
         <p>Cap Joint At Layout Line: ${output.capstone.joint.actualJointIn.toFixed(3)} in</p>
@@ -459,6 +476,7 @@ export function buildConstructionPacketHtml(
       </div>
       ${gasLineEntry}
       <p>Heat Protection Note: ${output.linerSpec.description}</p>
+      <p>Liner venting note: wall vent gaps provide the primary vent path in this model. Do not block the cavity or expansion gap, and verify any dedicated vent or drain requirements from the liner, burner, or ring manufacturer.</p>
       ${output.linerSpec.enabled ? `<p>Liner outside diameter: ${output.linerSpec.linerOuterDiameterIn.toFixed(2)} in. Liner inside diameter: ${output.linerSpec.linerInnerDiameterIn.toFixed(2)} in.</p>` : ''}
     </section>
 

@@ -80,6 +80,31 @@ The material below came from the newly added research and expands the scope beyo
 - Larger or heavier installations may require a concrete footing depending on soil conditions.
 - Clay-heavy or expansive soils should be treated as a stability risk.
 
+#### Foundation Detail by Size and Soil (Implementation Guidance)
+
+Use the current engine baseline as the default calculation model:
+
+- 8 in compacted angular stone depth,
+- footprint +12 in total beyond the outer wall.
+
+Then apply an advisory layer for site risk, instead of silently changing baseline quantities.
+
+Suggested advisory tiers:
+
+- **Low review priority**: dense granular subgrade + moderate footprint.
+- **Moderate review priority**: unknown, sandy, or silty subgrade, or larger footprint.
+- **High review priority**: expansive clay, organic/fill soils, or very large footprint.
+
+Recommended app behavior:
+
+1. Keep baseline stone volume calculations fixed to the engineering rule.
+2. Add `soilType` input as contextual data (guidance only).
+3. Compute an advisory risk level from `soilType` + foundation footprint size.
+4. Surface advisory notes in Designer output and construction packet.
+5. For high-risk cases, prompt for local code/geotech review before build.
+
+This preserves deterministic baseline math while adding practical field realism.
+
 ### Clearance and Code Considerations
 
 - Horizontal setback of 10 ft is the minimum baseline and may be higher in some jurisdictions.
@@ -92,6 +117,13 @@ The material below came from the newly added research and expands the scope beyo
 - Double-wall construction may be required where the outer decorative shell is separated from the hot inner liner.
 - An air gap or sand-filled expansion zone helps accommodate differential thermal expansion.
 - Standard brick or CMU should not be treated as equivalent to refractory material in a high-heat interior.
+
+#### Liner Venting Clarification
+
+- In typical masonry builds, primary venting is provided by wall vent gaps/openings, not by drilling dedicated holes through the thermal liner.
+- The liner acts as thermal protection; airflow is managed through the vented wall courses and cavity path.
+- Keep vent paths and liner expansion clearances unobstructed.
+- If a burner, pan, or fire-ring manufacturer specifies dedicated vent/drain requirements, those instructions override generic assumptions.
 
 ### Masonry Geometry Beyond the Current Baseline
 

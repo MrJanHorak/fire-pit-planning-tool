@@ -25,6 +25,9 @@ const input: MasonryInput = {
   gasLineEntryAngleDeg: 225,
   capstoneOverhangIn: 2,
   capPlacementMode: 'outward-only',
+  soilType: 'clay-expansive',
+  drainageCondition: 'slow-draining',
+  frostClimate: true,
   capstonePresetKey: 'matching',
 };
 
@@ -53,6 +56,7 @@ describe('construction packet export', () => {
     expect(html).toContain('Capstone Overhang');
     expect(html).toContain('Cap Units per Course');
     expect(html).toContain('Venting And Heat Protection');
+    expect(html).toContain('Liner venting note');
     expect(html).toContain('Gas Line Entry');
     expect(html).toContain('Heat Protection');
     expect(html).toContain('Plan Shape');
@@ -79,8 +83,12 @@ describe('construction packet export', () => {
     expect(html).toContain('This section covers wall brick taper cuts only');
     expect(html).toContain('Capstone taper cuts required here');
     expect(html).toContain('Cap side cut A');
+    expect(html).toContain('Foundation Review');
+    expect(html).toContain('High foundation review priority');
+    expect(html).toContain('Freeze-thaw climate: Yes');
     expect(html).toContain('Build Sequence');
     expect(html).toContain('Call for utility locates');
+    expect(html).toContain('Foundation review status');
     expect(html).toContain('Follow the mortar manufacturer');
   });
 

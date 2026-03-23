@@ -5,6 +5,19 @@ export type CapOrientation = 'match-wall' | UnitOrientation;
 export type LinerType = 'none' | 'fire-brick' | 'steel-ring';
 export type PlanShape = 'circular' | 'square' | 'rectangular';
 export type CapPlacementMode = 'outward-only' | 'symmetric';
+export type SoilType =
+  | 'unknown'
+  | 'dense-granular'
+  | 'sandy'
+  | 'silty'
+  | 'clay-expansive'
+  | 'organic-or-fill';
+export type DrainageCondition =
+  | 'unknown'
+  | 'well-drained'
+  | 'moderate'
+  | 'slow-draining'
+  | 'poor-drainage';
 
 export interface MasonryUnit {
   name: string;
@@ -32,6 +45,9 @@ export interface MasonryInput {
   gasLineEntryAngleDeg: number;
   capstoneOverhangIn: number;
   capPlacementMode: CapPlacementMode;
+  soilType?: SoilType;
+  drainageCondition?: DrainageCondition;
+  frostClimate?: boolean;
   capstonePresetKey?: string;
   brickPresetKey?: string;
   customBrickLengthIn?: number;

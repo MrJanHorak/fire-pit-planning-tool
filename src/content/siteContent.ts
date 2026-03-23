@@ -93,28 +93,61 @@ export const safetyTips: ContentSection[] = [
 
 export const researchHighlights: ContentSection[] = [
   {
-    title: 'Core layout rules',
+    title: 'How masonry geometry controls the whole build',
+    intro:
+      'Most install headaches start with layout. If the first course is off by a little, every course above it repeats that error.',
     bullets: [
-      'Running bond uses a 50% module offset between adjacent courses so the wall stays interlocked.',
-      'Circular counts follow the centerline method with actual unit dimensions and a configurable mortar joint.',
-      'The stone base is set at 8 in deep and extends 6 in beyond the wall on each side.',
+      'Running bond is structural, not just visual. The 50% offset helps prevent stacked vertical joints that can act like a weak seam.',
+      'For circular walls, count units on the centerline using actual brick size plus mortar joint thickness. That keeps ordering realistic and helps the curve stay true.',
+      'The 8 in angular stone base with a 6 in extension per side gives the wall a wider, more stable platform and lowers settlement risk.',
+      'Quick field check: dry-lay one full course first. If outside joints open up quickly, you are likely at a size that needs tapered cuts or radial units.',
     ],
   },
   {
-    title: 'Site and material guidance',
+    title: 'What experienced builders check before ignition day',
+    intro:
+      'A pit can look finished and still perform poorly if heat, airflow, and placement are handled late. This is where design choices become safety outcomes.',
     bullets: [
-      'Permanent hardscape fire features often need 6 to 12 in of excavation depending on soil and structural loading.',
-      'Wood-burning pits benefit from liner protection, expansion allowance, and durable interior materials in the hottest zone.',
-      'Gas-fire pit venting commonly targets 18 to 36 sq in of total open area depending on the burner hardware.',
-      'Look at overhead branches, structures, and circulation zones as well as the horizontal setback on the ground plan.',
+      'Excavation depth is site-specific. Many permanent features land in the 6 to 12 in range, but softer or expansive soils usually need more conservative footing decisions.',
+      'Foundation risk is not only about soil label. Drainage and freeze-thaw matter because wet, moving subgrade can damage even a neatly built wall.',
+      'Wood-burning pits should protect the hottest interior with a refractory liner or steel ring. Decorative outer masonry is not a replacement for heat-rated interior protection.',
+      'Gas venting should follow fuel behavior and burner specs. A common planning range is 18 to 36 sq in of total vent area, then confirm with the exact hardware documentation.',
+      'Clearance is a 3D check. Horizontal setback is only the start; overhead branches, pergolas, soffits, and movement around the pit matter just as much.',
+      'Good safety practice also includes operations: checking wind, respecting no-burn advisories, and never leaving active embers unattended.',
     ],
   },
   {
-    title: 'Build details worth planning early',
+    title:
+      'How to think about the foundation without breaking the baseline rules',
+    intro:
+      'The app keeps one fixed engineering baseline for quantity calculations, then layers practical site review on top of it. That keeps the math stable while still acknowledging real field conditions.',
     bullets: [
-      'Square and rectangular fire pits need careful corner bonding so adjacent courses interlock cleanly.',
-      'Tight-radius work may call for radial units, half-bats, or tapered cuts to avoid oversized outer joints.',
-      'Before starting construction, plan curing time, liner spacing, gas-line routing, and cap installation details.',
+      'Baseline math stays fixed at 8 in of compacted angular stone with the footprint extended 6 in beyond the wall on each side.',
+      'Site review then asks three practical questions: what is the soil, how well does the area drain, and is freeze-thaw a real condition?',
+      'Dense granular, well-drained sites usually align with the baseline. Unknown fill, expansive clay, slow drainage, or frost-sensitive sites should move into a higher review category before construction starts.',
+      'This is why the app now shows a foundation advisory level instead of silently changing the core quantity outputs.',
+    ],
+  },
+  {
+    title: 'Small details that separate a clean build from a frustrating one',
+    intro:
+      'The smoothest installs are won during planning. Good sequencing removes guesswork before mortar and saw work start.',
+    bullets: [
+      'Square and rectangular layouts need explicit corner overlap logic so each course locks through the corner instead of creating a vertical crack line.',
+      'Tight-radius circles often require half-bats, tapered cuts, or radial units. Planning that early keeps joints consistent and prevents rushed saw work late in the project.',
+      'Cap design is both visual and functional. A modest overhang and drip strategy improve water shedding and can extend wall life in freeze-thaw climates.',
+      'Before the first mortar mix, document curing windows, vent locations, liner spacing, gas-line entry routing, and final inspection checks. This turns the build from improvised to repeatable.',
+    ],
+  },
+  {
+    title: 'A practical way to read these notes in the field',
+    intro:
+      'If you use this page during planning, follow one consistent order so decisions stay aligned from design through install.',
+    bullets: [
+      'Start with geometry: lock inner size, wall thickness, and course height. Do not tune cap style before the core counts are stable.',
+      'Next validate safety envelope: horizontal clearance, overhead hazards, and fuel-appropriate vent placement.',
+      'Then review thermal and material strategy: liner, expansion allowance, and base support assumptions.',
+      'Finish with execution details: quantity buffer, cut plan, and course-by-course sequence in Construction Mode.',
     ],
   },
 ];
@@ -134,5 +167,20 @@ export const faqItems: FaqItem[] = [
     question: 'When should I add a thermal liner?',
     answer:
       'Wood-burning pits should generally use a refractory liner or steel ring to shield the outer shell from direct heat. Gas pits may also benefit from a protected inner zone depending on burner hardware and manufacturer guidance.',
+  },
+  {
+    question: 'Does the thermal liner need vent holes too?',
+    answer:
+      "In most builds, venting is handled by the wall vent gaps, not separate holes cut through the liner. The liner's job is thermal protection. Keep the annular space and vent path unobstructed, align vented courses with cavity airflow, and always follow burner or ring manufacturer instructions for any dedicated vent or drain requirements.",
+  },
+  {
+    question: 'Does foundation design change with size and soil?',
+    answer:
+      'Yes. The app keeps a locked baseline of 8 in compacted angular stone with a footprint that extends 6 in per side, but larger footprints and weaker soils raise review priority. In practice, you should treat clay, organic fill, unknown subgrade, and very large diameters as conditions that may require deeper excavation, stabilization, or a concrete footing detail approved for your site.',
+  },
+  {
+    question: 'How is size and soil context integrated in this app?',
+    answer:
+      'Use the Soil Type, Drainage, and Freeze-Thaw fields in Design Inputs. The engine still reports the baseline foundation quantities, and the Designer now adds a foundation advisory level (low, moderate, or high) with site-check notes based on site context and footprint size. This gives planning guidance without silently changing your core baseline math.',
   },
 ];
