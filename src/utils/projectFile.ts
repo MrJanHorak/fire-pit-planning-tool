@@ -1,7 +1,7 @@
 import type { MasonryInput } from '../types';
 
-export const FIREPIT_PROJECT_KIND = 'firepit-project';
-export const FIREPIT_PROJECT_VERSION = 1;
+export const FIREPIT_PROJECT_KIND = 'firepit-project' as const;
+export const FIREPIT_PROJECT_VERSION = 1 as const;
 
 export interface FirepitProjectFile {
   kind: typeof FIREPIT_PROJECT_KIND;
@@ -287,7 +287,7 @@ export function readStoredProjectSnapshots(
         (item): item is Record<string, unknown> =>
           !!item && typeof item === 'object',
       )
-      .map((item) => ({
+      .map<StoredFirepitProjectSnapshot>((item) => ({
         id: coerceString(item.id, crypto.randomUUID()),
         kind: FIREPIT_PROJECT_KIND,
         version: FIREPIT_PROJECT_VERSION,
