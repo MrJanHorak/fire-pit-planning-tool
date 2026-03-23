@@ -11,33 +11,43 @@ export interface FaqItem {
 
 export const quickStartSteps: ContentSection[] = [
   {
-    title: '1. Start with geometry',
+    title: '1. Set the firebox size',
     intro:
-      'Choose the plan shape, firebox size, wall height, and brick preset before changing any advanced settings.',
+      'Begin with the opening you want to gather around, then choose the wall height and brick size that fit that scale.',
     bullets: [
-      'Use the inner size as the design driver. The engine resolves the outer wall and centerline dimensions for you.',
-      'Keep the default modular brick and 3/8 in mortar joint if you want counts that match common masonry references.',
-      'For circular pits, use the no-cut suggestions if you want cleaner wall and cap layouts.',
+      'Use the inner size as the main driver. The layout updates the outer wall, centerline, and course count from that value.',
+      'A 36 in circular opening is a solid starting point for a medium gathering pit.',
+      'Stick with modular brick and a 3/8 in joint if you want counts that align with common masonry references.',
     ],
   },
   {
-    title: '2. Set fuel and liner assumptions',
+    title: '2. Choose fuel and heat protection',
     intro:
-      'Fuel choice changes vent placement and should influence the liner system you specify.',
+      'Fuel type changes how the fire pit vents and how much thermal protection the interior should have.',
     bullets: [
-      'Wood pits benefit from a refractory liner or steel ring to protect the outer shell from repeated heat cycling.',
-      'Propane vents belong low in the wall because LP gas settles.',
+      'Wood-burning pits should usually include a refractory liner or steel ring to protect the outer shell from repeated heat cycling.',
+      'Propane vents belong low in the wall because LP gas settles near the base.',
       'Natural gas vents belong high because the gas rises and needs upper relief.',
     ],
   },
   {
-    title: '3. Validate buildability',
+    title: '3. Review buildability',
     intro:
-      'Use the output cards, warnings, and Construction Mode together rather than sizing by appearance alone.',
+      'Before you price materials or lay anything out on site, review the count, cut, and safety information together.',
     bullets: [
-      'Check safety warnings first, especially structure clearance and gas vent guidance.',
-      'Review unit count, purchased quantity, mortar volume, and stone volume before pricing materials.',
-      'Switch between 3D Stage and Construction Mode to confirm the design still makes sense course by course.',
+      'Read the safety warnings first, especially structure clearance and gas vent guidance.',
+      'Check unit count, purchased quantity, mortar volume, and stone volume before ordering materials.',
+      'Use Construction Mode to review the courses one layer at a time before the build begins.',
+    ],
+  },
+  {
+    title: '4. Adjust for cleaner layout',
+    intro:
+      'Once the main size feels right, make small changes that improve finish quality and reduce cutting.',
+    bullets: [
+      'For circular pits, compare the no-cut sizes if you want cleaner wall and cap courses.',
+      'Keep cap overhang modest so the top course sheds water without feeling oversized.',
+      'If the curve is tight, consider radial units or expect tapered cuts at the wall and cap.',
     ],
   },
 ];
@@ -83,28 +93,28 @@ export const safetyTips: ContentSection[] = [
 
 export const researchHighlights: ContentSection[] = [
   {
-    title: 'Engineering baseline',
+    title: 'Core layout rules',
     bullets: [
-      'Running bond stays locked at a 50% module offset between adjacent courses.',
-      'Circular counts use the centerline formula with actual unit dimensions and a configurable mortar joint.',
-      'Foundation stone depth is fixed at 8 in and the footprint extends 6 in past the outer wall on each side.',
+      'Running bond uses a 50% module offset between adjacent courses so the wall stays interlocked.',
+      'Circular counts follow the centerline method with actual unit dimensions and a configurable mortar joint.',
+      'The stone base is set at 8 in deep and extends 6 in beyond the wall on each side.',
     ],
   },
   {
-    title: 'Research-backed guidance',
+    title: 'Site and material guidance',
     bullets: [
-      'Permanent hardscape fire features often use a 6 to 12 in excavation depending on soil and structural loading.',
-      'Wood-burning pits should prioritize liner protection, thermal expansion allowance, and durable interior materials.',
-      'Gas-fire pit venting commonly targets 18 to 36 sq in total open area depending on the hardware package.',
-      'Vertical clearance and exclusion-zone thinking are important even when the current tool only models horizontal setback.',
+      'Permanent hardscape fire features often need 6 to 12 in of excavation depending on soil and structural loading.',
+      'Wood-burning pits benefit from liner protection, expansion allowance, and durable interior materials in the hottest zone.',
+      'Gas-fire pit venting commonly targets 18 to 36 sq in of total open area depending on the burner hardware.',
+      'Look at overhead branches, structures, and circulation zones as well as the horizontal setback on the ground plan.',
     ],
   },
   {
-    title: 'Current app gaps',
+    title: 'Build details worth planning early',
     bullets: [
-      'The 3D scene still needs deeper fidelity for every material preset and orientation choice.',
-      'Square and rectangular research paths exist, but the engineering output is still strongest for circular work.',
-      'The packet is useful today, but it is not yet a full field build manual with curing, thermal, and line-entry instructions.',
+      'Square and rectangular fire pits need careful corner bonding so adjacent courses interlock cleanly.',
+      'Tight-radius work may call for radial units, half-bats, or tapered cuts to avoid oversized outer joints.',
+      'Before starting construction, plan curing time, liner spacing, gas-line routing, and cap installation details.',
     ],
   },
 ];
@@ -116,13 +126,13 @@ export const faqItems: FaqItem[] = [
       'Start with plan shape, inner size, wall height, fuel type, and brick preset. Those five inputs determine most of the geometry and safety behavior. Leave mortar, cap, and vent tuning until the main form is stable.',
   },
   {
-    question: 'Why move explanations out of the form?',
+    question: 'What do the no-cut sizes mean?',
     answer:
-      'The design tool should stay focused on decisions. Background guidance reads better as articles, tips, and FAQs, while uncommon details can live behind help popups next to the specific fields that need them.',
+      'The no-cut suggestions show inner diameters that let the wall, the cap, or both resolve without taper cuts. They are useful when you want cleaner coursing and faster layout on site.',
   },
   {
-    question: 'Will this alone make the site rank well in search?',
+    question: 'When should I add a thermal liner?',
     answer:
-      'It improves content quality, metadata, and crawlable page semantics, but stronger SEO usually also needs dedicated routes, shareable URLs, and server-rendered content. This update prepares the structure without forcing a larger framework migration yet.',
+      'Wood-burning pits should generally use a refractory liner or steel ring to shield the outer shell from direct heat. Gas pits may also benefit from a protected inner zone depending on burner hardware and manufacturer guidance.',
   },
 ];

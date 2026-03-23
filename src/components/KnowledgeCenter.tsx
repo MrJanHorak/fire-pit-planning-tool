@@ -37,10 +37,10 @@ export default function KnowledgeCenter({ view }: KnowledgeCenterProps) {
   const content =
     view === 'guide'
       ? {
-          eyebrow: 'Instruction Page',
-          title: 'How to use the designer without overthinking the inputs',
+          eyebrow: 'Instructions',
+          title: 'A simple way to size and review a masonry fire pit',
           intro:
-            'This page holds the context that does not belong inside the form. It gives first-time users a short operating sequence and keeps the design controls lean.',
+            'Start with the opening and wall size, then work through fuel, liner, and cap details before checking quantities and clearances.',
           sections: quickStartSteps,
         }
       : view === 'tips'
@@ -52,11 +52,11 @@ export default function KnowledgeCenter({ view }: KnowledgeCenterProps) {
             sections: [...designBestPractices, ...safetyTips],
           }
         : {
-            eyebrow: 'Research Notes',
+            eyebrow: 'Field Notes',
             title:
-              'Engineering assumptions, research takeaways, and known gaps',
+              'Field notes for planning, locating, and building a fire pit',
             intro:
-              'This is a readable summary of the markdown research already in the repository, presented in a format that fits the site rather than the design form.',
+              'Use these notes when you are comparing layouts, checking site conditions, or thinking through the build before materials are ordered.',
             sections: researchHighlights,
           };
 

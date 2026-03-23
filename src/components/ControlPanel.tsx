@@ -82,11 +82,11 @@ export default function ControlPanel({
             Design Inputs
           </h2>
           <p className='mt-1 text-sm text-amber-900/75'>
-            Core decisions first. Field help lives behind the ? buttons.
+            Set the size, fuel, and finish details for your fire pit.
           </p>
         </div>
         <div className='rounded-full border border-amber-900/15 bg-white/70 px-3 py-1 text-xs font-medium text-amber-900/75'>
-          Fewer hints, same engine
+          Masonry planning
         </div>
       </div>
 
@@ -99,7 +99,7 @@ export default function ControlPanel({
         <label className='flex flex-col gap-1 sm:col-span-2'>
           <FieldLabel
             label='Plan Shape'
-            tip='Circular is the strongest path today. Square and rectangular inputs are available, but circular layouts still have the most mature build guidance.'
+            tip='Circular layouts are common for masonry fire pits and keep coursing, vent spacing, and cap layout easy to read at a glance.'
           />
           <select
             className='rounded-md border border-amber-700/30 bg-white px-3 py-2'

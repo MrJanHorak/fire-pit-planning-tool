@@ -102,12 +102,12 @@ function buildCutScheduleTable(output: MasonryOutput): string {
     <thead>
       <tr>
         <th>Course</th>
-        <th>Total Units</th>
-        <th>Full Units</th>
-        <th>Taper Units</th>
-        <th>Vent Openings</th>
-        <th>Cut Per Side</th>
-        <th>Bond Start</th>
+        <th>Total Bricks</th>
+        <th>Full Bricks</th>
+        <th>Cut Bricks</th>
+        <th>Vent Gaps</th>
+        <th>Cut At Each Side</th>
+        <th>Course Start</th>
       </tr>
     </thead>
     <tbody>${rows}</tbody>
@@ -354,14 +354,14 @@ export function buildConstructionPacketHtml(
   const warnings =
     output.warnings.length > 0
       ? `<ul>${output.warnings.map((warning) => `<li>${warning.message}${warning.actualValue !== undefined ? ` Entered: ${warning.actualValue.toFixed(1)}${warning.code === 'clearance-too-low' ? ' ft' : warning.code === 'gas-line-near-vent' ? ' deg' : ''}.` : ''}</li>`).join('')}</ul>`
-      : '<p>No safety clearance warnings.</p>';
+      : '<p>No active safety alerts for the current layout.</p>';
   const ventRange =
     output.ventSpec.recommendedAreaMaxSqIn === undefined
       ? `${output.ventSpec.recommendedAreaMinSqIn.toFixed(1)}+`
       : `${output.ventSpec.recommendedAreaMinSqIn.toFixed(1)}-${output.ventSpec.recommendedAreaMaxSqIn.toFixed(1)}`;
   const gasLineEntry =
     output.ventSpec.gasLineEntryAngleDeg === undefined
-      ? '<p>Gas Line Entry: not applicable for wood-burning configuration.</p>'
+      ? '<p>Gas Line Entry: not used for a wood-burning layout.</p>'
       : `<p>Gas Line Entry: ${output.ventSpec.gasLineEntryAngleDeg.toFixed(0)} deg at brick ${output.ventSpec.gasLineEntryBrickIndex} (${output.ventSpec.gasLineEntryClear ? 'clear of vents' : 'conflicts with vent layout'}${output.ventSpec.gasLineAutoAdjusted ? ', auto-adjusted' : ''}).</p>`;
   const taperCutSample = buildWallBrickTaperCutSvg(output);
   const capstonePlacementSample = buildCapstonePlacementSampleSvg(output);
@@ -371,7 +371,7 @@ export function buildConstructionPacketHtml(
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Firepit Construction Packet</title>
+    <title>Fire Pit Build Packet</title>
     <style>
       body { font-family: "Segoe UI", Arial, sans-serif; margin: 24px; color: #221707; }
       h1, h2 { margin: 0 0 10px; }
@@ -396,50 +396,50 @@ export function buildConstructionPacketHtml(
   </head>
   <body>
     <div class="heading avoid-break">
-      <h1>Parametric Masonry Designer - Construction Packet</h1>
+      <h1>Parametric Masonry Designer - Fire Pit Build Packet</h1>
       <p>Generated for a ${formatShapeName(input.planShape)} plan with ${output.innerSpanWidthIn.toFixed(2)} in x ${output.innerSpanDepthIn.toFixed(2)} in inner dimensions.</p>
     </div>
 
     <section class="block avoid-break">
-      <h2>Engineering Inputs</h2>
+      <h2>Design Summary</h2>
       <div class="grid">
         <p>Fuel Type: ${formatFuelName(input.fuelType)}</p>
         <p>Plan Shape: ${formatShapeName(input.planShape)}</p>
-        <p>Resolved Unit: ${output.resolvedUnit.name} ${output.resolvedUnit.lengthIn.toFixed(3)} in x ${output.resolvedUnit.widthIn.toFixed(3)} in x ${output.resolvedUnit.heightIn.toFixed(3)} in</p>
-        <p>Mortar Joint: ${input.mortarJointIn.toFixed(3)} in</p>
+        <p>Brick Size: ${output.resolvedUnit.name} ${output.resolvedUnit.lengthIn.toFixed(3)} in x ${output.resolvedUnit.widthIn.toFixed(3)} in x ${output.resolvedUnit.heightIn.toFixed(3)} in</p>
+        <p>Joint Width: ${input.mortarJointIn.toFixed(3)} in</p>
         <p>Wall Height: ${input.wallHeightIn.toFixed(2)} in</p>
-        <p>Structure Proximity: ${input.proximityToStructuresFt.toFixed(2)} ft</p>
+        <p>Clearance To Structures: ${input.proximityToStructuresFt.toFixed(2)} ft</p>
         <p>Capstone Overhang: ${input.capstoneOverhangIn.toFixed(2)} in</p>
-        <p>Cap Placement Mode: ${input.capPlacementMode}</p>
-        <p>Capstone Unit: ${output.resolvedCapUnit.name} ${output.resolvedCapUnit.lengthIn.toFixed(3)} in x ${output.resolvedCapUnit.widthIn.toFixed(3)} in x ${output.resolvedCapUnit.heightIn.toFixed(3)} in</p>
-        <p>Thermal Liner: ${formatLinerName(output.linerSpec.type)}</p>
-        <p>Expansion Gap: ${output.linerSpec.expansionGapIn.toFixed(3)} in</p>
+        <p>Cap Placement: ${input.capPlacementMode}</p>
+        <p>Cap Size: ${output.resolvedCapUnit.name} ${output.resolvedCapUnit.lengthIn.toFixed(3)} in x ${output.resolvedCapUnit.widthIn.toFixed(3)} in x ${output.resolvedCapUnit.heightIn.toFixed(3)} in</p>
+        <p>Heat Protection: ${formatLinerName(output.linerSpec.type)}</p>
+        <p>Liner Expansion Gap: ${output.linerSpec.expansionGapIn.toFixed(3)} in</p>
       </div>
     </section>
 
     <section class="block avoid-break">
-      <h2>Quantities</h2>
+      <h2>Materials And Quantities</h2>
       <div class="grid">
-        <p>Units per Course: ${output.unitsPerCourseRounded}</p>
-        <p>Total Units: ${output.totalUnits}</p>
-        <p>Purchased Units (${output.logistics.wasteFactorPct}% waste): ${output.logistics.purchasedUnits}</p>
-        <p>Cap Units: ${output.capstone.capUnitsPerCourseRounded}</p>
-        <p>Purchased Cap Units: ${output.logistics.purchasedCapUnits}</p>
-        <p>Capstone Outer Diameter: ${output.capstone.capOuterDiameterIn.toFixed(2)} in</p>
+        <p>Bricks per Course: ${output.unitsPerCourseRounded}</p>
+        <p>Total Bricks: ${output.totalUnits}</p>
+        <p>Bricks To Buy (${output.logistics.wasteFactorPct}% waste): ${output.logistics.purchasedUnits}</p>
+        <p>Cap Units per Course: ${output.capstone.capUnitsPerCourseRounded}</p>
+        <p>Cap Units To Buy: ${output.logistics.purchasedCapUnits}</p>
+        <p>Cap Outside Diameter: ${output.capstone.capOuterDiameterIn.toFixed(2)} in</p>
         <p>Capstone Weight: ${output.logistics.estimatedCapWeightLb.toFixed(1)} lb</p>
         <p>Mortar Volume: ${output.logistics.estimatedMortarVolumeCubicFeet.toFixed(2)} ft3</p>
         <p>Foundation Stone: ${output.foundation.stoneVolumeCubicYards.toFixed(3)} yd3</p>
-        <p>Footprint: ${output.foundation.footprintWidthIn.toFixed(2)} in x ${output.foundation.footprintDepthIn.toFixed(2)} in</p>
+        <p>Base Footprint: ${output.foundation.footprintWidthIn.toFixed(2)} in x ${output.foundation.footprintDepthIn.toFixed(2)} in</p>
       </div>
     </section>
 
     <section class="block avoid-break">
-      <h2>Capstone Joint Plan</h2>
+      <h2>Cap Layout</h2>
       <div class="grid">
-        <p>Cap centerline joint: ${output.capstone.joint.actualJointIn.toFixed(3)} in</p>
-        <p>Cap module spacing: ${output.capstone.joint.actualModuleSpacingIn.toFixed(3)} in</p>
-        <p>Inner cap joint: ${output.capstone.joint.innerJointIn.toFixed(3)} in</p>
-        <p>Outer cap joint: ${output.capstone.joint.outerJointIn.toFixed(3)} in</p>
+        <p>Cap Joint At Layout Line: ${output.capstone.joint.actualJointIn.toFixed(3)} in</p>
+        <p>Cap Spacing At Layout Line: ${output.capstone.joint.actualModuleSpacingIn.toFixed(3)} in</p>
+        <p>Cap Joint At Fire Opening: ${output.capstone.joint.innerJointIn.toFixed(3)} in</p>
+        <p>Cap Joint At Outside Edge: ${output.capstone.joint.outerJointIn.toFixed(3)} in</p>
       </div>
       <p>${output.planShape === 'circular' ? (capCut.requiresCutting ? `Capstone inner-edge overlap detected. Taper each cap unit by about ${capCut.recommendedCutPerSideIn.toFixed(3)} in per side at ${capCut.recommendedCutAngleDeg.toFixed(2)} deg.` : 'Capstone joints are buildable without taper cuts at this current diameter.') : 'Cap joints are shown at their resolved installed width.'}</p>
       ${output.planShape === 'circular' ? `<p>Approximate pit inner diameter for no cap taper cuts at this cap count: ${capCut.minimumRecommendedPitInnerDiameterIn.toFixed(2)} in.</p>` : ''}
@@ -448,28 +448,28 @@ export function buildConstructionPacketHtml(
     </section>
 
     <section class="block avoid-break">
-      <h2>Vent and Liner Plan</h2>
+      <h2>Venting And Heat Protection</h2>
       <div class="grid">
-        <p>Vent Layout: ${output.ventSpec.layout}</p>
-        <p>Vent Placement: ${output.ventSpec.placement}</p>
+        <p>Vent Pattern: ${output.ventSpec.layout}</p>
+        <p>Vent Zone: ${output.ventSpec.placement}</p>
         <p>Vent Count: ${output.ventSpec.ventCount}</p>
-        <p>Open Area: ${output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in</p>
-        <p>Recommended Gas Range: ${ventRange} sq in</p>
-        <p>Vent Brick Indexes: ${output.ventSpec.ventBrickIndexes.join(', ')}</p>
+        <p>Total Open Vent Area: ${output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in</p>
+        <p>Typical Gas Vent Range: ${ventRange} sq in</p>
+        <p>Vent Brick Positions: ${output.ventSpec.ventBrickIndexes.join(', ')}</p>
       </div>
       ${gasLineEntry}
-      <p>Liner Detail: ${output.linerSpec.description}</p>
-      ${output.linerSpec.enabled ? `<p>Liner Outer Diameter: ${output.linerSpec.linerOuterDiameterIn.toFixed(2)} in. Liner Inner Diameter: ${output.linerSpec.linerInnerDiameterIn.toFixed(2)} in.</p>` : ''}
+      <p>Heat Protection Note: ${output.linerSpec.description}</p>
+      ${output.linerSpec.enabled ? `<p>Liner outside diameter: ${output.linerSpec.linerOuterDiameterIn.toFixed(2)} in. Liner inside diameter: ${output.linerSpec.linerInnerDiameterIn.toFixed(2)} in.</p>` : ''}
     </section>
 
     <section class="block avoid-break">
-      <h2>Cut Guidance</h2>
-      <p>This section covers wall brick taper cuts only. Capstones are documented in the Capstone Joint Plan section.</p>
-      <p>Centerline spacing per unit: ${output.cutPlan.centerlineModuleSpacingIn.toFixed(3)} in</p>
-      <p>Inner-face joint estimate: ${output.cutPlan.innerJointIn.toFixed(3)} in</p>
-      <p>Cutting required: ${output.cutPlan.requiresCutting ? 'Yes' : 'No'}</p>
-      <p>Recommended cut angle: ${output.cutPlan.recommendedCutAngleDeg.toFixed(2)} deg</p>
-      ${output.cutPlan.requiresCutting ? `<p>Recommended taper: ${output.cutPlan.recommendedTaperPerBrickIn.toFixed(3)} in per unit (${output.cutPlan.recommendedCutPerSideIn.toFixed(3)} in per side at the inner face).</p><p>Suggested minimum inner diameter without taper cuts: ${output.cutPlan.minimumRecommendedInnerDiameterIn.toFixed(2)} in.</p>` : ''}
+      <h2>Cutting Notes</h2>
+      <p>This section covers wall brick taper cuts only. Capstones are documented in the Cap Layout section.</p>
+      <p>Layout-line spacing per brick: ${output.cutPlan.centerlineModuleSpacingIn.toFixed(3)} in</p>
+      <p>Estimated inner joint: ${output.cutPlan.innerJointIn.toFixed(3)} in</p>
+      <p>Taper cuts needed: ${output.cutPlan.requiresCutting ? 'Yes' : 'No'}</p>
+      <p>Suggested saw angle: ${output.cutPlan.recommendedCutAngleDeg.toFixed(2)} deg</p>
+      ${output.cutPlan.requiresCutting ? `<p>Suggested taper: ${output.cutPlan.recommendedTaperPerBrickIn.toFixed(3)} in per brick (${output.cutPlan.recommendedCutPerSideIn.toFixed(3)} in at each side of the inner face).</p><p>Approximate inner diameter with no taper cuts: ${output.cutPlan.minimumRecommendedInnerDiameterIn.toFixed(2)} in.</p>` : ''}
       <ul>${output.cutPlan.notes.map((note) => `<li>${note}</li>`).join('')}</ul>
       <h3>Wall Brick Cut Detail</h3>
       ${taperCutSample}
@@ -478,19 +478,19 @@ export function buildConstructionPacketHtml(
     </section>
 
     <section class="block avoid-break">
-      <h2>Safety Check</h2>
+      <h2>Safety Review</h2>
       ${warnings}
       ${clearanceSvg}
     </section>
 
     <section class="block print-break-before">
-      <h2>DIY Build Sequence</h2>
+      <h2>Build Sequence</h2>
       <p>Follow this sequence in order. Dry-fit critical components before mortar is placed, and confirm all field dimensions match the packet before cutting material.</p>
       ${buildDiyStepsHtml(input, output)}
     </section>
 
     <section class="block print-break-before">
-      <h2>Layer-by-Layer Plan</h2>
+      <h2>Layer-By-Layer Layout</h2>
       <p>Course legend: C1 is the bottom wall course, numbering increases upward, and CAP is the top capstone layer.</p>
       <p>Red highlights indicate planned vent openings. Blue highlights indicate gas line entry.</p>
       ${svg}

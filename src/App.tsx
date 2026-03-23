@@ -136,7 +136,7 @@ export default function App() {
     { value: 'designer', label: 'Designer' },
     { value: 'guide', label: 'Instructions' },
     { value: 'tips', label: 'Tips' },
-    { value: 'research', label: 'Research' },
+    { value: 'research', label: 'Field Notes' },
   ];
 
   return (
@@ -151,9 +151,9 @@ export default function App() {
               Parametric Masonry Designer
             </h1>
             <p className='mt-2 max-w-3xl text-sm leading-6 sm:text-base'>
-              A cleaner design tool paired with instruction, best-practice, and
-              research pages so the form stays focused and the supporting
-              content can live like a proper site.
+              Plan masonry fire pits with real unit dimensions, venting rules,
+              safety checks, material estimates, and build-focused reference
+              guidance.
             </p>
           </div>
 
