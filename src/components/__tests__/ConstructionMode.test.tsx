@@ -45,4 +45,20 @@ describe('ConstructionMode', () => {
     expect(screen.getByText(/slow-draining drainage/i)).toBeInTheDocument();
     expect(screen.getByText(/freeze-thaw climate/i)).toBeInTheDocument();
   });
+
+  it('shows strategy summary when vented accent courses are enabled', () => {
+    const accentInput: MasonryInput = {
+      ...baseInput,
+      wallCourseStrategy: 'vented-accent',
+      accentCycleLength: 3,
+      accentCoursePosition: 2,
+    };
+    const output = new MasonryEngine().calculateDesign(accentInput);
+
+    render(<ConstructionMode input={accentInput} output={output} />);
+
+    expect(
+      screen.getByText(/Vented accent strategy is active/i),
+    ).toBeInTheDocument();
+  });
 });

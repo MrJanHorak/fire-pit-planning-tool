@@ -14,7 +14,7 @@ export default function HelpTip({ label, children }: HelpTipProps) {
       >
         ?
       </summary>
-      <div className='absolute left-0 top-7 z-20 w-64 rounded-xl border border-amber-900/20 bg-white p-3 text-xs font-normal leading-5 text-amber-950 shadow-xl'>
+      <div className='absolute left-0 top-7 z-100 w-64 rounded-xl border border-amber-900/20 bg-white p-3 text-xs font-normal leading-5 text-amber-950 shadow-xl'>
         {children}
       </div>
     </details>

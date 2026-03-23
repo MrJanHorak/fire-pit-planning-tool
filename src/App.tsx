@@ -485,120 +485,142 @@ export default function App() {
           </nav>
         </div>
 
-        <div className='mt-4 flex flex-wrap items-center gap-2'>
-          <label className='flex min-w-[240px] flex-1 flex-col gap-1'>
-            <span className='text-xs font-semibold uppercase tracking-[0.2em] text-amber-900/70'>
-              Project Name
-            </span>
-            <input
-              className='rounded-xl border border-amber-900/20 bg-white/80 px-3 py-2 text-sm font-medium text-amber-950'
-              aria-label='Project Name'
-              title='Project Name'
-              value={projectName}
-              onChange={(event) => setProjectName(event.target.value)}
-            />
-          </label>
-          <button
-            type='button'
-            className='rounded-full border border-amber-900/20 bg-white/80 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-white'
-            onClick={handleExportProject}
-          >
-            Save Project JSON
-          </button>
-          <button
-            type='button'
-            className='rounded-full border border-amber-900/20 bg-white/80 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-white'
-            onClick={handleImportButtonClick}
-          >
-            Import Project
-          </button>
-          <button
-            type='button'
-            className='rounded-full border border-amber-900/20 bg-amber-50/80 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-amber-50'
-            onClick={handleResetProject}
-          >
-            New Project
-          </button>
-          <button
-            type='button'
-            className='rounded-full border border-amber-900/20 bg-amber-900 px-4 py-2 text-sm font-semibold text-amber-50 hover:bg-amber-950'
-            onClick={handleSaveSnapshot}
-          >
-            Save As Snapshot
-          </button>
-          <input
-            ref={fileInputRef}
-            type='file'
-            accept='application/json,.json'
-            className='hidden'
-            aria-label='Import project JSON'
-            onChange={handleImportProject}
-          />
-          <p className='text-sm text-amber-900/75'>
-            Projects autosave in this browser and can also be exported or
-            imported as JSON.
-          </p>
-        </div>
+        <details className='group mt-4 rounded-2xl border border-amber-900/20 bg-white/35'>
+          <summary className='cursor-pointer list-none px-4 py-3'>
+            <div className='flex items-center justify-between gap-3'>
+              <div>
+                <p className='text-xs font-semibold uppercase tracking-[0.2em] text-amber-900/70'>
+                  Project Workspace
+                </p>
+                <p className='mt-1 text-sm text-amber-900/80'>
+                  Name, import/export, autosave, and snapshot controls.
+                </p>
+              </div>
+              <span className='rounded-full border border-amber-900/20 bg-amber-50/70 px-3 py-1 text-xs font-semibold text-amber-900 transition-transform group-open:rotate-180'>
+                Expand
+              </span>
+            </div>
+          </summary>
 
-        <div className='mt-3 flex flex-wrap items-end gap-2'>
-          <label className='flex min-w-[260px] flex-1 flex-col gap-1'>
-            <span className='text-xs font-semibold uppercase tracking-[0.2em] text-amber-900/70'>
-              Browser Snapshots
-            </span>
-            <select
-              className='rounded-xl border border-amber-900/20 bg-white/80 px-3 py-2 text-sm text-amber-950'
-              aria-label='Browser Snapshots'
-              title='Browser Snapshots'
-              value={selectedSnapshotId}
-              onChange={(event) => setSelectedSnapshotId(event.target.value)}
-            >
-              <option value=''>No snapshot selected</option>
-              {snapshots.map((snapshot) => (
-                <option key={snapshot.id} value={snapshot.id}>
-                  {snapshot.projectName ?? DEFAULT_PROJECT_NAME} -{' '}
-                  {formatProjectTimestamp(snapshot.savedAt)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            type='button'
-            className='rounded-full border border-amber-900/20 bg-white/80 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50'
-            onClick={handleLoadSnapshot}
-            disabled={!selectedSnapshotId}
-          >
-            Load Snapshot
-          </button>
-          <button
-            type='button'
-            className='rounded-full border border-amber-900/20 bg-amber-900 px-4 py-2 text-sm font-semibold text-amber-50 hover:bg-amber-950 disabled:cursor-not-allowed disabled:opacity-50'
-            onClick={handleOverwriteSnapshot}
-            disabled={!selectedSnapshotId}
-          >
-            Overwrite Snapshot
-          </button>
-          <button
-            type='button'
-            className='rounded-full border border-red-800/20 bg-red-50 px-4 py-2 text-sm font-semibold text-red-900 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50'
-            onClick={handleDeleteSnapshot}
-            disabled={!selectedSnapshotId}
-          >
-            Delete Snapshot
-          </button>
-        </div>
+          <div className='border-t border-amber-900/15 px-4 pb-4 pt-3'>
+            <div className='flex flex-wrap items-center gap-2'>
+              <label className='flex min-w-[240px] flex-1 flex-col gap-1'>
+                <span className='text-xs font-semibold uppercase tracking-[0.2em] text-amber-900/70'>
+                  Project Name
+                </span>
+                <input
+                  className='rounded-xl border border-amber-900/20 bg-white/80 px-3 py-2 text-sm font-medium text-amber-950'
+                  aria-label='Project Name'
+                  title='Project Name'
+                  value={projectName}
+                  onChange={(event) => setProjectName(event.target.value)}
+                />
+              </label>
+              <button
+                type='button'
+                className='rounded-full border border-amber-900/20 bg-white/80 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-white'
+                onClick={handleExportProject}
+              >
+                Save Project JSON
+              </button>
+              <button
+                type='button'
+                className='rounded-full border border-amber-900/20 bg-white/80 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-white'
+                onClick={handleImportButtonClick}
+              >
+                Import Project
+              </button>
+              <button
+                type='button'
+                className='rounded-full border border-amber-900/20 bg-amber-50/80 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-amber-50'
+                onClick={handleResetProject}
+              >
+                New Project
+              </button>
+              <button
+                type='button'
+                className='rounded-full border border-amber-900/20 bg-amber-900 px-4 py-2 text-sm font-semibold text-amber-50 hover:bg-amber-950'
+                onClick={handleSaveSnapshot}
+              >
+                Save As Snapshot
+              </button>
+              <input
+                ref={fileInputRef}
+                type='file'
+                accept='application/json,.json'
+                className='hidden'
+                aria-label='Import project JSON'
+                onChange={handleImportProject}
+              />
+              <p className='text-sm text-amber-900/75'>
+                Projects autosave in this browser and can also be exported or
+                imported as JSON.
+              </p>
+            </div>
 
-        {projectStatus && (
-          <div className='mt-3 rounded-xl border border-amber-900/15 bg-white/70 px-3 py-2 text-sm text-amber-950/85'>
-            <strong>{projectStatus.label}</strong>: {projectName} at{' '}
-            {formatProjectTimestamp(projectStatus.timestamp)}.
+            <div className='mt-3 flex flex-wrap items-end gap-2'>
+              <label className='flex min-w-[260px] flex-1 flex-col gap-1'>
+                <span className='text-xs font-semibold uppercase tracking-[0.2em] text-amber-900/70'>
+                  Browser Snapshots
+                </span>
+                <select
+                  className='rounded-xl border border-amber-900/20 bg-white/80 px-3 py-2 text-sm text-amber-950'
+                  aria-label='Browser Snapshots'
+                  title='Browser Snapshots'
+                  value={selectedSnapshotId}
+                  onChange={(event) =>
+                    setSelectedSnapshotId(event.target.value)
+                  }
+                >
+                  <option value=''>No snapshot selected</option>
+                  {snapshots.map((snapshot) => (
+                    <option key={snapshot.id} value={snapshot.id}>
+                      {snapshot.projectName ?? DEFAULT_PROJECT_NAME} -{' '}
+                      {formatProjectTimestamp(snapshot.savedAt)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type='button'
+                className='rounded-full border border-amber-900/20 bg-white/80 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50'
+                onClick={handleLoadSnapshot}
+                disabled={!selectedSnapshotId}
+              >
+                Load Snapshot
+              </button>
+              <button
+                type='button'
+                className='rounded-full border border-amber-900/20 bg-amber-900 px-4 py-2 text-sm font-semibold text-amber-50 hover:bg-amber-950 disabled:cursor-not-allowed disabled:opacity-50'
+                onClick={handleOverwriteSnapshot}
+                disabled={!selectedSnapshotId}
+              >
+                Overwrite Snapshot
+              </button>
+              <button
+                type='button'
+                className='rounded-full border border-red-800/20 bg-red-50 px-4 py-2 text-sm font-semibold text-red-900 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50'
+                onClick={handleDeleteSnapshot}
+                disabled={!selectedSnapshotId}
+              >
+                Delete Snapshot
+              </button>
+            </div>
+
+            {projectStatus && (
+              <div className='mt-3 rounded-xl border border-amber-900/15 bg-white/70 px-3 py-2 text-sm text-amber-950/85'>
+                <strong>{projectStatus.label}</strong>: {projectName} at{' '}
+                {formatProjectTimestamp(projectStatus.timestamp)}.
+              </div>
+            )}
+
+            {projectNotice && (
+              <div className='mt-3 rounded-xl border border-amber-900/15 bg-white/70 px-3 py-2 text-sm text-amber-950/85'>
+                {projectNotice}
+              </div>
+            )}
           </div>
-        )}
-
-        {projectNotice && (
-          <div className='mt-3 rounded-xl border border-amber-900/15 bg-white/70 px-3 py-2 text-sm text-amber-950/85'>
-            {projectNotice}
-          </div>
-        )}
+        </details>
       </header>
 
       {siteView === 'designer' ? (
@@ -661,6 +683,55 @@ export default function App() {
                 <p className='mt-1'>
                   <FoundationRiskBadge risk={foundationAdvisory.risk} />
                 </p>
+              </div>
+            </div>
+
+            <div className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg'>
+              <div className='flex flex-wrap items-center justify-between gap-2'>
+                <p className='text-xs uppercase tracking-wide text-amber-950/75'>
+                  Course Strategy
+                </p>
+                <span className='rounded-full border border-amber-900/20 bg-white px-3 py-1 text-xs font-semibold text-amber-950'>
+                  {output.courseStrategy.strategy}
+                </span>
+              </div>
+
+              <div className='mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4'>
+                <span className='rounded-xl border border-amber-900/20 bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-950'>
+                  <span className='mr-2 inline-block h-2.5 w-2.5 rounded-full bg-[#7d3512] align-middle' />
+                  Standard course units
+                </span>
+                {output.courseStrategy.strategy === 'shim-spacer' && (
+                  <>
+                    <span className='rounded-xl border border-indigo-900/20 bg-indigo-100 px-3 py-2 text-xs font-semibold text-indigo-950'>
+                      <span className='mr-2 inline-block h-2.5 w-2.5 rounded-full bg-[#6f58b5] align-middle' />
+                      Shim Spacer Course
+                    </span>
+                    <span className='rounded-xl border border-indigo-900/20 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-950'>
+                      <span className='mr-2 inline-block h-2.5 w-2.5 rounded-full bg-[#6f58b5] align-middle' />
+                      Shim Units: {output.courseStrategy.shimUnitCount}
+                    </span>
+                  </>
+                )}
+                {output.courseStrategy.strategy === 'vented-accent' && (
+                  <>
+                    <span className='rounded-xl border border-amber-900/20 bg-amber-200 px-3 py-2 text-xs font-semibold text-amber-950'>
+                      <span className='mr-2 inline-block h-2.5 w-2.5 rounded-full bg-[#8a5a13] align-middle' />
+                      Vented Accent Course
+                    </span>
+                    <span className='rounded-xl border border-amber-900/20 bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-950'>
+                      <span className='mr-2 inline-block h-2.5 w-2.5 rounded-full bg-[#8a5a13] align-middle' />
+                      Accent Indexes:{' '}
+                      {output.courseStrategy.accentCourseIndexes
+                        .map((index) => `C${index + 1}`)
+                        .join(', ') || 'None'}
+                    </span>
+                  </>
+                )}
+                <span className='rounded-xl border border-red-900/20 bg-red-100 px-3 py-2 text-xs font-semibold text-red-950'>
+                  <span className='mr-2 inline-block h-2.5 w-2.5 rounded-full bg-[#c13a1f] align-middle' />
+                  Vent opening marker
+                </span>
               </div>
             </div>
 

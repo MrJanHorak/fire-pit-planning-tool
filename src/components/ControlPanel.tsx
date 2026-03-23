@@ -21,7 +21,7 @@ interface ControlPanelProps {
 
 function FieldLabel({ label, tip }: { label: string; tip?: string }) {
   return (
-    <span className='inline-flex items-center gap-2 text-sm font-medium text-amber-950'>
+    <span className='inline-flex items-start gap-2 text-sm font-medium leading-5 text-amber-950 sm:min-h-10'>
       {label}
       {tip && <HelpTip label={`About ${label}`}>{tip}</HelpTip>}
     </span>
@@ -73,9 +73,10 @@ export default function ControlPanel({
         heightIn: input.customBrickHeightIn ?? 2.25,
       }
     : BRICK_PRESETS[input.brickPresetKey ?? 'modular'];
+  const courseStrategy = input.wallCourseStrategy ?? 'uniform';
 
   return (
-    <section className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/70 p-5 shadow-lg backdrop-blur'>
+    <section className='control-panel card-rise relative z-30 rounded-2xl border border-amber-900/20 bg-amber-50/70 p-5 shadow-lg backdrop-blur'>
       <div className='mb-4 flex items-start justify-between gap-3'>
         <div>
           <h2 className='text-lg font-semibold tracking-tight'>
@@ -90,7 +91,7 @@ export default function ControlPanel({
         </div>
       </div>
 
-      <div className='grid gap-3 sm:grid-cols-2'>
+      <div className='control-panel-grid grid gap-3 sm:grid-cols-2'>
         <SectionHeading
           title='Layout'
           description='Set the shape, opening size, and overall wall mass.'
@@ -799,6 +800,215 @@ export default function ControlPanel({
             <option value='header'>Header</option>
           </select>
         </label>
+
+        <SectionHeading
+          title='Course Strategy'
+          description='Use practical presets for shim spacers or vent-heavy accent courses while keeping running bond behavior.'
+        />
+
+        <label className='flex flex-col gap-1 sm:col-span-2'>
+          <FieldLabel
+            label='Wall Course Strategy'
+            tip='Uniform keeps a consistent course recipe. Shim Spacer inserts thin units between primary units. Vented Accent applies a more open alternate course.'
+          />
+          <select
+            className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label='Wall Course Strategy'
+            title='Wall Course Strategy'
+            value={courseStrategy}
+            onChange={(event) =>
+              setInput((prev) => ({
+                ...prev,
+                wallCourseStrategy: event.target.value as NonNullable<
+                  MasonryInput['wallCourseStrategy']
+                >,
+              }))
+            }
+          >
+            <option value='uniform'>Uniform Running Bond</option>
+            <option value='shim-spacer'>Shim Spacer Course</option>
+            <option value='vented-accent'>Vented Accent Course</option>
+          </select>
+        </label>
+
+        {courseStrategy === 'shim-spacer' && (
+          <div className='rounded-md border border-amber-700/20 bg-white/60 p-3 sm:col-span-2'>
+            <h4 className='text-xs font-semibold uppercase tracking-[0.12em] text-amber-900/75'>
+              Shim Spacer Settings
+            </h4>
+            <p className='mt-1 text-xs text-amber-900/70'>
+              Configure a thin spacer inserted between larger units. Spacer
+              height should generally match the adjacent course height. The
+              engine adaptively spaces inserts to match curve geometry.
+            </p>
+            <div className='mt-2 grid gap-2 sm:grid-cols-4'>
+              <label className='flex flex-col gap-1'>
+                <span className='text-xs font-medium text-amber-900'>
+                  Spacer Length (in)
+                </span>
+                <input
+                  className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                  type='number'
+                  min={0.5}
+                  step={0.125}
+                  value={input.shimUnitLengthIn ?? 1.25}
+                  onChange={(event) =>
+                    setInput((prev) => ({
+                      ...prev,
+                      shimUnitLengthIn: Number(event.target.value),
+                    }))
+                  }
+                />
+              </label>
+              <label className='flex flex-col gap-1'>
+                <span className='text-xs font-medium text-amber-900'>
+                  Spacer Width (in)
+                </span>
+                <input
+                  className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                  type='number'
+                  min={0.5}
+                  step={0.125}
+                  value={input.shimUnitWidthIn ?? 1.125}
+                  onChange={(event) =>
+                    setInput((prev) => ({
+                      ...prev,
+                      shimUnitWidthIn: Number(event.target.value),
+                    }))
+                  }
+                />
+              </label>
+              <label className='flex flex-col gap-1'>
+                <span className='text-xs font-medium text-amber-900'>
+                  Spacer Height (in)
+                </span>
+                <input
+                  className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                  type='number'
+                  min={0.5}
+                  step={0.125}
+                  value={input.shimUnitHeightIn ?? 2.25}
+                  onChange={(event) =>
+                    setInput((prev) => ({
+                      ...prev,
+                      shimUnitHeightIn: Number(event.target.value),
+                    }))
+                  }
+                />
+              </label>
+              <label className='flex flex-col gap-1'>
+                <span className='text-xs font-medium text-amber-900'>
+                  Max Shim Share (%)
+                </span>
+                <input
+                  className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                  type='number'
+                  min={10}
+                  max={33}
+                  step={1}
+                  value={input.shimMaxSharePct ?? 25}
+                  onChange={(event) =>
+                    setInput((prev) => ({
+                      ...prev,
+                      shimMaxSharePct: Number(event.target.value),
+                    }))
+                  }
+                />
+              </label>
+            </div>
+          </div>
+        )}
+
+        {courseStrategy === 'vented-accent' && (
+          <div className='rounded-md border border-amber-700/20 bg-white/60 p-3 sm:col-span-2'>
+            <h4 className='text-xs font-semibold uppercase tracking-[0.12em] text-amber-900/75'>
+              Vented Accent Settings
+            </h4>
+            <p className='mt-1 text-xs text-amber-900/70'>
+              Define a repeating cycle where one course uses larger joints and
+              an alternate orientation for airflow.
+            </p>
+            <div className='mt-2 grid grid-cols-2 gap-2 lg:grid-cols-4'>
+              <label className='flex flex-col gap-1'>
+                <span className='min-h-15 text-xs font-medium leading-5 text-amber-900'>
+                  Joint Multiplier
+                </span>
+                <input
+                  className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                  type='number'
+                  min={1}
+                  step={0.1}
+                  value={input.accentJointMultiplier ?? 1.75}
+                  onChange={(event) =>
+                    setInput((prev) => ({
+                      ...prev,
+                      accentJointMultiplier: Number(event.target.value),
+                    }))
+                  }
+                />
+              </label>
+              <label className='flex flex-col gap-1'>
+                <span className='min-h-15 text-xs font-medium leading-5 text-amber-900'>
+                  Cycle Length
+                </span>
+                <input
+                  className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                  type='number'
+                  min={2}
+                  step={1}
+                  value={input.accentCycleLength ?? 3}
+                  onChange={(event) =>
+                    setInput((prev) => ({
+                      ...prev,
+                      accentCycleLength: Number(event.target.value),
+                    }))
+                  }
+                />
+              </label>
+              <label className='flex flex-col gap-1'>
+                <span className='min-h-15 text-xs font-medium leading-5 text-amber-900'>
+                  Accent Course Position
+                </span>
+                <input
+                  className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                  type='number'
+                  min={1}
+                  step={1}
+                  value={input.accentCoursePosition ?? 2}
+                  onChange={(event) =>
+                    setInput((prev) => ({
+                      ...prev,
+                      accentCoursePosition: Number(event.target.value),
+                    }))
+                  }
+                />
+              </label>
+              <label className='flex flex-col gap-1'>
+                <span className='min-h-15 text-xs font-medium leading-5 text-amber-900'>
+                  Accent Orientation
+                </span>
+                <select
+                  className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                  aria-label='Accent Orientation'
+                  title='Accent Orientation'
+                  value={input.accentCourseOrientation ?? 'header'}
+                  onChange={(event) =>
+                    setInput((prev) => ({
+                      ...prev,
+                      accentCourseOrientation: event.target
+                        .value as NonNullable<
+                        MasonryInput['accentCourseOrientation']
+                      >,
+                    }))
+                  }
+                >
+                  <option value='stretcher'>Stretcher</option>
+                  <option value='header'>Header</option>
+                </select>
+              </label>
+            </div>
+          </div>
+        )}
 
         <label className='flex flex-col gap-1'>
           <FieldLabel

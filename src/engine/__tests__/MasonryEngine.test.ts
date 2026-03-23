@@ -139,6 +139,45 @@ describe('MasonryEngine', () => {
     ).toBe(true);
   });
 
+  it('adds shim spacer units when shim spacer strategy is selected', () => {
+    const engine = new MasonryEngine();
+    const uniform = engine.calculateDesign(baseInput);
+    const shimmed = engine.calculateDesign({
+      ...baseInput,
+      wallCourseStrategy: 'shim-spacer',
+      shimUnitLengthIn: 1.25,
+      shimFrequency: 1,
+    });
+
+    expect(shimmed.courseStrategy.strategy).toBe('shim-spacer');
+    expect(shimmed.courseStrategy.shimUnitCount).toBeGreaterThan(0);
+    expect(shimmed.totalUnits).toBeGreaterThan(uniform.totalUnits);
+    expect(shimmed.courseStrategy.shimUnit).toBeDefined();
+    expect(shimmed.courses[0].spacerIndexes?.length).toBe(
+      shimmed.courses[0].spacerCount,
+    );
+  });
+
+  it('applies vented accent recipe on configured cycle position', () => {
+    const engine = new MasonryEngine();
+    const output = engine.calculateDesign({
+      ...baseInput,
+      wallCourseStrategy: 'vented-accent',
+      accentCycleLength: 3,
+      accentCoursePosition: 2,
+      accentCourseOrientation: 'header',
+      accentJointMultiplier: 1.8,
+    });
+
+    expect(output.courseStrategy.strategy).toBe('vented-accent');
+    expect(output.courseStrategy.accentCourseIndexes).toContain(1);
+    expect(output.courses[1].specialCourse).toBe('vented-accent');
+    expect(output.courses[1].orientation).toBe('header');
+    expect(output.courses[1].jointIn).toBeCloseTo(
+      baseInput.mortarJointIn * 1.8,
+    );
+  });
+
   it('calculates purchased units and logistics with waste factor', () => {
     const engine = new MasonryEngine();
     const output = engine.calculateDesign(baseInput);

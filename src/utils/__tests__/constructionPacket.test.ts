@@ -41,6 +41,20 @@ describe('construction packet export', () => {
     expect(svg).toContain('CAP');
   });
 
+  it('annotates special course strategies in SVG output', () => {
+    const output = new MasonryEngine().calculateDesign({
+      ...input,
+      wallCourseStrategy: 'vented-accent',
+      accentCycleLength: 3,
+      accentCoursePosition: 2,
+    });
+    const svg = buildCoursePlanSvg(output);
+
+    expect(svg).toContain('(ACCENT)');
+    expect(svg).toContain('Vented accent course');
+    expect(svg).toContain('Standard course units remain brown');
+  });
+
   it('builds packet HTML with quantities and safety section', () => {
     const packetInput = { ...input, gasLineEntryAngleDeg: 0 };
     const output = new MasonryEngine().calculateDesign(packetInput);
@@ -48,6 +62,9 @@ describe('construction packet export', () => {
 
     expect(html).toContain('Fire Pit Build Packet');
     expect(html).toContain('Bricks To Buy');
+    expect(html).toContain('Main Wall Units');
+    expect(html).toContain('Spacer Units');
+    expect(html).toContain('Accent Course Units');
     expect(html).toContain('Safety Review');
     expect(html).toContain('Minimum horizontal clearance is 10 ft');
     expect(html).toContain('print-break-before');
@@ -73,6 +90,9 @@ describe('construction packet export', () => {
     expect(html).toContain('Cutting Notes');
     expect(html).toContain('Suggested taper');
     expect(html).toContain('Cut Schedule');
+    expect(html).toContain('Main Units');
+    expect(html).toContain('Spacer Units');
+    expect(html).toContain('Accent Units');
     expect(html).toContain('Cut Bricks');
     expect(html).toContain('Course Start');
     expect(html).toContain('Course legend: C1 is the bottom wall course');

@@ -26,6 +26,40 @@ export default function ConstructionMode({
   const wallBrickCutMarkup = buildWallBrickTaperCutSvg(output);
   const capstonePlacementMarkup = buildCapstonePlacementSampleSvg(output);
   const foundationAdvisory = buildFoundationAdvisory(input, output);
+  const strategySummaryText =
+    output.courseStrategy.strategy === 'shim-spacer'
+      ? `Shim spacer strategy is active. Purple markers indicate spacer inserts between standard units and the model currently estimates ${output.courseStrategy.shimUnitCount} spacer inserts.`
+      : output.courseStrategy.strategy === 'vented-accent'
+        ? `Vented accent strategy is active. Accent courses are highlighted in amber-gold at ${output.courseStrategy.accentCourseIndexes.map((index) => `C${index + 1}`).join(', ') || 'the configured cycle slot'}.`
+        : 'Uniform running bond strategy is active for all wall courses.';
+  const strategySwatches = [
+    {
+      label: 'Standard course units',
+      dotClassName: 'bg-[#7d3512]',
+      chipClassName: 'border-amber-900/20 bg-amber-100 text-amber-950',
+    },
+    {
+      label: 'Vent opening marker',
+      dotClassName: 'bg-[#c13a1f]',
+      chipClassName: 'border-red-900/20 bg-red-100 text-red-950',
+    },
+  ];
+
+  if (output.courseStrategy.strategy === 'shim-spacer') {
+    strategySwatches.splice(1, 0, {
+      label: 'Shim spacer course',
+      dotClassName: 'bg-[#6f58b5]',
+      chipClassName: 'border-indigo-900/20 bg-indigo-100 text-indigo-950',
+    });
+  }
+
+  if (output.courseStrategy.strategy === 'vented-accent') {
+    strategySwatches.splice(1, 0, {
+      label: 'Vented accent course',
+      dotClassName: 'bg-[#8a5a13]',
+      chipClassName: 'border-amber-900/20 bg-amber-200 text-amber-950',
+    });
+  }
 
   const downloadPacket = () => {
     const html = buildConstructionPacketHtml(input, output);
@@ -57,6 +91,25 @@ export default function ConstructionMode({
         capstone course. Alternating start offsets implement running bond. Red
         marks planned vent openings and blue marks gas line entry.
       </p>
+      <div className='mb-3 rounded-lg border border-amber-900/20 bg-white/75 px-3 py-2'>
+        <p className='text-[11px] font-semibold uppercase tracking-wide text-amber-900/70'>
+          Strategy Summary
+        </p>
+        <p className='mt-1 text-sm text-amber-950/85'>{strategySummaryText}</p>
+        <div className='mt-2 flex flex-wrap gap-2'>
+          {strategySwatches.map((swatch) => (
+            <span
+              key={swatch.label}
+              className={`rounded-xl border px-2.5 py-1.5 text-xs font-semibold ${swatch.chipClassName}`}
+            >
+              <span
+                className={`mr-2 inline-block h-2.5 w-2.5 rounded-full align-middle ${swatch.dotClassName}`}
+              />
+              {swatch.label}
+            </span>
+          ))}
+        </div>
+      </div>
 
       <div
         className='overflow-x-auto rounded-lg border border-amber-900/20 bg-white p-2'

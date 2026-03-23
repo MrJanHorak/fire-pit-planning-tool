@@ -1,6 +1,7 @@
 import type {
   CapstoneSpec,
   CoursePlan,
+  CourseStrategySummary,
   CutPlanSpec,
   FoundationSpec,
   LinerSpec,
@@ -9,7 +10,9 @@ import type {
   MasonryOutput,
   MasonryUnit,
   SafetyWarning,
+  UnitOrientation,
   VentSpec,
+  WallCourseStrategy,
 } from '../types';
 
 const IN3_PER_FT3 = 1728;
@@ -34,6 +37,21 @@ interface PlanMetrics {
   centerlineDepthIn: number;
   outerWidthIn: number;
   outerDepthIn: number;
+}
+
+interface CourseSizing {
+  unitCountRaw: number;
+  unitCount: number;
+  mainUnitCount: number;
+  spacerCount: number;
+}
+
+interface CourseRecipe {
+  orientation: UnitOrientation;
+  unitLengthIn: number;
+  jointIn: number;
+  specialCourse: CoursePlan['specialCourse'];
+  spacerCount: number;
 }
 
 export const MODULAR_BRICK: MasonryUnit = {
@@ -176,30 +194,48 @@ export class MasonryEngine {
     const oriented = this.resolveUnit(input, resolvedUnit);
     const resolvedCap = this.resolveCapUnit(input, oriented);
     const planMetrics = this.resolvePlanMetrics(input, oriented.widthIn);
-    const unitsPerCourseRaw = this.calculatePlanUnitCountRaw(
-      planMetrics,
-      oriented.lengthIn,
-      input.mortarJointIn,
-    );
-    const unitsPerCourseRounded = Math.max(1, Math.floor(unitsPerCourseRaw));
-
+    const strategy = this.resolveCourseStrategy(input);
     const courseCount = Math.max(
       1,
       Math.ceil(input.wallHeightIn / (oriented.heightIn + input.mortarJointIn)),
     );
-    const courses = this.buildRunningBondCourses(
+    const courses = this.buildCoursePlans(
+      input,
+      planMetrics,
+      oriented,
       courseCount,
-      unitsPerCourseRounded,
-      oriented.lengthIn,
-      input.mortarJointIn,
+      strategy,
     );
-    const totalUnits = unitsPerCourseRounded * courseCount;
+    const totalUnits = courses.reduce(
+      (sum, course) => sum + course.unitCount,
+      0,
+    );
+    const baselineCourse = courses[0];
+    const unitsPerCourseRaw =
+      baselineCourse?.unitCountRaw ??
+      this.calculatePlanUnitCountRaw(
+        planMetrics,
+        oriented.lengthIn,
+        input.mortarJointIn,
+      );
+    const unitsPerCourseRounded = baselineCourse?.unitCount
+      ? Math.max(1, Math.floor(baselineCourse.unitCount))
+      : Math.max(1, Math.floor(unitsPerCourseRaw));
+    const ventReferenceUnitCount = Math.max(
+      1,
+      ...courses.map((course) => course.unitCount),
+    );
+    const strategySummary = this.buildCourseStrategySummary(
+      courses,
+      strategy,
+      input,
+    );
     const linerSpec = this.calculateLiner(input, planMetrics);
     const ventSpec = this.calculateVents(
       input,
       planMetrics,
       courseCount,
-      unitsPerCourseRounded,
+      ventReferenceUnitCount,
     );
     const cutPlan = this.calculateCutPlan(
       planMetrics,
@@ -217,7 +253,12 @@ export class MasonryEngine {
       input.capstoneOverhangIn,
       input.capPlacementMode,
     );
-    const warnings = this.computeSafetyWarnings(input, ventSpec, cutPlan);
+    const warnings = this.computeSafetyWarnings(
+      input,
+      ventSpec,
+      cutPlan,
+      strategySummary,
+    );
 
     return {
       planShape: planMetrics.planShape,
@@ -246,6 +287,7 @@ export class MasonryEngine {
       cutPlan,
       linerSpec,
       foundation,
+      courseStrategy: strategySummary,
       capstone,
       logistics: this.calculateLogistics(
         totalUnits,
@@ -452,19 +494,323 @@ export class MasonryEngine {
     };
   }
 
-  private buildRunningBondCourses(
-    courseCount: number,
-    unitCount: number,
-    unitLengthIn: number,
-    jointIn: number,
-  ): CoursePlan[] {
-    const moduleIn = unitLengthIn + jointIn;
+  private resolveCourseStrategy(input: MasonryInput): WallCourseStrategy {
+    return input.wallCourseStrategy ?? 'uniform';
+  }
 
-    return Array.from({ length: courseCount }, (_, index) => ({
-      courseIndex: index,
-      unitCount,
-      offsetIn: index % 2 === 0 ? 0 : moduleIn / 2,
-    }));
+  private resolveShimFrequency(input: MasonryInput): number {
+    return Math.max(2, Math.floor(input.shimFrequency ?? 2));
+  }
+
+  private resolveShimMaxShare(input: MasonryInput): number {
+    const pct = input.shimMaxSharePct ?? 25;
+    return Math.min(0.33, Math.max(0.1, pct / 100));
+  }
+
+  private resolveAccentJointMultiplier(input: MasonryInput): number {
+    const value = input.accentJointMultiplier ?? 1.75;
+    return Math.max(1, value);
+  }
+
+  private resolveAccentCycleLength(input: MasonryInput): number {
+    return Math.max(2, Math.floor(input.accentCycleLength ?? 3));
+  }
+
+  private resolveAccentCoursePosition(input: MasonryInput): number {
+    return Math.max(1, Math.floor(input.accentCoursePosition ?? 2));
+  }
+
+  private isAccentCourse(input: MasonryInput, courseIndex: number): boolean {
+    const cycleLength = this.resolveAccentCycleLength(input);
+    const coursePosition = this.resolveAccentCoursePosition(input);
+    const clampedPosition = Math.min(cycleLength, coursePosition);
+
+    return (courseIndex % cycleLength) + 1 === clampedPosition;
+  }
+
+  private calculatePerimeterIn(planMetrics: PlanMetrics): number {
+    if (planMetrics.planShape === 'circular') {
+      return Math.PI * planMetrics.centerlineWidthIn;
+    }
+
+    return this.calculateRectangularPerimeter(
+      planMetrics.centerlineWidthIn,
+      planMetrics.centerlineDepthIn,
+    );
+  }
+
+  private resolveCourseSizing(
+    input: MasonryInput,
+    planMetrics: PlanMetrics,
+    recipe: CourseRecipe,
+  ): CourseSizing {
+    if (this.resolveCourseStrategy(input) !== 'shim-spacer') {
+      const unitCountRaw = this.calculatePlanUnitCountRaw(
+        planMetrics,
+        recipe.unitLengthIn,
+        recipe.jointIn,
+      );
+
+      return {
+        unitCountRaw,
+        unitCount: Math.max(1, Math.floor(unitCountRaw)),
+        mainUnitCount: Math.max(1, Math.floor(unitCountRaw)),
+        spacerCount: 0,
+      };
+    }
+
+    const shimLengthIn = this.sanitizeDim(input.shimUnitLengthIn, 1.25);
+    const perimeterIn = this.calculatePerimeterIn(planMetrics);
+    const mainModuleIn = recipe.unitLengthIn + recipe.jointIn;
+    const shimModuleIn = shimLengthIn + recipe.jointIn;
+    const maxShimShare = this.resolveShimMaxShare(input);
+    const estimatedMainCount = Math.max(
+      4,
+      Math.round(perimeterIn / mainModuleIn),
+    );
+    const minMainCount = Math.max(4, estimatedMainCount - 8);
+    const maxMainCount = estimatedMainCount + 8;
+
+    let best:
+      | {
+          mainUnitCount: number;
+          spacerCount: number;
+          lengthErrorIn: number;
+        }
+      | undefined;
+
+    for (
+      let mainUnitCount = minMainCount;
+      mainUnitCount <= maxMainCount;
+      mainUnitCount += 1
+    ) {
+      const maxSpacerByShare = Math.floor(
+        (maxShimShare * mainUnitCount) / (1 - maxShimShare),
+      );
+      const maxSpacerCount = Math.max(
+        0,
+        Math.min(mainUnitCount, maxSpacerByShare),
+      );
+
+      for (
+        let spacerCount = 1;
+        spacerCount <= maxSpacerCount;
+        spacerCount += 1
+      ) {
+        const runLengthIn =
+          mainUnitCount * mainModuleIn + spacerCount * shimModuleIn;
+        const lengthErrorIn = Math.abs(perimeterIn - runLengthIn);
+
+        if (
+          !best ||
+          lengthErrorIn < best.lengthErrorIn - 0.0001 ||
+          (Math.abs(lengthErrorIn - best.lengthErrorIn) < 0.0001 &&
+            spacerCount < best.spacerCount)
+        ) {
+          best = {
+            mainUnitCount,
+            spacerCount,
+            lengthErrorIn,
+          };
+        }
+      }
+    }
+
+    if (!best) {
+      const shimFrequency = this.resolveShimFrequency(input);
+      const effectiveMainModuleIn = mainModuleIn + shimModuleIn / shimFrequency;
+      const mainUnitsRaw = perimeterIn / Math.max(0.001, effectiveMainModuleIn);
+      const mainUnitCount = Math.max(1, Math.floor(mainUnitsRaw));
+      const spacerCount = Math.max(
+        1,
+        Math.floor(mainUnitCount / shimFrequency),
+      );
+
+      return {
+        unitCountRaw: mainUnitsRaw + mainUnitsRaw / shimFrequency,
+        unitCount: mainUnitCount + spacerCount,
+        mainUnitCount,
+        spacerCount,
+      };
+    }
+
+    return {
+      unitCountRaw: best.mainUnitCount + best.spacerCount,
+      unitCount: best.mainUnitCount + best.spacerCount,
+      mainUnitCount: best.mainUnitCount,
+      spacerCount: best.spacerCount,
+    };
+  }
+
+  private buildCourseRecipe(
+    input: MasonryInput,
+    orientedUnit: MasonryUnit,
+    courseIndex: number,
+    strategy: WallCourseStrategy,
+  ): CourseRecipe {
+    if (
+      strategy === 'vented-accent' &&
+      this.isAccentCourse(input, courseIndex)
+    ) {
+      const accentOrientation = input.accentCourseOrientation ?? 'header';
+      const accentUnit = this.resolveOrientedUnit(
+        orientedUnit,
+        accentOrientation,
+      );
+
+      return {
+        orientation: accentOrientation,
+        unitLengthIn: accentUnit.lengthIn,
+        jointIn: input.mortarJointIn * this.resolveAccentJointMultiplier(input),
+        specialCourse: 'vented-accent',
+        spacerCount: 0,
+      };
+    }
+
+    return {
+      orientation: input.orientation,
+      unitLengthIn: orientedUnit.lengthIn,
+      jointIn: input.mortarJointIn,
+      specialCourse: strategy === 'shim-spacer' ? 'shim-spacer' : 'standard',
+      spacerCount: 0,
+    };
+  }
+
+  private buildCoursePlans(
+    input: MasonryInput,
+    planMetrics: PlanMetrics,
+    orientedUnit: MasonryUnit,
+    courseCount: number,
+    strategy: WallCourseStrategy,
+  ): CoursePlan[] {
+    return Array.from({ length: courseCount }, (_, courseIndex) => {
+      const recipe = this.buildCourseRecipe(
+        input,
+        orientedUnit,
+        courseIndex,
+        strategy,
+      );
+      const sizing = this.resolveCourseSizing(input, planMetrics, recipe);
+      const moduleIn = recipe.unitLengthIn + recipe.jointIn;
+      const spacerIndexes =
+        strategy === 'shim-spacer'
+          ? this.buildShimSpacerIndexes(
+              sizing.mainUnitCount,
+              sizing.spacerCount,
+            )
+          : [];
+
+      return {
+        courseIndex,
+        unitCount: sizing.unitCount,
+        offsetIn: courseIndex % 2 === 0 ? 0 : moduleIn / 2,
+        unitCountRaw: sizing.unitCountRaw,
+        orientation: recipe.orientation,
+        jointIn: recipe.jointIn,
+        specialCourse: recipe.specialCourse,
+        spacerCount: sizing.spacerCount,
+        spacerIndexes,
+      };
+    });
+  }
+
+  private buildShimSpacerIndexes(
+    mainCount: number,
+    spacerCount: number,
+  ): number[] {
+    if (spacerCount <= 0 || mainCount <= 0) {
+      return [];
+    }
+
+    const totalUnits = mainCount + spacerCount;
+    const indexes: number[] = [];
+    const idealGap = mainCount / spacerCount;
+    let nextSpacerAtMain = idealGap;
+    let sequenceIndex = 0;
+    let mainPlaced = 0;
+    let spacersPlaced = 0;
+
+    while (mainPlaced < mainCount) {
+      mainPlaced += 1;
+      sequenceIndex += 1;
+
+      if (
+        spacersPlaced < spacerCount &&
+        mainPlaced >= nextSpacerAtMain - 0.001
+      ) {
+        indexes.push(sequenceIndex);
+        spacersPlaced += 1;
+        sequenceIndex += 1;
+        nextSpacerAtMain += idealGap;
+      }
+    }
+
+    while (spacersPlaced < spacerCount) {
+      indexes.push(Math.min(sequenceIndex, totalUnits - 1));
+      spacersPlaced += 1;
+      sequenceIndex = Math.min(sequenceIndex + 1, totalUnits - 1);
+    }
+
+    return this.uniqueIndexes(indexes.map((index) => Math.max(0, index)));
+  }
+
+  private buildCourseStrategySummary(
+    courses: CoursePlan[],
+    strategy: WallCourseStrategy,
+    input?: MasonryInput,
+  ): CourseStrategySummary {
+    return {
+      strategy,
+      shimUnitCount: courses.reduce(
+        (sum, course) => sum + (course.spacerCount ?? 0),
+        0,
+      ),
+      accentCourseIndexes: courses
+        .filter((course) => course.specialCourse === 'vented-accent')
+        .map((course) => course.courseIndex),
+      shimFrequency:
+        strategy === 'shim-spacer' && input
+          ? Math.max(
+              2,
+              Math.round(
+                courses.reduce(
+                  (sum, course) =>
+                    sum +
+                    Math.max(0, course.unitCount - (course.spacerCount ?? 0)),
+                  0,
+                ) /
+                  Math.max(
+                    1,
+                    courses.reduce(
+                      (sum, course) => sum + (course.spacerCount ?? 0),
+                      0,
+                    ),
+                  ),
+              ),
+            )
+          : undefined,
+      shimDensityPct:
+        strategy === 'shim-spacer'
+          ? (courses.reduce(
+              (sum, course) => sum + (course.spacerCount ?? 0),
+              0,
+            ) /
+              Math.max(
+                1,
+                courses.reduce((sum, course) => sum + course.unitCount, 0),
+              )) *
+            100
+          : undefined,
+      shimUnit:
+        strategy === 'shim-spacer' && input
+          ? {
+              name: 'Shim Spacer Unit',
+              lengthIn: this.sanitizeDim(input.shimUnitLengthIn, 1.25),
+              widthIn: this.sanitizeDim(input.shimUnitWidthIn, 1.125),
+              heightIn: this.sanitizeDim(input.shimUnitHeightIn, 2.25),
+            }
+          : undefined,
+    };
   }
 
   private calculateLiner(
@@ -827,6 +1173,7 @@ export class MasonryEngine {
     input: MasonryInput,
     ventSpec: VentSpec,
     cutPlan: CutPlanSpec,
+    strategySummary: CourseStrategySummary,
   ): SafetyWarning[] {
     const warnings: SafetyWarning[] = [];
 
@@ -900,6 +1247,19 @@ export class MasonryEngine {
           requiredValue: 15,
         });
       }
+    }
+
+    if (
+      strategySummary.strategy === 'vented-accent' &&
+      this.resolveAccentJointMultiplier(input) > 2
+    ) {
+      warnings.push({
+        code: 'course-bearing-risk',
+        message:
+          'Accent-course joint multiplier exceeds 2.0 and may reduce bearing continuity between courses.',
+        actualValue: this.resolveAccentJointMultiplier(input),
+        requiredValue: 2,
+      });
     }
 
     return warnings;

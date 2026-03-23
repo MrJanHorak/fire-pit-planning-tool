@@ -2,6 +2,7 @@ export type FuelType = 'wood' | 'propane' | 'natural-gas';
 export type BondPattern = 'running-bond';
 export type UnitOrientation = 'stretcher' | 'header';
 export type CapOrientation = 'match-wall' | UnitOrientation;
+export type WallCourseStrategy = 'uniform' | 'shim-spacer' | 'vented-accent';
 export type LinerType = 'none' | 'fire-brick' | 'steel-ring';
 export type PlanShape = 'circular' | 'square' | 'rectangular';
 export type CapPlacementMode = 'outward-only' | 'symmetric';
@@ -60,6 +61,16 @@ export interface MasonryInput {
   customCapHeightIn?: number;
   customCapInnerLengthIn?: number;
   customCapOuterLengthIn?: number;
+  wallCourseStrategy?: WallCourseStrategy;
+  shimUnitLengthIn?: number;
+  shimUnitWidthIn?: number;
+  shimUnitHeightIn?: number;
+  shimFrequency?: number;
+  shimMaxSharePct?: number;
+  accentJointMultiplier?: number;
+  accentCycleLength?: number;
+  accentCoursePosition?: number;
+  accentCourseOrientation?: UnitOrientation;
 }
 
 export interface SafetyWarning {
@@ -69,7 +80,8 @@ export interface SafetyWarning {
     | 'tight-radius-cut-required'
     | 'gas-vent-area-out-of-range'
     | 'gas-vent-layout-invalid'
-    | 'gas-line-near-vent';
+    | 'gas-line-near-vent'
+    | 'course-bearing-risk';
   message: string;
   actualValue?: number;
   requiredValue?: number;
@@ -173,6 +185,21 @@ export interface CoursePlan {
   courseIndex: number;
   unitCount: number;
   offsetIn: number;
+  unitCountRaw?: number;
+  orientation?: UnitOrientation;
+  jointIn?: number;
+  specialCourse?: 'standard' | 'shim-spacer' | 'vented-accent';
+  spacerCount?: number;
+  spacerIndexes?: number[];
+}
+
+export interface CourseStrategySummary {
+  strategy: WallCourseStrategy;
+  shimUnitCount: number;
+  accentCourseIndexes: number[];
+  shimFrequency?: number;
+  shimDensityPct?: number;
+  shimUnit?: MasonryUnit;
 }
 
 export interface MasonryOutput {
@@ -196,6 +223,7 @@ export interface MasonryOutput {
   cutPlan: CutPlanSpec;
   linerSpec: LinerSpec;
   foundation: FoundationSpec;
+  courseStrategy: CourseStrategySummary;
   capstone: CapstoneSpec;
   logistics: LogisticsSpec;
   warnings: SafetyWarning[];

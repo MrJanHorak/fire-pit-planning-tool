@@ -72,24 +72,29 @@ function getCapstoneCutMetrics(output: MasonryOutput): {
 function buildCutScheduleTable(output: MasonryOutput): string {
   const rows = output.courses
     .map((course) => {
+      const spacerUnits =
+        course.specialCourse === 'shim-spacer' ? (course.spacerCount ?? 0) : 0;
+      const mainUnits = Math.max(0, course.unitCount - spacerUnits);
+      const accentUnits =
+        course.specialCourse === 'vented-accent' ? course.unitCount : 0;
       const ventOpenings = output.ventSpec.targetCourseIndexes.includes(
         course.courseIndex,
       )
         ? output.ventSpec.ventBrickIndexes.length
         : 0;
       const taperUnits = output.cutPlan.requiresCutting
-        ? Math.max(0, course.unitCount - ventOpenings)
+        ? Math.max(0, mainUnits - ventOpenings)
         : 0;
-      const fullUnits = Math.max(
-        0,
-        course.unitCount - taperUnits - ventOpenings,
-      );
+      const fullUnits = Math.max(0, mainUnits - taperUnits - ventOpenings);
       const offsetLabel =
         course.offsetIn > 0 ? 'Half-module start' : 'Standard start';
 
       return `<tr>
         <td>C${course.courseIndex + 1}</td>
         <td>${course.unitCount}</td>
+        <td>${mainUnits}</td>
+        <td>${spacerUnits}</td>
+        <td>${accentUnits}</td>
         <td>${fullUnits}</td>
         <td>${taperUnits}</td>
         <td>${ventOpenings}</td>
@@ -104,6 +109,9 @@ function buildCutScheduleTable(output: MasonryOutput): string {
       <tr>
         <th>Course</th>
         <th>Total Bricks</th>
+        <th>Main Units</th>
+        <th>Spacer Units</th>
+        <th>Accent Units</th>
         <th>Full Bricks</th>
         <th>Cut Bricks</th>
         <th>Vent Gaps</th>
@@ -217,6 +225,18 @@ function buildDiyStepsHtml(input: MasonryInput, output: MasonryOutput): string {
   const cutStep = output.cutPlan.requiresCutting
     ? `Cut wall bricks as wedges before installation. Remove approximately ${output.cutPlan.recommendedCutPerSideIn.toFixed(3)} in from each side of the inner face and set the saw to about ${output.cutPlan.recommendedCutAngleDeg.toFixed(2)} deg off square.`
     : 'Dry-fit the first full course and confirm joints remain consistent before mixing mortar.';
+  const strategyStep =
+    output.courseStrategy.strategy === 'shim-spacer'
+      ? `Course strategy note: Shim Spacer is enabled. Insert approximately ${output.courseStrategy.shimUnitCount} thin spacer units across the wall build while keeping each course in running bond.`
+      : output.courseStrategy.strategy === 'vented-accent'
+        ? `Course strategy note: Vented Accent is enabled. Accent courses occur at ${
+            output.courseStrategy.accentCourseIndexes.length > 0
+              ? output.courseStrategy.accentCourseIndexes
+                  .map((index) => `C${index + 1}`)
+                  .join(', ')
+              : 'the configured cycle position'
+          } and use wider joints. Return to standard coursing above each accent course.`
+        : 'Course strategy note: Uniform running bond is used on all wall courses.';
 
   const steps = [
     `Call for utility locates, verify the firepit location, and confirm at least 10 ft of clearance from combustible structures.`,
@@ -226,6 +246,7 @@ function buildDiyStepsHtml(input: MasonryInput, output: MasonryOutput): string {
     `Dry-lay Course C1 with ${output.unitsPerCourseRounded} units around the ${formatShapeName(output.planShape).toLowerCase()} centerline. Use the resolved wall unit dimensions and hold mortar joints to ${output.mortarJointIn.toFixed(3)} in.`,
     cutStep,
     `Lay the wall courses to a total of ${output.courses.length} courses. Keep running bond by starting every other course with a half-module offset of ${output.courses[1]?.offsetIn.toFixed(3) ?? '0.000'} in.`,
+    strategyStep,
     `Leave vent openings in ${ventCourses} at brick indexes ${output.ventSpec.ventBrickIndexes.join(', ')}. This provides ${output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in of vent area for the selected ${formatFuelName(input.fuelType).toLowerCase()} configuration.`,
     linerStep,
     `Set the cap course with ${output.capstone.capUnitsPerCourseRounded} units on the cap centerline. Maintain a centerline cap joint of ${output.capstone.joint.actualJointIn.toFixed(3)} in.`,
@@ -239,12 +260,19 @@ function buildDiyStepsHtml(input: MasonryInput, output: MasonryOutput): string {
 
 export function buildCoursePlanSvg(output: MasonryOutput): string {
   const rowHeight = 26;
-  const svgHeight = (output.courses.length + 1) * rowHeight + 28;
+  const includeStrategyLegend = output.courseStrategy.strategy !== 'uniform';
+  const legendHeight = includeStrategyLegend ? 56 : 0;
+  const svgHeight = (output.courses.length + 1) * rowHeight + 28 + legendHeight;
 
   const rows = output.courses
     .map((course, idx) => {
       const y = 18 + idx * rowHeight;
       const modulePx = 48;
+      const mainBrickWidthPx = modulePx - 4;
+      const spacerBrickWidthPx = Math.max(
+        16,
+        Math.floor(mainBrickWidthPx * 0.5),
+      );
       const offsetPx = course.offsetIn > 0 ? modulePx / 2 : 0;
       const ventCourse = output.ventSpec.targetCourseIndexes.includes(
         course.courseIndex,
@@ -252,8 +280,19 @@ export function buildCoursePlanSvg(output: MasonryOutput): string {
       const gasLineCourse =
         output.ventSpec.gasLineEntryBrickIndex !== undefined &&
         course.courseIndex === 0;
+      const courseFill =
+        course.specialCourse === 'vented-accent' ? '#8a5a13' : '#b66a34';
+      const courseTag =
+        course.specialCourse === 'vented-accent'
+          ? ' (ACCENT)'
+          : course.specialCourse === 'shim-spacer'
+            ? ' (SHIM)'
+            : '';
 
       const bricks = Array.from({ length: course.unitCount }, (_, brickIdx) => {
+        const isSpacer =
+          course.specialCourse === 'shim-spacer' &&
+          !!course.spacerIndexes?.includes(brickIdx);
         const isVentBrick =
           ventCourse && output.ventSpec.ventBrickIndexes.includes(brickIdx);
         const isGasLineBrick =
@@ -262,13 +301,17 @@ export function buildCoursePlanSvg(output: MasonryOutput): string {
           ? '#2b6f9b'
           : isVentBrick
             ? '#c13a1f'
-            : '#b66a34';
+            : isSpacer
+              ? '#5f4f96'
+              : courseFill;
+        const brickWidthPx = isSpacer ? spacerBrickWidthPx : mainBrickWidthPx;
+        const xInsetPx = (mainBrickWidthPx - brickWidthPx) / 2;
         const opacity = isGasLineBrick || isVentBrick ? '0.9' : '0.72';
 
-        return `<rect x="${52 + offsetPx + brickIdx * modulePx}" y="${y}" width="${modulePx - 4}" height="16" rx="2" fill="${fill}" opacity="${opacity}" />`;
+        return `<rect x="${52 + offsetPx + brickIdx * modulePx + xInsetPx}" y="${y}" width="${brickWidthPx}" height="16" rx="2" fill="${fill}" opacity="${opacity}" />`;
       }).join('');
 
-      return `<g><text x="8" y="${y + 13}" font-size="11" fill="#3c2a11">C${course.courseIndex + 1}</text>${bricks}</g>`;
+      return `<g><text x="8" y="${y + 13}" font-size="11" fill="#3c2a11">C${course.courseIndex + 1}${courseTag}</text>${bricks}</g>`;
     })
     .join('');
 
@@ -280,8 +323,17 @@ export function buildCoursePlanSvg(output: MasonryOutput): string {
       `<rect x="${52 + capIdx * capModulePx}" y="${capY}" width="${capModulePx - 4}" height="16" rx="2" fill="#ccb085" opacity="0.9" />`,
   ).join('');
   const capRow = `<g><text x="8" y="${capY + 13}" font-size="11" fill="#3c2a11">CAP</text>${capBricks}</g>`;
+  const strategyLegend = includeStrategyLegend
+    ? `<g>
+      <rect x="8" y="${svgHeight - 44}" width="14" height="10" rx="2" fill="#5f4f96" opacity="0.8" />
+      <text x="28" y="${svgHeight - 35}" font-size="11" fill="#3c2a11">Shim spacer unit</text>
+      <rect x="182" y="${svgHeight - 44}" width="14" height="10" rx="2" fill="#8a5a13" opacity="0.85" />
+      <text x="202" y="${svgHeight - 35}" font-size="11" fill="#3c2a11">Vented accent course</text>
+      <text x="8" y="${svgHeight - 18}" font-size="11" fill="#4a3720">Standard course units remain brown; shim units are narrower and purple; vent openings remain red; gas line entry remains blue.</text>
+    </g>`
+    : '';
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 ${svgHeight}" width="940" height="${svgHeight}">${rows}${capRow}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 ${svgHeight}" width="940" height="${svgHeight}">${rows}${capRow}${strategyLegend}</svg>`;
 }
 
 export function buildSafetyClearanceSvg(
@@ -369,6 +421,23 @@ export function buildConstructionPacketHtml(
       : `<p>Gas Line Entry: ${output.ventSpec.gasLineEntryAngleDeg.toFixed(0)} deg at brick ${output.ventSpec.gasLineEntryBrickIndex} (${output.ventSpec.gasLineEntryClear ? 'clear of vents' : 'conflicts with vent layout'}${output.ventSpec.gasLineAutoAdjusted ? ', auto-adjusted' : ''}).</p>`;
   const taperCutSample = buildWallBrickTaperCutSvg(output);
   const capstonePlacementSample = buildCapstonePlacementSampleSvg(output);
+  const mainWallUnits = output.courses.reduce(
+    (sum, course) =>
+      sum +
+      Math.max(
+        0,
+        course.unitCount -
+          (course.specialCourse === 'shim-spacer'
+            ? (course.spacerCount ?? 0)
+            : 0),
+      ),
+    0,
+  );
+  const accentUnits = output.courses.reduce(
+    (sum, course) =>
+      sum + (course.specialCourse === 'vented-accent' ? course.unitCount : 0),
+    0,
+  );
 
   return `<!doctype html>
 <html lang="en">
@@ -426,6 +495,9 @@ export function buildConstructionPacketHtml(
       <div class="grid">
         <p>Bricks per Course: ${output.unitsPerCourseRounded}</p>
         <p>Total Bricks: ${output.totalUnits}</p>
+        <p>Main Wall Units: ${mainWallUnits}</p>
+        <p>Spacer Units: ${output.courseStrategy.shimUnitCount}</p>
+        <p>Accent Course Units: ${accentUnits}</p>
         <p>Bricks To Buy (${output.logistics.wasteFactorPct}% waste): ${output.logistics.purchasedUnits}</p>
         <p>Cap Units per Course: ${output.capstone.capUnitsPerCourseRounded}</p>
         <p>Cap Units To Buy: ${output.logistics.purchasedCapUnits}</p>
@@ -513,6 +585,7 @@ export function buildConstructionPacketHtml(
       <h2>Layer-By-Layer Layout</h2>
       <p>Course legend: C1 is the bottom wall course, numbering increases upward, and CAP is the top capstone layer.</p>
       <p>Red highlights indicate planned vent openings. Blue highlights indicate gas line entry.</p>
+      <p>Course strategy: ${output.courseStrategy.strategy}. ${output.courseStrategy.strategy === 'shim-spacer' ? `Shim spacer units planned: ${output.courseStrategy.shimUnitCount}.` : output.courseStrategy.strategy === 'vented-accent' ? `Accent courses: ${output.courseStrategy.accentCourseIndexes.map((index) => `C${index + 1}`).join(', ') || 'none'}.` : 'No special course overrides active.'}</p>
       ${svg}
     </section>
   </body>

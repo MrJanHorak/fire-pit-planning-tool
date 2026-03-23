@@ -610,6 +610,11 @@ export default function Stage3D({ output }: Stage3DProps) {
   const brickLengthFt = output.resolvedUnit.lengthIn / 12;
   const brickHeightFt = output.resolvedUnit.heightIn / 12;
   const brickWidthFt = output.resolvedUnit.widthIn / 12;
+  const shimUnit = output.courseStrategy.shimUnit;
+  const shimLengthFt = (shimUnit?.lengthIn ?? 1.25) / 12;
+  const shimHeightFt =
+    (shimUnit?.heightIn ?? output.resolvedUnit.heightIn) / 12;
+  const shimWidthFt = (shimUnit?.widthIn ?? 1.125) / 12;
   const capBrickLengthFt = output.resolvedCapUnit.lengthIn / 12;
   const capBrickHeightFt = output.resolvedCapUnit.heightIn / 12;
   const mortarJointFt = output.mortarJointIn / 12;
@@ -761,6 +766,29 @@ export default function Stage3D({ output }: Stage3DProps) {
           geometry.wallRadiusFt,
         );
 
+  const getWallCourseColor = (course: MasonryOutput['courses'][number]) => {
+    if (course.specialCourse === 'vented-accent') {
+      return '#8a5a13';
+    }
+
+    if (course.specialCourse === 'shim-spacer') {
+      return '#5f4f96';
+    }
+
+    return course.courseIndex % 2 === 0 ? '#924018' : '#7d3512';
+  };
+
+  const getWallBrickColor = (
+    course: MasonryOutput['courses'][number],
+    isSpacer: boolean,
+  ) => {
+    if (isSpacer) {
+      return '#6f58b5';
+    }
+
+    return getWallCourseColor(course);
+  };
+
   const topDown = () => {
     if (!orbitRef.current) {
       return;
@@ -782,9 +810,9 @@ export default function Stage3D({ output }: Stage3DProps) {
   };
 
   return (
-    <div className='card-rise relative h-[460px] rounded-2xl border border-amber-900/20 bg-amber-100/70 p-2 shadow-lg'>
-      <div className='absolute right-4 top-4 z-10 flex flex-col items-end gap-2'>
-        <div className='flex items-center gap-2 rounded-full bg-amber-50/95 px-3 py-1.5 text-xs font-semibold text-amber-950 shadow'>
+    <div className='card-rise relative h-[460px] rounded-2xl border border-amber-900/20 bg-amber-100/70 p-2 shadow-lg sm:h-[500px]'>
+      <div className='absolute right-2 top-2 z-10 flex flex-col items-end gap-2 sm:right-4 sm:top-4'>
+        <div className='flex items-center gap-2 rounded-full bg-amber-50/95 px-3 py-1.5 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
           <span>Wireframe</span>
           <button
             className={`h-5 w-10 rounded-full transition-colors ${wireframe ? 'bg-amber-900' : 'bg-amber-300'}`}
@@ -797,7 +825,7 @@ export default function Stage3D({ output }: Stage3DProps) {
           </button>
         </div>
 
-        <div className='flex items-center gap-2 rounded-full bg-amber-50/95 px-3 py-1.5 text-xs font-semibold text-amber-950 shadow'>
+        <div className='flex items-center gap-2 rounded-full bg-amber-50/95 px-3 py-1.5 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
           <span>Outlines</span>
           <button
             className={`h-5 w-10 rounded-full transition-colors ${showBrickOutlines ? 'bg-amber-900' : 'bg-amber-300'}`}
@@ -810,7 +838,7 @@ export default function Stage3D({ output }: Stage3DProps) {
           </button>
         </div>
 
-        <div className='flex items-center gap-2 rounded-full bg-amber-50/95 px-3 py-1.5 text-xs font-semibold text-amber-950 shadow'>
+        <div className='flex items-center gap-2 rounded-full bg-amber-50/95 px-3 py-1.5 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
           <span>Flame</span>
           <button
             className={`h-5 w-10 rounded-full transition-colors ${showFlame ? 'bg-orange-500' : 'bg-amber-300'}`}
@@ -825,13 +853,13 @@ export default function Stage3D({ output }: Stage3DProps) {
 
         <div className='flex gap-1.5'>
           <button
-            className='rounded-full bg-amber-50/95 px-3 py-1.5 text-xs font-semibold text-amber-950 shadow'
+            className='rounded-full bg-amber-50/95 px-3 py-1.5 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'
             onClick={topDown}
           >
             Top
           </button>
           <button
-            className='rounded-full bg-amber-50/95 px-3 py-1.5 text-xs font-semibold text-amber-950 shadow'
+            className='rounded-full bg-amber-50/95 px-3 py-1.5 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'
             onClick={sideView}
           >
             Side
@@ -839,32 +867,46 @@ export default function Stage3D({ output }: Stage3DProps) {
         </div>
       </div>
 
-      <div className='absolute bottom-4 left-4 z-10 rounded-xl bg-amber-50/95 px-3 py-2 text-xs text-amber-950 shadow'>
-        <p className='mb-1 font-semibold'>3D Legend</p>
-        <p>
+      <div className='absolute bottom-2 left-2 z-10 max-w-[78%] rounded-xl border border-amber-900/15 bg-amber-50/95 px-3 py-2 text-[11px] text-amber-950 shadow sm:bottom-4 sm:left-4 sm:max-w-sm sm:text-xs'>
+        <p className='mb-1 text-[11px] font-bold uppercase tracking-wide text-amber-900/80 sm:text-xs'>
+          3D Legend
+        </p>
+        <p className='leading-5'>
           <span className='mr-1 inline-block h-2 w-2 rounded-full bg-[#7d3512]' />
           Wall Brick
         </p>
-        <p>
+        {output.courseStrategy.strategy === 'shim-spacer' && (
+          <p className='leading-5'>
+            <span className='mr-1 inline-block h-2 w-2 rounded-full bg-[#5f4f96]' />
+            Shim Spacer Course
+          </p>
+        )}
+        {output.courseStrategy.strategy === 'vented-accent' && (
+          <p className='leading-5'>
+            <span className='mr-1 inline-block h-2 w-2 rounded-full bg-[#8a5a13]' />
+            Vented Accent Course
+          </p>
+        )}
+        <p className='leading-5'>
           <span className='mr-1 inline-block h-2 w-2 rounded-full bg-[#ccb085]' />
           Cap Brick
         </p>
-        <p>
+        <p className='leading-5'>
           <span className='mr-1 inline-block h-2 w-2 rounded-full bg-[#c6b39a]' />
           Mortar
         </p>
-        <p>
+        <p className='leading-5'>
           <span className='mr-1 inline-block h-2 w-2 rounded-full bg-[#241a12]' />
           Vent Opening
         </p>
         {output.planShape !== 'circular' && (
-          <p>
+          <p className='leading-5'>
             <span className='mr-1 inline-block h-2 w-2 rounded-full bg-[#f2f2f2]' />
             Side Labels (N/E/S/W)
           </p>
         )}
         {output.linerSpec.enabled && (
-          <p>
+          <p className='leading-5'>
             <span className='mr-1 inline-block h-2 w-2 rounded-full bg-[#8e3b2f]' />
             Thermal Liner
           </p>
@@ -1010,6 +1052,9 @@ export default function Stage3D({ output }: Stage3DProps) {
         {output.courses.map((course) => (
           <group key={course.courseIndex}>
             {Array.from({ length: course.unitCount }, (_, brickIdx) => {
+              const isSpacer =
+                course.specialCourse === 'shim-spacer' &&
+                !!course.spacerIndexes?.includes(brickIdx);
               const isVentOpening =
                 output.ventSpec.targetCourseIndexes.includes(
                   course.courseIndex,
@@ -1024,7 +1069,7 @@ export default function Stage3D({ output }: Stage3DProps) {
                 geometry.wallRadiusFt,
               );
               const y =
-                brickHeightFt / 2 +
+                (isSpacer ? shimHeightFt : brickHeightFt) / 2 +
                 course.courseIndex * geometry.courseRiseFt +
                 mortarJointFt / 2;
               const wallBrickQuad = wallRequiresTaperCut
@@ -1035,6 +1080,16 @@ export default function Stage3D({ output }: Stage3DProps) {
                     brickLengthIn: renderedWallBrickLengthFt * 12,
                   })
                 : undefined;
+              const perBrickColor = getWallBrickColor(course, isSpacer);
+              const renderedLengthFt = isSpacer
+                ? Math.max(0.05, shimLengthFt - mortarJointFt * 0.35)
+                : renderedWallBrickLengthFt;
+              const renderedHeightFt = isSpacer
+                ? Math.max(0.05, shimHeightFt - mortarJointFt * 0.35)
+                : visBrickHeightFt;
+              const renderedWidthFt = isSpacer
+                ? Math.max(0.04, shimWidthFt - mortarJointFt * 0.35)
+                : visBrickWidthFt;
 
               return isVentOpening ? (
                 <group key={`${course.courseIndex}-${brickIdx}-vent`}>
@@ -1088,13 +1143,11 @@ export default function Stage3D({ output }: Stage3DProps) {
                   position={[placement.x, y, placement.z]}
                   rotation={[0, placement.rotationY, 0]}
                 >
-                  {wallRequiresTaperCut && wallBrickQuad ? (
+                  {wallRequiresTaperCut && wallBrickQuad && !isSpacer ? (
                     <CircularCapJointFiller
                       polygonPoints={wallBrickQuad.polygonPoints}
-                      heightFt={visBrickHeightFt}
-                      color={
-                        course.courseIndex % 2 === 0 ? '#924018' : '#7d3512'
-                      }
+                      heightFt={renderedHeightFt}
+                      color={perBrickColor}
                       wireframe={wireframe}
                       showEdges={showBrickOutlines}
                     />
@@ -1102,15 +1155,13 @@ export default function Stage3D({ output }: Stage3DProps) {
                     <>
                       <boxGeometry
                         args={[
-                          renderedWallBrickLengthFt,
-                          visBrickHeightFt,
-                          visBrickWidthFt,
+                          renderedLengthFt,
+                          renderedHeightFt,
+                          renderedWidthFt,
                         ]}
                       />
                       <meshStandardMaterial
-                        color={
-                          course.courseIndex % 2 === 0 ? '#924018' : '#7d3512'
-                        }
+                        color={perBrickColor}
                         roughness={0.82}
                         wireframe={wireframe}
                       />

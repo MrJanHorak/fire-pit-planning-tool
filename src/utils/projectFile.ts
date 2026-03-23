@@ -158,6 +158,46 @@ export function normalizeMasonryInput(
       value.customCapOuterLengthIn,
       defaults.customCapOuterLengthIn ?? 14.5,
     ),
+    wallCourseStrategy: coerceString(
+      value.wallCourseStrategy,
+      defaults.wallCourseStrategy ?? 'uniform',
+    ) as MasonryInput['wallCourseStrategy'],
+    shimUnitLengthIn: coerceNumber(
+      value.shimUnitLengthIn,
+      defaults.shimUnitLengthIn ?? 1.25,
+    ),
+    shimUnitWidthIn: coerceNumber(
+      value.shimUnitWidthIn,
+      defaults.shimUnitWidthIn ?? 1.125,
+    ),
+    shimUnitHeightIn: coerceNumber(
+      value.shimUnitHeightIn,
+      defaults.shimUnitHeightIn ?? 2.25,
+    ),
+    shimFrequency: coerceNumber(
+      value.shimFrequency,
+      defaults.shimFrequency ?? 2,
+    ),
+    shimMaxSharePct: coerceNumber(
+      value.shimMaxSharePct,
+      defaults.shimMaxSharePct ?? 25,
+    ),
+    accentJointMultiplier: coerceNumber(
+      value.accentJointMultiplier,
+      defaults.accentJointMultiplier ?? 1.75,
+    ),
+    accentCycleLength: coerceNumber(
+      value.accentCycleLength,
+      defaults.accentCycleLength ?? 3,
+    ),
+    accentCoursePosition: coerceNumber(
+      value.accentCoursePosition,
+      defaults.accentCoursePosition ?? 2,
+    ),
+    accentCourseOrientation: coerceString(
+      value.accentCourseOrientation,
+      defaults.accentCourseOrientation ?? 'header',
+    ) as MasonryInput['accentCourseOrientation'],
   };
 }
 

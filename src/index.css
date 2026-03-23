@@ -46,3 +46,7 @@ summary::-webkit-details-marker {
 .card-rise {
   animation: rise-in 360ms ease-out both;
 }
+
+.control-panel-grid > label {
+  row-gap: 0.25rem;
+}
