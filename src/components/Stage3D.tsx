@@ -64,6 +64,14 @@ export function isHalfRoundCapUnit(unitName: string): boolean {
   return /half-round coping/i.test(unitName);
 }
 
+function arcToChordLengthFt(arcLengthFt: number, radiusFt: number): number {
+  const safeRadiusFt = Math.max(0.001, radiusFt);
+  const clampedArcFt = Math.max(0, arcLengthFt);
+  const angleRad = clampedArcFt / safeRadiusFt;
+
+  return 2 * safeRadiusFt * Math.sin(angleRad / 2);
+}
+
 export function computeStage3DGeometry(output: MasonryOutput): Stage3DGeometry {
   const brickHeightFt = output.resolvedUnit.heightIn / 12;
   const mortarJointFt = output.mortarJointIn / 12;
@@ -673,7 +681,37 @@ export default function Stage3D({ output }: Stage3DProps) {
   );
   const renderedWallOuterRadiusFt = geometry.wallRadiusFt + visBrickWidthFt / 2;
   const capRequiresTaperCut =
-    output.planShape === 'circular' && output.capstone.joint.innerJointIn < 0;
+    output.planShape === 'circular' && output.capstone.requiresTaperCutting;
+  const renderedWallBrickLengthFt =
+    output.planShape === 'circular' && !wallRequiresTaperCut
+      ? Math.max(
+          0.08,
+          Math.min(
+            safeWallBrickLengthFt,
+            arcToChordLengthFt(safeWallBrickLengthFt, geometry.wallRadiusFt),
+          ),
+        )
+      : safeWallBrickLengthFt;
+  const renderedCapBrickLengthFt =
+    output.planShape === 'circular' && !capRequiresTaperCut
+      ? Math.max(
+          0.08,
+          Math.min(
+            safeCapBrickLengthFt,
+            arcToChordLengthFt(safeCapBrickLengthFt, geometry.capRadiusFt),
+          ),
+        )
+      : safeCapBrickLengthFt;
+  const renderedCapJointLengthFt =
+    output.planShape === 'circular' && !capRequiresTaperCut
+      ? Math.max(
+          0,
+          Math.min(
+            capJointLengthFt,
+            arcToChordLengthFt(capJointLengthFt, geometry.capRadiusFt),
+          ),
+        )
+      : capJointLengthFt;
   const capMortarBedHeightFt = Math.max(0.02, mortarJointFt * 0.55);
   const capMortarBedY = geometry.capRiseFt + capMortarBedHeightFt / 2;
   const capJointWidthFt = Math.max(0.03, capBrickWidthFt * 0.86);
@@ -994,7 +1032,7 @@ export default function Stage3D({ output }: Stage3DProps) {
                     centerlineRadiusFt: geometry.wallRadiusFt,
                     innerRadiusFt: renderedWallInnerRadiusFt,
                     outerRadiusFt: renderedWallOuterRadiusFt,
-                    brickLengthIn: safeWallBrickLengthFt * 12,
+                    brickLengthIn: renderedWallBrickLengthFt * 12,
                   })
                 : undefined;
 
@@ -1064,7 +1102,7 @@ export default function Stage3D({ output }: Stage3DProps) {
                     <>
                       <boxGeometry
                         args={[
-                          safeWallBrickLengthFt,
+                          renderedWallBrickLengthFt,
                           visBrickHeightFt,
                           visBrickWidthFt,
                         ]}
@@ -1118,7 +1156,7 @@ export default function Stage3D({ output }: Stage3DProps) {
                     centerlineRadiusFt: geometry.capRadiusFt,
                     innerRadiusFt: renderedCapInnerRadiusFt,
                     outerRadiusFt: renderedCapOuterRadiusFt,
-                    brickLengthIn: safeCapBrickLengthFt * 12,
+                    brickLengthIn: renderedCapBrickLengthFt * 12,
                   })
                 : undefined;
 
@@ -1147,7 +1185,7 @@ export default function Stage3D({ output }: Stage3DProps) {
                       >
                         <boxGeometry
                           args={[
-                            safeCapBrickLengthFt,
+                            renderedCapBrickLengthFt,
                             halfRoundBaseHeightFt,
                             capBrickWidthFt,
                           ]}
@@ -1173,7 +1211,7 @@ export default function Stage3D({ output }: Stage3DProps) {
                           args={[
                             halfRoundCrownRadiusFt,
                             halfRoundCrownRadiusFt,
-                            safeCapBrickLengthFt,
+                            renderedCapBrickLengthFt,
                             20,
                           ]}
                         />
@@ -1182,16 +1220,13 @@ export default function Stage3D({ output }: Stage3DProps) {
                           roughness={0.58}
                           wireframe={wireframe}
                         />
-                        {showBrickOutlines && (
-                          <Edges color='#3b2d1f' lineWidth={1} scale={1.003} />
-                        )}
                       </mesh>
                     </>
                   ) : (
                     <>
                       <boxGeometry
                         args={[
-                          safeCapBrickLengthFt,
+                          renderedCapBrickLengthFt,
                           visCapBrickHeightFt,
                           capBrickWidthFt,
                         ]}
@@ -1258,13 +1293,15 @@ export default function Stage3D({ output }: Stage3DProps) {
                         outerRadiusFt: renderedCapOuterRadiusFt,
                         actualJointIn: output.capstone.joint.actualJointIn,
                       })
-                    : buildRectangularJointQuad(
-                        leftPlacement,
-                        rightPlacement,
-                        jointPlacement,
-                        safeCapBrickLengthFt,
-                        capBrickWidthFt,
-                      );
+                    : output.planShape !== 'circular'
+                      ? buildRectangularJointQuad(
+                          leftPlacement,
+                          rightPlacement,
+                          jointPlacement,
+                          renderedCapBrickLengthFt,
+                          capBrickWidthFt,
+                        )
+                      : undefined;
                 const jointY =
                   geometry.capRiseFt + capBrickHeightFt / 2 + mortarJointFt / 2;
 
@@ -1274,7 +1311,9 @@ export default function Stage3D({ output }: Stage3DProps) {
                     position={[jointPlacement.x, jointY, jointPlacement.z]}
                     rotation={[0, jointPlacement.rotationY, 0]}
                   >
-                    {output.planShape === 'circular' && capRequiresTaperCut ? (
+                    {output.planShape === 'circular' &&
+                    capRequiresTaperCut &&
+                    jointQuad ? (
                       <CircularCapJointFiller
                         polygonPoints={jointQuad.polygonPoints}
                         heightFt={capJointHeightFt}
@@ -1286,7 +1325,7 @@ export default function Stage3D({ output }: Stage3DProps) {
                       <>
                         <boxGeometry
                           args={[
-                            capJointLengthFt,
+                            renderedCapJointLengthFt,
                             capJointHeightFt,
                             capJointWidthFt,
                           ]}

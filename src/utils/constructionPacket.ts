@@ -32,10 +32,20 @@ function getCapstoneCutMetrics(output: MasonryOutput): {
   minimumRecommendedPitInnerDiameterIn: number;
 } {
   const requiresCutting =
-    output.planShape === 'circular' && output.capstone.joint.innerJointIn < 0;
+    output.planShape === 'circular' && output.capstone.requiresTaperCutting;
+  const capCount = Math.max(1, output.capstone.capUnitsPerCourseRounded);
+  const radiusIn = output.capstone.capInnerDiameterIn / 2;
+  const moduleSpacingIn =
+    (Math.PI * output.capstone.capCenterlineDiameterIn) / capCount;
+  const chordIn =
+    radiusIn > 0
+      ? 2 * radiusIn * Math.sin(moduleSpacingIn / (2 * radiusIn))
+      : output.resolvedCapUnit.lengthIn;
+  const chordDeficitIn = Math.max(0, output.resolvedCapUnit.lengthIn - chordIn);
   const recommendedTaperPerUnitIn = Math.max(
     0,
     -output.capstone.joint.innerJointIn,
+    chordDeficitIn,
   );
   const recommendedCutPerSideIn = recommendedTaperPerUnitIn / 2;
   const capDepthIn = Math.max(0.001, output.capstone.capCourseWidthIn);

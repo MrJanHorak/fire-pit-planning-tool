@@ -7,7 +7,57 @@ import { MasonryEngine } from './engine/MasonryEngine';
 import type { MasonryInput } from './types';
 
 const engine = new MasonryEngine();
-const NO_CUT_SAFETY_MARGIN_IN = 0.02;
+
+function roundUpToHundredth(value: number): number {
+  return Math.ceil(value * 100) / 100;
+}
+
+function findNoCutDiameterIn(
+  input: MasonryInput,
+  predicate: (nextOutput: ReturnType<typeof engine.calculateDesign>) => boolean,
+): number {
+  const start = Math.max(18, input.innerDiameterIn);
+  const maxDiameterIn = 180;
+
+  // Coarse search first to quickly bracket a passing diameter.
+  let coarseCandidate: number | undefined;
+  for (
+    let diameterIn = start;
+    diameterIn <= maxDiameterIn;
+    diameterIn += 0.25
+  ) {
+    const candidateOutput = engine.calculateDesign({
+      ...input,
+      innerDiameterIn: diameterIn,
+    });
+    if (predicate(candidateOutput)) {
+      coarseCandidate = diameterIn;
+      break;
+    }
+  }
+
+  if (coarseCandidate === undefined) {
+    return maxDiameterIn;
+  }
+
+  // Refine within the previous coarse bucket for stable UX button values.
+  const refineStart = Math.max(start, coarseCandidate - 0.25);
+  for (
+    let diameterIn = refineStart;
+    diameterIn <= coarseCandidate;
+    diameterIn += 0.01
+  ) {
+    const candidateOutput = engine.calculateDesign({
+      ...input,
+      innerDiameterIn: diameterIn,
+    });
+    if (predicate(candidateOutput)) {
+      return roundUpToHundredth(diameterIn);
+    }
+  }
+
+  return roundUpToHundredth(coarseCandidate);
+}
 
 type ViewMode = '3d' | 'construction';
 
@@ -52,22 +102,15 @@ export default function App() {
     if (output.planShape !== 'circular') {
       return undefined;
     }
-
-    const targetInnerJointIn = 0.125;
-    const roundUpToHundredth = (value: number) => Math.ceil(value * 100) / 100;
-    const wallMinimumNoCutDiameterIn = roundUpToHundredth(
-      output.cutPlan.minimumRecommendedInnerDiameterIn +
-        NO_CUT_SAFETY_MARGIN_IN,
+    const wallMinimumNoCutDiameterIn = findNoCutDiameterIn(
+      input,
+      (nextOutput) => !nextOutput.cutPlan.requiresCutting,
     );
-
-    const capRequiresCutting = output.capstone.joint.innerJointIn < 0;
-    const capMinimumNoCutDiameterIn = roundUpToHundredth(
-      (output.capstone.capUnitsPerCourseRounded *
-        (output.resolvedCapUnit.lengthIn + targetInnerJointIn)) /
-        Math.PI +
-        output.capstone.innerExtensionIn * 2 +
-        NO_CUT_SAFETY_MARGIN_IN,
+    const capMinimumNoCutDiameterIn = findNoCutDiameterIn(
+      input,
+      (nextOutput) => !nextOutput.capstone.requiresTaperCutting,
     );
+    const capRequiresCutting = output.capstone.requiresTaperCutting;
     const bothMinimumNoCutDiameterIn = roundUpToHundredth(
       Math.max(wallMinimumNoCutDiameterIn, capMinimumNoCutDiameterIn),
     );
@@ -83,7 +126,7 @@ export default function App() {
       },
       bothMinimumNoCutDiameterIn,
     };
-  }, [output]);
+  }, [input, output]);
 
   return (
     <main className='mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:py-10'>

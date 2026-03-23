@@ -672,13 +672,26 @@ export class MasonryEngine {
     overhangIn: number,
     placementMode: MasonryInput['capPlacementMode'],
   ): CapstoneSpec {
-    const innerExtensionIn = placementMode === 'symmetric' ? overhangIn / 2 : 0;
-    const outerExtensionIn =
+    const requestedInnerExtensionIn =
+      placementMode === 'symmetric' ? overhangIn / 2 : 0;
+    const requestedOuterExtensionIn =
       placementMode === 'symmetric' ? overhangIn / 2 : overhangIn;
-    const capCourseWidthIn = Math.max(
-      wallWidthIn + innerExtensionIn + outerExtensionIn,
-      capUnitWidthIn,
+    const requiredCapCourseWidthIn =
+      wallWidthIn + requestedInnerExtensionIn + requestedOuterExtensionIn;
+    const capCourseWidthIn = Math.max(requiredCapCourseWidthIn, capUnitWidthIn);
+    const extraCourseWidthIn = Math.max(
+      0,
+      capCourseWidthIn - requiredCapCourseWidthIn,
     );
+    const innerExtensionIn =
+      placementMode === 'outward-only'
+        ? requestedInnerExtensionIn + extraCourseWidthIn
+        : requestedInnerExtensionIn + extraCourseWidthIn / 2;
+    const outerExtensionIn =
+      placementMode === 'outward-only'
+        ? requestedOuterExtensionIn
+        : requestedOuterExtensionIn + extraCourseWidthIn / 2;
+
     const capOuterWidthIn = planMetrics.outerWidthIn + outerExtensionIn * 2;
     const capOuterDepthIn = planMetrics.outerDepthIn + outerExtensionIn * 2;
     const capInnerWidthIn = Math.max(
@@ -717,12 +730,24 @@ export class MasonryEngine {
     const outerModuleSpacingIn = outerPerimeterIn / capUnitsPerCourseRounded;
     const innerJointIn = innerModuleSpacingIn - unitLengthIn;
     const outerJointIn = outerModuleSpacingIn - unitLengthIn;
+    const capInnerRadiusIn = Math.max(0.001, capInnerWidthIn / 2);
+    const innerChordIn =
+      planMetrics.planShape === 'circular'
+        ? 2 *
+          capInnerRadiusIn *
+          Math.sin(actualModuleSpacingIn / (2 * capInnerRadiusIn))
+        : unitLengthIn;
+    const overlapSafetyIn = Math.max(0.036, jointIn * 0.1);
+    const requiresTaperCutting =
+      planMetrics.planShape === 'circular' &&
+      (innerJointIn < 0 || unitLengthIn > innerChordIn - overlapSafetyIn);
 
     return {
       overhangIn,
       capCourseWidthIn,
       innerExtensionIn,
       outerExtensionIn,
+      requiresTaperCutting,
       capOuterDiameterIn: Math.max(capOuterWidthIn, capOuterDepthIn),
       capOuterWidthIn,
       capOuterDepthIn,

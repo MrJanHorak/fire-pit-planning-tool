@@ -136,6 +136,7 @@ export interface CapstoneSpec {
   capCourseWidthIn: number;
   innerExtensionIn: number;
   outerExtensionIn: number;
+  requiresTaperCutting: boolean;
   capOuterDiameterIn: number;
   capOuterWidthIn: number;
   capOuterDepthIn: number;
