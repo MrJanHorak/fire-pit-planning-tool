@@ -1,14 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import ConfirmDialog from './components/ConfirmDialog';
 import ControlPanel from './components/ControlPanel';
-import ConstructionMode from './components/ConstructionMode';
 import {
   FoundationRiskBadge,
   FoundationRiskLegend,
 } from './components/FoundationReview';
-import KnowledgeCenter from './components/KnowledgeCenter';
 import SafetyClearanceDiagram from './components/SafetyClearanceDiagram';
-import Stage3D from './components/Stage3D';
 import { MasonryEngine } from './engine/MasonryEngine';
 import type { MasonryInput } from './types';
 import { DEFAULT_MASONRY_INPUT } from './utils/defaultInput';
@@ -36,6 +33,10 @@ const ANALYTICS_CONSENT_STORAGE_KEY =
 const ANALYTICS_CONSENT_VERSION_STORAGE_KEY =
   'firepit-parametric-masonry-designer-analytics-consent-version';
 const ANALYTICS_CONSENT_VERSION = '2026-03-23';
+
+const Stage3D = lazy(() => import('./components/Stage3D'));
+const ConstructionMode = lazy(() => import('./components/ConstructionMode'));
+const KnowledgeCenter = lazy(() => import('./components/KnowledgeCenter'));
 
 type ProjectStatus = {
   label: string;
@@ -1043,11 +1044,19 @@ export default function App() {
               </button>
             </div>
 
-            {view === '3d' ? (
-              <Stage3D output={output} />
-            ) : (
-              <ConstructionMode input={input} output={output} />
-            )}
+            <Suspense
+              fallback={
+                <div className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-6 text-sm font-medium text-amber-900/80 shadow-lg'>
+                  Loading visualization...
+                </div>
+              }
+            >
+              {view === '3d' ? (
+                <Stage3D output={output} />
+              ) : (
+                <ConstructionMode input={input} output={output} />
+              )}
+            </Suspense>
 
             <SafetyClearanceDiagram input={input} output={output} />
 
@@ -1147,7 +1156,15 @@ export default function App() {
           </section>
         </div>
       ) : (
-        <KnowledgeCenter view={siteView} />
+        <Suspense
+          fallback={
+            <div className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-6 text-sm font-medium text-amber-900/80 shadow-lg'>
+              Loading knowledge center...
+            </div>
+          }
+        >
+          <KnowledgeCenter view={siteView} />
+        </Suspense>
       )}
 
       <footer className='mt-8 card-rise rounded-2xl border border-amber-900/20 bg-amber-100/65 p-5 shadow-lg backdrop-blur'>
