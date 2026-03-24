@@ -20,6 +20,9 @@ Build and maintain an engineering-accurate Parametric Masonry Designer for firep
    - Angular stone depth fixed at 8 in.
    - Footprint diameter is 6 in wider on each side of outer wall (outer + 12 in total).
 7. Safety warning if combustible structure proximity is below 10 ft.
+8. Minimum vent area: 18 sq in total across at least two opposing openings; warn when below threshold.
+9. Half-bat advisory: circular designs with inner diameter < 24 in must emit `tight-radius-half-bat-recommended` warning and include half-bat note in `cutPlan.notes`.
+10. Mortar curing: emit `mortar-curing-required` advisory (specifying 28 days) whenever `mortarJointIn > 0`.
 
 ## Technical Rules
 
@@ -33,3 +36,5 @@ Build and maintain an engineering-accurate Parametric Masonry Designer for firep
 1. Keep at least one reference test for 36 in inner diameter circular pit with 8 in modular unit expectation near 15 units per course.
 2. Keep explicit test for 10 ft structure clearance warning trigger.
 3. Add tests for vent placement when modifying fuel logic.
+4. Keep test that `mortar-curing-required` fires for any design with `mortarJointIn > 0`, and does NOT fire when `mortarJointIn = 0`.
+5. Keep test that `tight-radius-half-bat-recommended` fires when `innerDiameterIn < 24` and does NOT fire at 24 in or above.

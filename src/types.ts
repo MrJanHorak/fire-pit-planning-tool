@@ -78,6 +78,8 @@ export interface SafetyWarning {
     | 'clearance-too-low'
     | 'wood-liner-recommended'
     | 'tight-radius-cut-required'
+    | 'tight-radius-half-bat-recommended'
+    | 'mortar-curing-required'
     | 'gas-vent-area-out-of-range'
     | 'gas-vent-layout-invalid'
     | 'gas-line-near-vent'

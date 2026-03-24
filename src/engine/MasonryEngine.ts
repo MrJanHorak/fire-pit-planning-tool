@@ -994,6 +994,11 @@ export class MasonryEngine {
       (unitCount * (unitLengthIn + 0.125)) / Math.PI;
     const requiresCutting = recommendedTaperPerBrickIn > 0;
 
+    const halfBatNote =
+      planMetrics.innerWidthIn < 24
+        ? 'Inner diameter is below 24 in — half-bat (approx. 4 in) bricks or radial/wedge units are strongly recommended to avoid excessively wide pie-slice outer joints.'
+        : null;
+
     return {
       requiresCutting,
       innerJointIn,
@@ -1007,9 +1012,14 @@ export class MasonryEngine {
             'Inner-face overlap detected for full rectangular units on this radius.',
             `Cut each unit as a wedge with approximately ${recommendedCutPerSideIn.toFixed(3)} in removed per side at the inner face.`,
             `Set the saw fence to approximately ${recommendedCutAngleDeg.toFixed(2)} deg off square on each side cut.`,
-            'Alternative: increase inner diameter or use shorter units.',
+            ...(halfBatNote
+              ? [halfBatNote]
+              : ['Alternative: increase inner diameter or use shorter units.']),
           ]
-        : ['No circular wedge cutting required at the current diameter.'],
+        : [
+            'No circular wedge cutting required at the current diameter.',
+            ...(halfBatNote ? [halfBatNote] : []),
+          ],
     };
   }
 
@@ -1202,6 +1212,24 @@ export class MasonryEngine {
           'Current circular radius causes inner-face brick overlap. Use tapered cuts or increase diameter.',
         actualValue: input.innerDiameterIn,
         requiredValue: cutPlan.minimumRecommendedInnerDiameterIn,
+      });
+    }
+
+    if (input.planShape === 'circular' && input.innerDiameterIn < 24) {
+      warnings.push({
+        code: 'tight-radius-half-bat-recommended',
+        message:
+          'Inner diameter is below 24 in. Standard-length bricks produce excessively wide pie-slice mortar joints on the outer face. Use half-bat (approx. 4 in) bricks or purpose-made radial/wedge units.',
+        actualValue: input.innerDiameterIn,
+        requiredValue: 24,
+      });
+    }
+
+    if (input.mortarJointIn > 0) {
+      warnings.push({
+        code: 'mortar-curing-required',
+        message:
+          'Mortared masonry requires a minimum 28-day curing period before applying sustained heat. Do not light the first fire until the mortar has reached full strength.',
       });
     }
 

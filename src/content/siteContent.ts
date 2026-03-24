@@ -15,8 +15,9 @@ export const quickStartSteps: ContentSection[] = [
   {
     title: '1. Set the firebox size',
     intro:
-      'Begin with the opening you want to gather around, then choose the wall height and brick size that fit that scale.',
+      'Begin with the opening you want to gather around, then set plan shape, wall height, and brick size that fit that scale.',
     bullets: [
+      'Choose plan shape first (circular, square, or rectangular). Rectangular plans use both inner width and inner depth, while square keeps width and depth aligned.',
       'Use the inner size as the main driver. The layout updates the outer wall, centerline, and course count from that value.',
       'A 36 in circular opening is a solid starting point for a medium gathering pit.',
       'Stick with modular brick and a 3/8 in joint if you want counts that align with common masonry references.',
@@ -30,6 +31,7 @@ export const quickStartSteps: ContentSection[] = [
       'Wood-burning pits should usually include a refractory liner or steel ring to protect the outer shell from repeated heat cycling.',
       'Propane vents belong low in the wall because LP gas settles near the base.',
       'Natural gas vents belong high because the gas rises and needs upper relief.',
+      'For gas builds, set the gas-line entry angle so routing stays clear of vent openings and confirm hardware-specific vent area requirements.',
     ],
   },
   {
@@ -38,6 +40,7 @@ export const quickStartSteps: ContentSection[] = [
       'Before you price materials or lay anything out on site, review the count, cut, and safety information together.',
     bullets: [
       'Read the safety warnings first, especially structure clearance and gas vent guidance.',
+      'Use Soil Type, Drainage, and Freeze-Thaw fields to review foundation risk level while keeping the baseline 8 in angular-stone quantity model fixed.',
       'Check unit count, purchased quantity, mortar volume, and stone volume before ordering materials.',
       'Use Construction Mode to review the courses one layer at a time before the build begins.',
     ],
@@ -48,6 +51,8 @@ export const quickStartSteps: ContentSection[] = [
       'Once the main size feels right, make small changes that improve finish quality and reduce cutting.',
     bullets: [
       'For circular pits, compare the no-cut sizes if you want cleaner wall and cap courses.',
+      'Tune wall course strategy after geometry is stable: uniform running bond, shim spacer, or vented accent.',
+      'Use cap orientation and cap placement mode to control how the top course reads and how far it projects inward versus outward.',
       'Keep cap overhang modest so the top course sheds water without feeling oversized.',
       'If the curve is tight, consider radial units or expect tapered cuts at the wall and cap.',
     ],
@@ -79,6 +84,14 @@ export const designBestPractices: ContentSection[] = [
       'Treat patios, decks, clay-heavy soils, and slopes as separate engineering checks before construction starts.',
     ],
   },
+  {
+    title: 'Workflow and revision control',
+    bullets: [
+      'Name your project early so exported JSON and snapshots stay easy to track during iterations.',
+      'Use Save As Snapshot before large geometry or fuel changes so you can compare design branches safely.',
+      'Use import and export to move the exact design state between browsers, devices, or review sessions.',
+    ],
+  },
 ];
 
 export const safetyTips: ContentSection[] = [
@@ -89,6 +102,7 @@ export const safetyTips: ContentSection[] = [
       'Consider overhead branches, pergolas, soffits, and nearby fencing, not just plan-view distance.',
       'Do not treat standard facing brick as equivalent to refractory material for the hottest interior zone of a wood-burning pit.',
       'Gas features should be vented according to fuel density and burner hardware requirements, not generic decorative openings.',
+      'If gas-line entry is close to a vent axis, adjust routing and verify final line location against vent layout before install.',
     ],
   },
 ];
@@ -163,7 +177,12 @@ export const faqItems: FaqItem[] = [
   {
     question: 'What do the no-cut sizes mean?',
     answer:
-      'The no-cut suggestions show inner diameters that let the wall, the cap, or both resolve without taper cuts. They are useful when you want cleaner coursing and faster layout on site.',
+      'For circular plans, the no-cut suggestions show inner diameters that let the wall, the cap, or both resolve without taper cuts. They are useful when you want cleaner coursing and faster layout on site.',
+  },
+  {
+    question: 'When should I use shim spacer or vented accent strategy?',
+    answer:
+      'Use Uniform first to lock core geometry. Shim Spacer is useful when you want finer circumference tuning with insert units. Vented Accent is useful when one repeating course should run more open joints and alternate orientation for airflow-driven detailing.',
   },
   {
     question: 'When should I add a thermal liner?',
@@ -184,6 +203,11 @@ export const faqItems: FaqItem[] = [
     question: 'How is size and soil context integrated in this app?',
     answer:
       'Use the Soil Type, Drainage, and Freeze-Thaw fields in Design Inputs. The engine still reports the baseline foundation quantities, and the Designer now adds a foundation advisory level (low, moderate, or high) with site-check notes based on site context and footprint size. This gives planning guidance without silently changing your core baseline math.',
+  },
+  {
+    question: 'How should I use autosave, snapshots, and JSON files together?',
+    answer:
+      'Autosave continuously stores the current design in browser local storage. Use snapshots for named restore points before major changes. Use JSON export/import when you need to archive, share, or move projects across devices or browser sessions.',
   },
 ];
 

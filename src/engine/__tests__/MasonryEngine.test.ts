@@ -365,4 +365,71 @@ describe('MasonryEngine', () => {
       ),
     ).toBe(true);
   });
+
+  it('always emits mortar-curing-required advisory when mortarJointIn is positive', () => {
+    const engine = new MasonryEngine();
+    const output = engine.calculateDesign(baseInput);
+
+    const curingWarning = output.warnings.find(
+      (w) => w.code === 'mortar-curing-required',
+    );
+    expect(curingWarning).toBeDefined();
+    expect(curingWarning?.message).toContain('28-day');
+  });
+
+  it('does not emit mortar-curing-required when mortarJointIn is zero', () => {
+    const engine = new MasonryEngine();
+    const output = engine.calculateDesign({
+      ...baseInput,
+      mortarJointIn: 0,
+    });
+
+    expect(
+      output.warnings.some((w) => w.code === 'mortar-curing-required'),
+    ).toBe(false);
+  });
+
+  it('warns with tight-radius-half-bat-recommended when circular inner diameter is below 24 in', () => {
+    const engine = new MasonryEngine();
+    const output = engine.calculateDesign({
+      ...baseInput,
+      innerDiameterIn: 20,
+      innerWidthIn: 20,
+    });
+
+    const halfBatWarning = output.warnings.find(
+      (w) => w.code === 'tight-radius-half-bat-recommended',
+    );
+    expect(halfBatWarning).toBeDefined();
+    expect(halfBatWarning?.actualValue).toBe(20);
+    expect(halfBatWarning?.requiredValue).toBe(24);
+  });
+
+  it('does not emit tight-radius-half-bat-recommended for circular pits at or above 24 in diameter', () => {
+    const engine = new MasonryEngine();
+    const output = engine.calculateDesign({
+      ...baseInput,
+      innerDiameterIn: 36,
+      innerWidthIn: 36,
+    });
+
+    expect(
+      output.warnings.some(
+        (w) => w.code === 'tight-radius-half-bat-recommended',
+      ),
+    ).toBe(false);
+  });
+
+  it('includes half-bat note in cutPlan notes when inner diameter is below 24 in', () => {
+    const engine = new MasonryEngine();
+    const output = engine.calculateDesign({
+      ...baseInput,
+      innerDiameterIn: 20,
+      innerWidthIn: 20,
+    });
+
+    expect(output.cutPlan.notes.some((note) => note.includes('half-bat'))).toBe(
+      true,
+    );
+  });
 });
