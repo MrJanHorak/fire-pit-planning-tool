@@ -280,10 +280,9 @@ export default function App() {
     });
   };
 
-  const handleAnalyticsConsentChoice = (consent: Exclude<
-    AnalyticsConsent,
-    'unknown'
-  >) => {
+  const handleAnalyticsConsentChoice = (
+    consent: Exclude<AnalyticsConsent, 'unknown'>,
+  ) => {
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(ANALYTICS_CONSENT_STORAGE_KEY, consent);
       window.localStorage.setItem(
@@ -300,14 +299,13 @@ export default function App() {
     );
   };
 
-  const handleOpenLegalView = (view: Extract<SiteView, 'privacy' | 'terms'>) => {
+  const handleOpenLegalView = (
+    view: Extract<SiteView, 'privacy' | 'terms'>,
+  ) => {
     handleOpenSiteView(view, true);
   };
 
-  const handleOpenSiteView = (
-    view: SiteView,
-    scrollToTop = false,
-  ) => {
+  const handleOpenSiteView = (view: SiteView, scrollToTop = false) => {
     setSiteView(view);
 
     if (typeof window === 'undefined') {
@@ -587,7 +585,9 @@ export default function App() {
     localStorage.removeItem(PROJECT_SNAPSHOTS_STORAGE_KEY);
     setSnapshots([]);
     setSelectedSnapshotId('');
-    setProjectNotice('Cleared all locally stored project data from this browser.');
+    setProjectNotice(
+      'Cleared all locally stored project data from this browser.',
+    );
     setProjectStatus({
       label: 'Cleared browser data',
       timestamp: new Date().toISOString(),
@@ -1279,7 +1279,8 @@ export default function App() {
           <p className='mt-2 text-sm leading-6 text-amber-950/90'>
             We use Google Analytics only after opt-in consent to understand
             aggregate usage and improve the site. For stricter compliance across
-            regions, analytics is disabled by default worldwide until you choose.
+            regions, analytics is disabled by default worldwide until you
+            choose.
           </p>
           <div className='mt-3 flex flex-wrap gap-2'>
             <button

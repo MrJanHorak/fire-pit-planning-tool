@@ -10,12 +10,7 @@ import {
   type ContentSection,
 } from '../content/siteContent';
 
-export type LibraryView =
-  | 'guide'
-  | 'tips'
-  | 'research'
-  | 'privacy'
-  | 'terms';
+export type LibraryView = 'guide' | 'tips' | 'research' | 'privacy' | 'terms';
 
 interface KnowledgeCenterProps {
   view: LibraryView;
@@ -60,28 +55,30 @@ export default function KnowledgeCenter({ view }: KnowledgeCenterProps) {
             sections: termsOfUseSections,
           }
         : view === 'guide'
-      ? {
-          eyebrow: 'Instructions',
-          title: 'A simple way to size and review a masonry fire pit',
-          intro:
-            'Start with the opening and wall size, then work through fuel, liner, and cap details before checking quantities and clearances.',
-          sections: quickStartSteps,
-        }
-      : view === 'tips'
-        ? {
-            eyebrow: 'Design Tips',
-            title: 'Practical fire pit design guidance and field-tested checks',
-            intro:
-              'Use these notes as design guardrails before you finalize materials or start layout on site.',
-            sections: [...designBestPractices, ...safetyTips],
-          }
-        : {
-            eyebrow: 'Field Notes',
-            title: 'Research-backed field notes for smarter fire pit decisions',
-            intro:
-              "Use this like a builder's brief: each section explains the engineering logic in plain language so your design choices hold up in the field.",
-            sections: researchHighlights,
-          };
+          ? {
+              eyebrow: 'Instructions',
+              title: 'A simple way to size and review a masonry fire pit',
+              intro:
+                'Start with the opening and wall size, then work through fuel, liner, and cap details before checking quantities and clearances.',
+              sections: quickStartSteps,
+            }
+          : view === 'tips'
+            ? {
+                eyebrow: 'Design Tips',
+                title:
+                  'Practical fire pit design guidance and field-tested checks',
+                intro:
+                  'Use these notes as design guardrails before you finalize materials or start layout on site.',
+                sections: [...designBestPractices, ...safetyTips],
+              }
+            : {
+                eyebrow: 'Field Notes',
+                title:
+                  'Research-backed field notes for smarter fire pit decisions',
+                intro:
+                  "Use this like a builder's brief: each section explains the engineering logic in plain language so your design choices hold up in the field.",
+                sections: researchHighlights,
+              };
 
   return (
     <section className='space-y-5'>
