@@ -15,6 +15,7 @@ import { DEFAULT_MASONRY_INPUT } from './utils/defaultInput';
 import { buildFoundationAdvisory } from './utils/foundationAdvisory';
 import {
   buildProjectFile,
+  deleteStoredProject,
   deleteStoredProjectSnapshot,
   parseProjectFile,
   readStoredProject,
@@ -29,11 +30,19 @@ const PROJECT_STORAGE_KEY = 'firepit-parametric-masonry-designer-project';
 const PROJECT_SNAPSHOTS_STORAGE_KEY =
   'firepit-parametric-masonry-designer-project-snapshots';
 const DEFAULT_PROJECT_NAME = 'Untitled Firepit';
+const GOOGLE_ANALYTICS_MEASUREMENT_ID = 'G-T6NDKMFXHT';
+const ANALYTICS_CONSENT_STORAGE_KEY =
+  'firepit-parametric-masonry-designer-analytics-consent';
+const ANALYTICS_CONSENT_VERSION_STORAGE_KEY =
+  'firepit-parametric-masonry-designer-analytics-consent-version';
+const ANALYTICS_CONSENT_VERSION = '2026-03-23';
 
 type ProjectStatus = {
   label: string;
   timestamp: string | null;
 };
+
+type AnalyticsConsent = 'unknown' | 'granted' | 'denied';
 
 type PendingSnapshotAction = {
   type: 'overwrite' | 'delete';
@@ -120,7 +129,13 @@ function findNoCutDiameterIn(
 }
 
 type ViewMode = '3d' | 'construction';
-type SiteView = 'designer' | 'guide' | 'tips' | 'research';
+type SiteView =
+  | 'designer'
+  | 'guide'
+  | 'tips'
+  | 'research'
+  | 'privacy'
+  | 'terms';
 
 export default function App() {
   const initialProject = useMemo(
@@ -152,6 +167,196 @@ export default function App() {
     useState<PendingSnapshotAction>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const hasInitializedAutosave = useRef(false);
+  const hasConfiguredAnalytics = useRef(false);
+  const [analyticsConsent, setAnalyticsConsent] = useState<AnalyticsConsent>(
+    () => {
+      if (typeof window === 'undefined') {
+        return 'unknown';
+      }
+
+      const storedValue = window.localStorage.getItem(
+        ANALYTICS_CONSENT_STORAGE_KEY,
+      );
+      const storedVersion = window.localStorage.getItem(
+        ANALYTICS_CONSENT_VERSION_STORAGE_KEY,
+      );
+      if (storedVersion !== ANALYTICS_CONSENT_VERSION) {
+        return 'unknown';
+      }
+      return storedValue === 'granted' || storedValue === 'denied'
+        ? storedValue
+        : 'unknown';
+    },
+  );
+  const [showCookieBanner, setShowCookieBanner] = useState<boolean>(() => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+
+    const storedValue = window.localStorage.getItem(
+      ANALYTICS_CONSENT_STORAGE_KEY,
+    );
+    const storedVersion = window.localStorage.getItem(
+      ANALYTICS_CONSENT_VERSION_STORAGE_KEY,
+    );
+    if (storedVersion !== ANALYTICS_CONSENT_VERSION) {
+      return true;
+    }
+    return storedValue !== 'granted' && storedValue !== 'denied';
+  });
+
+  const ensureAnalyticsScriptLoaded = () => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    const existingScript = document.getElementById('ga4-gtag-script');
+    if (existingScript) {
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = 'ga4-gtag-script';
+    script.async = true;
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ANALYTICS_MEASUREMENT_ID}`;
+    document.head.appendChild(script);
+  };
+
+  const updateAnalyticsConsent = (consent: AnalyticsConsent) => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const analyticsWindow = window as Window & {
+      dataLayer?: unknown[];
+      gtag?: (...args: unknown[]) => void;
+    };
+    const disableKey = `ga-disable-${GOOGLE_ANALYTICS_MEASUREMENT_ID}`;
+
+    if (consent === 'granted') {
+      (analyticsWindow as unknown as Record<string, unknown>)[disableKey] =
+        false;
+      ensureAnalyticsScriptLoaded();
+      analyticsWindow.dataLayer = analyticsWindow.dataLayer ?? [];
+      analyticsWindow.gtag =
+        analyticsWindow.gtag ??
+        ((...args: unknown[]) => {
+          analyticsWindow.dataLayer?.push(args);
+        });
+
+      analyticsWindow.gtag('consent', 'default', {
+        analytics_storage: 'granted',
+        ad_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+      });
+      analyticsWindow.gtag('js', new Date());
+
+      if (!hasConfiguredAnalytics.current) {
+        analyticsWindow.gtag('config', GOOGLE_ANALYTICS_MEASUREMENT_ID, {
+          anonymize_ip: true,
+          allow_google_signals: false,
+          allow_ad_personalization_signals: false,
+        });
+        hasConfiguredAnalytics.current = true;
+      } else {
+        analyticsWindow.gtag('consent', 'update', {
+          analytics_storage: 'granted',
+          ad_storage: 'denied',
+          ad_user_data: 'denied',
+          ad_personalization: 'denied',
+        });
+      }
+
+      return;
+    }
+
+    (analyticsWindow as unknown as Record<string, unknown>)[disableKey] = true;
+    analyticsWindow.gtag?.('consent', 'update', {
+      analytics_storage: 'denied',
+      ad_storage: 'denied',
+      ad_user_data: 'denied',
+      ad_personalization: 'denied',
+    });
+  };
+
+  const handleAnalyticsConsentChoice = (consent: Exclude<
+    AnalyticsConsent,
+    'unknown'
+  >) => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(ANALYTICS_CONSENT_STORAGE_KEY, consent);
+      window.localStorage.setItem(
+        ANALYTICS_CONSENT_VERSION_STORAGE_KEY,
+        ANALYTICS_CONSENT_VERSION,
+      );
+    }
+    setAnalyticsConsent(consent);
+    setShowCookieBanner(false);
+    setProjectNotice(
+      consent === 'granted'
+        ? 'Analytics enabled by consent. You can change this anytime in Cookie Settings.'
+        : 'Analytics disabled. You can change this anytime in Cookie Settings.',
+    );
+  };
+
+  const handleOpenLegalView = (view: Extract<SiteView, 'privacy' | 'terms'>) => {
+    handleOpenSiteView(view, true);
+  };
+
+  const handleOpenSiteView = (
+    view: SiteView,
+    scrollToTop = false,
+  ) => {
+    setSiteView(view);
+
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const nextHash =
+      view === 'designer'
+        ? '#designer'
+        : view === 'guide'
+          ? '#instructions'
+          : view === 'tips'
+            ? '#tips'
+            : view === 'research'
+              ? '#field-notes'
+              : view === 'privacy'
+                ? '#privacy-policy'
+                : '#terms-of-use';
+
+    window.location.hash = nextHash;
+    if (scrollToTop) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  useEffect(() => {
+    updateAnalyticsConsent(analyticsConsent);
+  }, [analyticsConsent]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const hash = window.location.hash.toLowerCase();
+    if (hash === '#designer') {
+      setSiteView('designer');
+    } else if (hash === '#instructions') {
+      setSiteView('guide');
+    } else if (hash === '#tips') {
+      setSiteView('tips');
+    } else if (hash === '#field-notes') {
+      setSiteView('research');
+    } else if (hash === '#privacy-policy') {
+      setSiteView('privacy');
+    } else if (hash === '#terms-of-use') {
+      setSiteView('terms');
+    }
+  }, []);
 
   useEffect(() => {
     if (initialProject) {
@@ -377,6 +582,18 @@ export default function App() {
     });
   };
 
+  const handleClearBrowserData = () => {
+    deleteStoredProject(PROJECT_STORAGE_KEY);
+    localStorage.removeItem(PROJECT_SNAPSHOTS_STORAGE_KEY);
+    setSnapshots([]);
+    setSelectedSnapshotId('');
+    setProjectNotice('Cleared all locally stored project data from this browser.');
+    setProjectStatus({
+      label: 'Cleared browser data',
+      timestamp: new Date().toISOString(),
+    });
+  };
+
   useEffect(() => {
     if (!selectedSnapshotId && snapshots[0]?.id) {
       setSelectedSnapshotId(snapshots[0].id);
@@ -476,7 +693,7 @@ export default function App() {
                       ? 'bg-amber-900 text-amber-50'
                       : 'bg-white/70 text-amber-900 hover:bg-white'
                   }`}
-                  onClick={() => setSiteView(tab.value)}
+                  onClick={() => handleOpenSiteView(tab.value)}
                 >
                   {tab.label}
                 </button>
@@ -931,6 +1148,165 @@ export default function App() {
         </div>
       ) : (
         <KnowledgeCenter view={siteView} />
+      )}
+
+      <footer className='mt-8 card-rise rounded-2xl border border-amber-900/20 bg-amber-100/65 p-5 shadow-lg backdrop-blur'>
+        <div className='grid gap-5 md:grid-cols-3'>
+          <section>
+            <h2 className='text-sm font-semibold uppercase tracking-[0.15em] text-amber-900/80'>
+              About This Designer
+            </h2>
+            <p className='mt-2 text-sm leading-6 text-amber-950/85'>
+              Parametric Masonry Designer provides engineering-aware firepit
+              planning with real masonry dimensions, venting logic, safety
+              checks, and build sequencing guidance.
+            </p>
+          </section>
+
+          <section>
+            <h2 className='text-sm font-semibold uppercase tracking-[0.15em] text-amber-900/80'>
+              Creator Links
+            </h2>
+            <ul className='mt-2 space-y-2 text-sm'>
+              <li>
+                <a
+                  href='https://www.janhorak.dev'
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='inline-flex items-center gap-2 font-semibold text-amber-900 underline decoration-amber-900/40 underline-offset-4 hover:text-amber-950'
+                >
+                  <svg
+                    aria-hidden='true'
+                    viewBox='0 0 24 24'
+                    className='h-4 w-4'
+                    fill='none'
+                    stroke='currentColor'
+                    strokeWidth='1.8'
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                  >
+                    <path d='M3.5 12h17' />
+                    <path d='M12 3.5a15 15 0 0 1 0 17' />
+                    <path d='M12 3.5a15 15 0 0 0 0 17' />
+                    <circle cx='12' cy='12' r='9' />
+                  </svg>
+                  <span>Portfolio: janhorak.dev</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  href='https://github.com/MrJanHorak'
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='inline-flex items-center gap-2 font-semibold text-amber-900 underline decoration-amber-900/40 underline-offset-4 hover:text-amber-950'
+                >
+                  <svg
+                    aria-hidden='true'
+                    viewBox='0 0 24 24'
+                    className='h-4 w-4'
+                    fill='currentColor'
+                  >
+                    <path d='M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.69c-2.78.61-3.37-1.18-3.37-1.18a2.65 2.65 0 0 0-1.11-1.47c-.91-.62.07-.6.07-.6a2.1 2.1 0 0 1 1.53 1.03 2.14 2.14 0 0 0 2.92.84 2.13 2.13 0 0 1 .64-1.34c-2.22-.25-4.55-1.11-4.55-4.93a3.86 3.86 0 0 1 1.03-2.68 3.58 3.58 0 0 1 .1-2.64s.84-.27 2.75 1.02a9.47 9.47 0 0 1 5 0c1.9-1.29 2.74-1.02 2.74-1.02a3.58 3.58 0 0 1 .1 2.64 3.85 3.85 0 0 1 1.03 2.68c0 3.83-2.33 4.68-4.56 4.93a2.39 2.39 0 0 1 .68 1.86v2.77c0 .27.18.58.69.48A10 10 0 0 0 12 2Z' />
+                  </svg>
+                  <span>GitHub: @MrJanHorak</span>
+                </a>
+              </li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className='text-sm font-semibold uppercase tracking-[0.15em] text-amber-900/80'>
+              Privacy And Data (GDPR)
+            </h2>
+            <p className='mt-2 text-sm leading-6 text-amber-950/85'>
+              This app stores project state in your browser (local storage) for
+              autosave and snapshots. Google Analytics is loaded only after
+              explicit consent, with ad features disabled and IP anonymization
+              enabled.
+            </p>
+            <div className='mt-3 flex flex-wrap gap-2'>
+              <button
+                type='button'
+                className='rounded-full border border-amber-900/25 bg-white px-3 py-1.5 text-xs font-semibold text-amber-950 hover:bg-amber-50'
+                onClick={() => handleOpenLegalView('privacy')}
+              >
+                Privacy Policy
+              </button>
+              <button
+                type='button'
+                className='rounded-full border border-amber-900/25 bg-white px-3 py-1.5 text-xs font-semibold text-amber-950 hover:bg-amber-50'
+                onClick={() => handleOpenLegalView('terms')}
+              >
+                Terms Of Use
+              </button>
+              <button
+                type='button'
+                className='rounded-full border border-amber-900/25 bg-white px-3 py-1.5 text-xs font-semibold text-amber-950 hover:bg-amber-50'
+                onClick={() => setShowCookieBanner(true)}
+              >
+                Cookie Settings
+              </button>
+              <button
+                type='button'
+                className='rounded-full border border-amber-900/25 bg-white px-3 py-1.5 text-xs font-semibold text-amber-950 hover:bg-amber-50'
+                onClick={handleClearBrowserData}
+              >
+                Clear Local Browser Data
+              </button>
+            </div>
+          </section>
+        </div>
+
+        <div className='mt-5 border-t border-amber-900/20 pt-3 text-xs text-amber-900/80'>
+          <p>
+            Copyright {new Date().getFullYear()} Jan Horak. All rights reserved.
+          </p>
+          <p className='mt-1'>
+            By using this tool, you are responsible for validating local code,
+            permitting requirements, and safety clearances before construction.
+          </p>
+          <p className='mt-1'>
+            Analytics consent policy version: {ANALYTICS_CONSENT_VERSION}.
+          </p>
+        </div>
+      </footer>
+
+      {showCookieBanner && (
+        <section className='fixed bottom-4 left-1/2 z-50 w-[min(760px,calc(100vw-2rem))] -translate-x-1/2 rounded-2xl border border-amber-900/25 bg-amber-50/95 p-4 shadow-2xl backdrop-blur'>
+          <h2 className='text-sm font-semibold uppercase tracking-[0.15em] text-amber-900/85'>
+            Analytics Consent
+          </h2>
+          <p className='mt-2 text-sm leading-6 text-amber-950/90'>
+            We use Google Analytics only after opt-in consent to understand
+            aggregate usage and improve the site. For stricter compliance across
+            regions, analytics is disabled by default worldwide until you choose.
+          </p>
+          <div className='mt-3 flex flex-wrap gap-2'>
+            <button
+              type='button'
+              className='rounded-full border border-emerald-700/30 bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700'
+              onClick={() => handleAnalyticsConsentChoice('granted')}
+            >
+              Accept Analytics
+            </button>
+            <button
+              type='button'
+              className='rounded-full border border-amber-900/25 bg-white px-4 py-2 text-xs font-semibold text-amber-950 hover:bg-amber-100'
+              onClick={() => handleAnalyticsConsentChoice('denied')}
+            >
+              Decline Analytics
+            </button>
+            {analyticsConsent !== 'unknown' && (
+              <button
+                type='button'
+                className='rounded-full border border-amber-900/25 bg-transparent px-4 py-2 text-xs font-semibold text-amber-950 hover:bg-amber-100/60'
+                onClick={() => setShowCookieBanner(false)}
+              >
+                Close
+              </button>
+            )}
+          </div>
+        </section>
       )}
     </main>
   );

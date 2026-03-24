@@ -59,20 +59,6 @@ export default function ControlPanel({
     input.capstonePresetKey === 'custom' ||
     input.capstonePresetKey === 'custom-radial';
   const usingCustomCapRadial = input.capstonePresetKey === 'custom-radial';
-  const currentPreset = usingCustomBrick
-    ? {
-        name: usingCustomBrickRadial
-          ? 'Custom Radial Brick (Avg)'
-          : 'Custom Brick',
-        lengthIn: usingCustomBrickRadial
-          ? ((input.customBrickInnerLengthIn ?? 7.25) +
-              (input.customBrickOuterLengthIn ?? 8)) /
-            2
-          : (input.customBrickLengthIn ?? 7.625),
-        widthIn: input.customBrickWidthIn ?? 3.625,
-        heightIn: input.customBrickHeightIn ?? 2.25,
-      }
-    : BRICK_PRESETS[input.brickPresetKey ?? 'modular'];
   const courseStrategy = input.wallCourseStrategy ?? 'uniform';
 
   return (

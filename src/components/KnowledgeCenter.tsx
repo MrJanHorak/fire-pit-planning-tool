@@ -1,13 +1,21 @@
 import {
   designBestPractices,
   faqItems,
+  LEGAL_LAST_UPDATED,
+  privacyPolicySections,
   quickStartSteps,
   researchHighlights,
   safetyTips,
+  termsOfUseSections,
   type ContentSection,
 } from '../content/siteContent';
 
-export type LibraryView = 'guide' | 'tips' | 'research';
+export type LibraryView =
+  | 'guide'
+  | 'tips'
+  | 'research'
+  | 'privacy'
+  | 'terms';
 
 interface KnowledgeCenterProps {
   view: LibraryView;
@@ -35,7 +43,23 @@ function SectionCard({ section }: { section: ContentSection }) {
 
 export default function KnowledgeCenter({ view }: KnowledgeCenterProps) {
   const content =
-    view === 'guide'
+    view === 'privacy'
+      ? {
+          eyebrow: 'Privacy Policy',
+          title: 'Privacy and data handling for this firepit designer',
+          intro:
+            'This page explains what is stored, when analytics can run, and how you can control or remove your data.',
+          sections: privacyPolicySections,
+        }
+      : view === 'terms'
+        ? {
+            eyebrow: 'Terms Of Use',
+            title: 'Terms and usage responsibilities',
+            intro:
+              'Use these terms to understand scope, safety responsibilities, and operational limitations of this app.',
+            sections: termsOfUseSections,
+          }
+        : view === 'guide'
       ? {
           eyebrow: 'Instructions',
           title: 'A simple way to size and review a masonry fire pit',
@@ -71,6 +95,11 @@ export default function KnowledgeCenter({ view }: KnowledgeCenterProps) {
         <p className='mt-3 max-w-3xl text-sm leading-6 text-amber-950/80 sm:text-base'>
           {content.intro}
         </p>
+        {(view === 'privacy' || view === 'terms') && (
+          <p className='mt-3 text-xs font-semibold uppercase tracking-[0.15em] text-amber-900/70'>
+            Last updated: {LEGAL_LAST_UPDATED}
+          </p>
+        )}
       </article>
 
       <div className='grid gap-4 lg:grid-cols-2'>
@@ -79,26 +108,28 @@ export default function KnowledgeCenter({ view }: KnowledgeCenterProps) {
         ))}
       </div>
 
-      <section className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/80 p-5 shadow-lg'>
-        <h3 className='text-lg font-semibold text-amber-950'>
-          Common questions
-        </h3>
-        <div className='mt-3 space-y-3'>
-          {faqItems.map((item) => (
-            <details
-              key={item.question}
-              className='rounded-xl border border-amber-900/15 bg-white/80 p-4'
-            >
-              <summary className='cursor-pointer list-none font-semibold text-amber-950'>
-                {item.question}
-              </summary>
-              <p className='mt-2 text-sm leading-6 text-amber-950/80'>
-                {item.answer}
-              </p>
-            </details>
-          ))}
-        </div>
-      </section>
+      {(view === 'guide' || view === 'tips' || view === 'research') && (
+        <section className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/80 p-5 shadow-lg'>
+          <h3 className='text-lg font-semibold text-amber-950'>
+            Common questions
+          </h3>
+          <div className='mt-3 space-y-3'>
+            {faqItems.map((item) => (
+              <details
+                key={item.question}
+                className='rounded-xl border border-amber-900/15 bg-white/80 p-4'
+              >
+                <summary className='cursor-pointer list-none font-semibold text-amber-950'>
+                  {item.question}
+                </summary>
+                <p className='mt-2 text-sm leading-6 text-amber-950/80'>
+                  {item.answer}
+                </p>
+              </details>
+            ))}
+          </div>
+        </section>
+      )}
     </section>
   );
 }

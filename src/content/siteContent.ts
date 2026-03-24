@@ -9,6 +9,8 @@ export interface FaqItem {
   answer: string;
 }
 
+export const LEGAL_LAST_UPDATED = 'March 23, 2026';
+
 export const quickStartSteps: ContentSection[] = [
   {
     title: '1. Set the firebox size',
@@ -182,5 +184,75 @@ export const faqItems: FaqItem[] = [
     question: 'How is size and soil context integrated in this app?',
     answer:
       'Use the Soil Type, Drainage, and Freeze-Thaw fields in Design Inputs. The engine still reports the baseline foundation quantities, and the Designer now adds a foundation advisory level (low, moderate, or high) with site-check notes based on site context and footprint size. This gives planning guidance without silently changing your core baseline math.',
+  },
+];
+
+export const privacyPolicySections: ContentSection[] = [
+  {
+    title: 'Controller And Contact',
+    bullets: [
+      'Site owner: Jan Horak.',
+      'Portfolio contact: www.janhorak.dev.',
+      'GitHub profile: github.com/MrJanHorak.',
+    ],
+  },
+  {
+    title: 'What Data Is Processed',
+    bullets: [
+      'Design and project settings are stored in browser local storage for autosave and snapshots.',
+      'When accepted, Google Analytics collects aggregate usage events and page interactions.',
+      'This app does not require account registration or direct user profile creation.',
+    ],
+  },
+  {
+    title: 'Legal Basis And Consent',
+    bullets: [
+      'Strictly necessary local storage for core app functionality is used for project persistence.',
+      'Analytics is optional and disabled by default until explicit user opt-in.',
+      'You can withdraw analytics consent anytime using Cookie Settings in the footer.',
+    ],
+  },
+  {
+    title: 'Retention And User Controls',
+    bullets: [
+      'Project data remains in your browser until you delete it or clear storage.',
+      'Use Clear Local Browser Data to remove saved project and snapshot records.',
+      'Analytics consent preferences are versioned and may require reconfirmation after policy updates.',
+    ],
+  },
+  {
+    title: 'Third-Party Processing',
+    bullets: [
+      'Google Analytics (Google LLC) is used only after consent.',
+      'Ad personalization features are disabled in analytics configuration.',
+      'If you need region-specific legal wording, obtain legal review for your target markets.',
+    ],
+  },
+];
+
+export const termsOfUseSections: ContentSection[] = [
+  {
+    title: 'Informational Use Only',
+    bullets: [
+      'This tool provides planning and educational guidance for masonry firepit design.',
+      'Outputs are not a substitute for licensed engineering or local code approvals.',
+      'You are responsible for verifying all dimensions, materials, and safety constraints before construction.',
+    ],
+  },
+  {
+    title: 'Safety And Compliance Responsibility',
+    bullets: [
+      'Users must confirm setbacks, venting, and thermal protection against local requirements.',
+      'Fuel system installation must follow manufacturer documentation and qualified installer standards.',
+      'The publisher is not liable for on-site construction decisions or misuse of generated outputs.',
+    ],
+  },
+  {
+    title: 'Service Changes',
+    bullets: [
+      'Features, formulas, and guidance may be updated without prior notice.',
+      'Policy and consent versions may be changed to align with product or legal updates.',
+      'Continued use indicates acceptance of the current terms and privacy disclosures.',
+    ],
   },
 ];

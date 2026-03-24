@@ -297,6 +297,14 @@ export function writeStoredProject(
   );
 }
 
+export function deleteStoredProject(storageKey: string) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.removeItem(storageKey);
+}
+
 export function writeStoredProjectInput(
   storageKey: string,
   input: MasonryInput,
