@@ -152,7 +152,7 @@ export const researchHighlights: ContentSection[] = [
       'Square and rectangular layouts need explicit corner overlap logic so each course locks through the corner instead of creating a vertical crack line.',
       'Tight-radius circles often require half-bats, tapered cuts, or radial units. Planning that early keeps joints consistent and prevents rushed saw work late in the project.',
       'Cap design is both visual and functional. A modest overhang and drip strategy improve water shedding and can extend wall life in freeze-thaw climates.',
-      'Before the first mortar mix, document curing windows, vent locations, liner spacing, gas-line entry routing, and final inspection checks. This turns the build from improvised to repeatable.',
+      'Before the first mortar mix, document the 28-day curing requirement, vent locations, liner spacing, gas-line entry routing, and final inspection checks. Mortared masonry must cure for a minimum of 28 days before the first fire is lit. This turns the build from improvised to repeatable.',
     ],
   },
   {

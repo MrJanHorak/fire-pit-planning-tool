@@ -849,7 +849,7 @@ export default function App() {
             noCutGuidance={noCutGuidance}
           />
 
-          <section className='space-y-4'>
+          <section className='min-w-0 space-y-4'>
             <div className='card-rise grid gap-3 rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg sm:grid-cols-3'>
               <div>
                 <p className='text-xs uppercase tracking-wide text-amber-950/75'>

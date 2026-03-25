@@ -76,7 +76,7 @@ export default function ConstructionMode({
   };
 
   return (
-    <section className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/80 p-4 shadow-lg'>
+    <section className='card-rise min-w-0 w-full rounded-2xl border border-amber-900/20 bg-amber-50/80 p-4 shadow-lg'>
       <div className='mb-2 flex flex-wrap items-center justify-between gap-2'>
         <h3 className='text-base font-semibold'>Construction Mode (SVG)</h3>
         <button

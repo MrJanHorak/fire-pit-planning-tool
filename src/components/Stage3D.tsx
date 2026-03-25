@@ -1,6 +1,13 @@
 import { Canvas, useFrame } from '@react-three/fiber';
 import { ContactShadows, Edges, Html, OrbitControls } from '@react-three/drei';
-import { useMemo, useRef, useState } from 'react';
+import {
+  Component,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { BackSide, Shape } from 'three';
 import type { Group } from 'three';
 import type { MasonryOutput } from '../types';
@@ -58,6 +65,53 @@ interface CircularCapBrickGeometryInput {
   innerRadiusFt: number;
   outerRadiusFt: number;
   brickLengthIn: number;
+}
+
+function canCreateWebGLContext(): boolean {
+  if (typeof document === 'undefined') {
+    return false;
+  }
+
+  const testCanvas = document.createElement('canvas');
+  const contextAttributes: WebGLContextAttributes = {
+    antialias: false,
+    powerPreference: 'low-power',
+    failIfMajorPerformanceCaveat: false,
+  };
+
+  const webgl2 = testCanvas.getContext('webgl2', contextAttributes);
+  if (webgl2) {
+    return true;
+  }
+
+  const webgl =
+    testCanvas.getContext('webgl', contextAttributes) ||
+    testCanvas.getContext('experimental-webgl', contextAttributes);
+
+  return Boolean(webgl);
+}
+
+class Stage3DCanvasErrorBoundary extends Component<
+  { children: ReactNode; onError: () => void },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch() {
+    this.props.onError();
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return null;
+    }
+
+    return this.props.children;
+  }
 }
 
 export function isHalfRoundCapUnit(unitName: string): boolean {
@@ -603,7 +657,14 @@ export default function Stage3D({ output }: Stage3DProps) {
   const [wireframe, setWireframe] = useState(false);
   const [showBrickOutlines, setShowBrickOutlines] = useState(true);
   const [showFlame, setShowFlame] = useState(false);
+  const [webglBlocked, setWebglBlocked] = useState(false);
   const orbitRef = useRef<OrbitHandle>(null);
+
+  useEffect(() => {
+    if (!canCreateWebGLContext()) {
+      setWebglBlocked(true);
+    }
+  }, []);
 
   const geometry = useMemo(() => computeStage3DGeometry(output), [output]);
 
@@ -923,121 +984,90 @@ export default function Stage3D({ output }: Stage3DProps) {
         </p>
       </div>
 
-      <Canvas camera={{ position: [0, 2.4, 5.2], fov: 48 }}>
-        <ambientLight intensity={0.65} />
-        <hemisphereLight args={['#fff4dd', '#8e7a5b', 0.48]} />
-        <directionalLight position={[3.5, 5.5, 3]} intensity={1.1} />
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        <OrbitControls
-          ref={orbitRef as any}
-          enablePan={false}
-          maxPolarAngle={Math.PI * 0.49}
-          minDistance={2.2}
-          maxDistance={9}
-        />
+      {webglBlocked ? (
+        <div className='absolute inset-2 z-20 flex items-center justify-center rounded-xl border border-red-800/20 bg-red-50/95 p-5 text-center'>
+          <div className='max-w-md space-y-2 text-red-950'>
+            <p className='text-sm font-semibold'>
+              WebGL is unavailable or was blocked by the browser.
+            </p>
+            <p className='text-xs leading-5'>
+              The 3D stage is paused to prevent repeated GPU crashes. Save your
+              project and reload the page, then close other GPU-heavy tabs if
+              needed. Construction Mode remains available.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <Stage3DCanvasErrorBoundary onError={() => setWebglBlocked(true)}>
+          <Canvas
+            camera={{ position: [0, 2.4, 5.2], fov: 48 }}
+            dpr={[1, 1.5]}
+            gl={{
+              antialias: false,
+              powerPreference: 'low-power',
+              failIfMajorPerformanceCaveat: false,
+            }}
+          >
+            <ambientLight intensity={0.65} />
+            <hemisphereLight args={['#fff4dd', '#8e7a5b', 0.48]} />
+            <directionalLight position={[3.5, 5.5, 3]} intensity={1.1} />
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            <OrbitControls
+              ref={orbitRef as any}
+              enablePan={false}
+              maxPolarAngle={Math.PI * 0.49}
+              minDistance={2.2}
+              maxDistance={9}
+            />
 
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]}>
-          <circleGeometry args={[3.4, 96]} />
-          <meshStandardMaterial
-            color='#dbc8a6'
-            roughness={0.9}
-            wireframe={wireframe}
-          />
-        </mesh>
-
-        {output.planShape === 'circular' ? (
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.001, 0]}>
-            <circleGeometry
-              args={[output.foundation.footprintDiameterIn / 2 / 12, 96]}
-            />
-            <meshStandardMaterial
-              color='#b3a284'
-              roughness={1}
-              wireframe={wireframe}
-            />
-          </mesh>
-        ) : (
-          <mesh position={[0, 0.001, 0]}>
-            <boxGeometry
-              args={[
-                output.foundation.footprintWidthIn / 12,
-                0.03,
-                output.foundation.footprintDepthIn / 12,
-              ]}
-            />
-            <meshStandardMaterial
-              color='#b3a284'
-              roughness={1}
-              wireframe={wireframe}
-            />
-          </mesh>
-        )}
-
-        {output.planShape === 'circular' ? (
-          <>
-            <mesh position={[0, wallHeightFt / 2, 0]}>
-              <cylinderGeometry
-                args={[
-                  geometry.wallRadiusFt + brickWidthFt / 2,
-                  geometry.wallRadiusFt + brickWidthFt / 2,
-                  wallHeightFt,
-                  128,
-                  1,
-                  true,
-                ]}
-              />
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]}>
+              <circleGeometry args={[3.4, 96]} />
               <meshStandardMaterial
-                color='#c6b39a'
-                roughness={0.93}
+                color='#dbc8a6'
+                roughness={0.9}
                 wireframe={wireframe}
               />
             </mesh>
-            <mesh position={[0, wallHeightFt / 2, 0]}>
-              <cylinderGeometry
-                args={[
-                  geometry.wallRadiusFt - brickWidthFt / 2,
-                  geometry.wallRadiusFt - brickWidthFt / 2,
-                  wallHeightFt,
-                  128,
-                  1,
-                  true,
-                ]}
-              />
-              <meshStandardMaterial
-                color='#c6b39a'
-                roughness={0.93}
-                side={BackSide}
-                wireframe={wireframe}
-              />
-            </mesh>
-          </>
-        ) : (
-          <RectangularRing
-            widthFt={geometry.wallSpanWidthFt}
-            depthFt={geometry.wallSpanDepthFt}
-            thicknessFt={brickWidthFt}
-            heightFt={wallHeightFt}
-            y={wallHeightFt / 2}
-            color='#c6b39a'
-            wireframe={wireframe}
-            opacity={0.96}
-          />
-        )}
 
-        {output.planShape === 'circular' &&
-          output.courses.map(
-            (course) =>
-              course.courseIndex > 0 && (
-                <mesh
-                  key={`bed-${course.courseIndex}`}
-                  rotation={[-Math.PI / 2, 0, 0]}
-                  position={[0, course.courseIndex * geometry.courseRiseFt, 0]}
-                >
-                  <ringGeometry
+            {output.planShape === 'circular' ? (
+              <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.001, 0]}>
+                <circleGeometry
+                  args={[output.foundation.footprintDiameterIn / 2 / 12, 96]}
+                />
+                <meshStandardMaterial
+                  color='#b3a284'
+                  roughness={1}
+                  wireframe={wireframe}
+                />
+              </mesh>
+            ) : (
+              <mesh position={[0, 0.001, 0]}>
+                <boxGeometry
+                  args={[
+                    output.foundation.footprintWidthIn / 12,
+                    0.03,
+                    output.foundation.footprintDepthIn / 12,
+                  ]}
+                />
+                <meshStandardMaterial
+                  color='#b3a284'
+                  roughness={1}
+                  wireframe={wireframe}
+                />
+              </mesh>
+            )}
+
+            {output.planShape === 'circular' ? (
+              <>
+                <mesh position={[0, wallHeightFt / 2, 0]}>
+                  <cylinderGeometry
                     args={[
-                      geometry.wallRadiusFt - brickWidthFt / 2,
                       geometry.wallRadiusFt + brickWidthFt / 2,
+                      geometry.wallRadiusFt + brickWidthFt / 2,
+                      wallHeightFt,
                       128,
+                      1,
+                      true,
                     ]}
                   />
                   <meshStandardMaterial
@@ -1046,375 +1076,474 @@ export default function Stage3D({ output }: Stage3DProps) {
                     wireframe={wireframe}
                   />
                 </mesh>
-              ),
-          )}
+                <mesh position={[0, wallHeightFt / 2, 0]}>
+                  <cylinderGeometry
+                    args={[
+                      geometry.wallRadiusFt - brickWidthFt / 2,
+                      geometry.wallRadiusFt - brickWidthFt / 2,
+                      wallHeightFt,
+                      128,
+                      1,
+                      true,
+                    ]}
+                  />
+                  <meshStandardMaterial
+                    color='#c6b39a'
+                    roughness={0.93}
+                    side={BackSide}
+                    wireframe={wireframe}
+                  />
+                </mesh>
+              </>
+            ) : (
+              <RectangularRing
+                widthFt={geometry.wallSpanWidthFt}
+                depthFt={geometry.wallSpanDepthFt}
+                thicknessFt={brickWidthFt}
+                heightFt={wallHeightFt}
+                y={wallHeightFt / 2}
+                color='#c6b39a'
+                wireframe={wireframe}
+                opacity={0.96}
+              />
+            )}
 
-        {output.courses.map((course) => (
-          <group key={course.courseIndex}>
-            {Array.from({ length: course.unitCount }, (_, brickIdx) => {
-              const isSpacer =
-                course.specialCourse === 'shim-spacer' &&
-                !!course.spacerIndexes?.includes(brickIdx);
-              const isVentOpening =
-                output.ventSpec.targetCourseIndexes.includes(
-                  course.courseIndex,
-                ) && output.ventSpec.ventBrickIndexes.includes(brickIdx);
-              const placement = getPlacement(
-                output,
-                brickIdx,
-                course.unitCount,
-                course.offsetIn,
-                geometry.wallSpanWidthFt,
-                geometry.wallSpanDepthFt,
-                geometry.wallRadiusFt,
-              );
-              const y =
-                (isSpacer ? shimHeightFt : brickHeightFt) / 2 +
-                course.courseIndex * geometry.courseRiseFt +
-                mortarJointFt / 2;
-              const wallBrickQuad = wallRequiresTaperCut
-                ? buildCircularCapBrickQuad({
-                    centerlineRadiusFt: geometry.wallRadiusFt,
-                    innerRadiusFt: renderedWallInnerRadiusFt,
-                    outerRadiusFt: renderedWallOuterRadiusFt,
-                    brickLengthIn: renderedWallBrickLengthFt * 12,
-                  })
-                : undefined;
-              const perBrickColor = getWallBrickColor(course, isSpacer);
-              const renderedLengthFt = isSpacer
-                ? Math.max(0.05, shimLengthFt - mortarJointFt * 0.35)
-                : renderedWallBrickLengthFt;
-              const renderedHeightFt = isSpacer
-                ? Math.max(0.05, shimHeightFt - mortarJointFt * 0.35)
-                : visBrickHeightFt;
-              const renderedWidthFt = isSpacer
-                ? Math.max(0.04, shimWidthFt - mortarJointFt * 0.35)
-                : visBrickWidthFt;
-
-              return isVentOpening ? (
-                <group key={`${course.courseIndex}-${brickIdx}-vent`}>
-                  <mesh
-                    position={[placement.x, y, placement.z]}
-                    rotation={[0, placement.rotationY, 0]}
-                  >
-                    <boxGeometry
-                      args={[
-                        ventOpeningLengthFt,
-                        ventOpeningHeightFt,
-                        brickWidthFt + 0.05,
+            {output.planShape === 'circular' &&
+              output.courses.map(
+                (course) =>
+                  course.courseIndex > 0 && (
+                    <mesh
+                      key={`bed-${course.courseIndex}`}
+                      rotation={[-Math.PI / 2, 0, 0]}
+                      position={[
+                        0,
+                        course.courseIndex * geometry.courseRiseFt,
+                        0,
                       ]}
-                    />
-                    <meshStandardMaterial
-                      color='#241a12'
-                      roughness={1}
-                      wireframe={wireframe}
-                    />
-                    {showBrickOutlines && (
-                      <Edges color='#14100a' lineWidth={1} scale={1.003} />
-                    )}
-                  </mesh>
-                  {output.planShape !== 'circular' &&
-                    course.courseIndex ===
-                      output.ventSpec.targetCourseIndexes[0] && (
-                      <Html
-                        position={[
-                          placement.x,
-                          y + brickHeightFt * 0.64,
-                          placement.z,
-                        ]}
-                        center
-                        transform
-                        distanceFactor={8}
-                      >
-                        <div className='rounded-full border border-amber-900/35 bg-white/90 px-1.5 py-0.5 text-[10px] font-bold text-amber-950 shadow'>
-                          {getRectangularSideLabel(
-                            placement.x,
-                            placement.z,
-                            geometry.wallSpanWidthFt / 2,
-                            geometry.wallSpanDepthFt / 2,
-                          )}
-                        </div>
-                      </Html>
-                    )}
-                </group>
-              ) : (
-                <mesh
-                  key={`${course.courseIndex}-${brickIdx}`}
-                  position={[placement.x, y, placement.z]}
-                  rotation={[0, placement.rotationY, 0]}
-                >
-                  {wallRequiresTaperCut && wallBrickQuad && !isSpacer ? (
-                    <CircularCapJointFiller
-                      polygonPoints={wallBrickQuad.polygonPoints}
-                      heightFt={renderedHeightFt}
-                      color={perBrickColor}
-                      wireframe={wireframe}
-                      showEdges={showBrickOutlines}
-                    />
-                  ) : (
-                    <>
-                      <boxGeometry
+                    >
+                      <ringGeometry
                         args={[
-                          renderedLengthFt,
-                          renderedHeightFt,
-                          renderedWidthFt,
+                          geometry.wallRadiusFt - brickWidthFt / 2,
+                          geometry.wallRadiusFt + brickWidthFt / 2,
+                          128,
                         ]}
                       />
                       <meshStandardMaterial
-                        color={perBrickColor}
-                        roughness={0.82}
+                        color='#c6b39a'
+                        roughness={0.93}
                         wireframe={wireframe}
                       />
-                      {showBrickOutlines && (
-                        <Edges color='#2a1a10' lineWidth={1} scale={1.003} />
-                      )}
-                    </>
-                  )}
-                </mesh>
-              );
-            })}
-          </group>
-        ))}
+                    </mesh>
+                  ),
+              )}
 
-        {(() => {
-          // For rectangular/square shapes with overhang, offset capstone placement to align corners with wall
-          let capstoneOffsetIn = 0;
-          if (output.planShape !== 'circular') {
-            // The capstone has larger dimensions due to overhang. To align it properly,
-            // we need to shift backward in the perimeter so corner bricks align.
-            // The perimeter of the capstone is 4*overhang larger than the wall perimeter.
-            const overhangPerimeterIn = output.capstone.overhangIn * 8;
-            // Offset by half to center the capstone over the wall
-            capstoneOffsetIn = -overhangPerimeterIn / 2;
-          }
+            {output.courses.map((course) => (
+              <group key={course.courseIndex}>
+                {Array.from({ length: course.unitCount }, (_, brickIdx) => {
+                  const isSpacer =
+                    course.specialCourse === 'shim-spacer' &&
+                    !!course.spacerIndexes?.includes(brickIdx);
+                  const isVentOpening =
+                    output.ventSpec.targetCourseIndexes.includes(
+                      course.courseIndex,
+                    ) && output.ventSpec.ventBrickIndexes.includes(brickIdx);
+                  const placement = getPlacement(
+                    output,
+                    brickIdx,
+                    course.unitCount,
+                    course.offsetIn,
+                    geometry.wallSpanWidthFt,
+                    geometry.wallSpanDepthFt,
+                    geometry.wallRadiusFt,
+                  );
+                  const y =
+                    (isSpacer ? shimHeightFt : brickHeightFt) / 2 +
+                    course.courseIndex * geometry.courseRiseFt +
+                    mortarJointFt / 2;
+                  const wallBrickQuad = wallRequiresTaperCut
+                    ? buildCircularCapBrickQuad({
+                        centerlineRadiusFt: geometry.wallRadiusFt,
+                        innerRadiusFt: renderedWallInnerRadiusFt,
+                        outerRadiusFt: renderedWallOuterRadiusFt,
+                        brickLengthIn: renderedWallBrickLengthFt * 12,
+                      })
+                    : undefined;
+                  const perBrickColor = getWallBrickColor(course, isSpacer);
+                  const renderedLengthFt = isSpacer
+                    ? Math.max(0.05, shimLengthFt - mortarJointFt * 0.35)
+                    : renderedWallBrickLengthFt;
+                  const renderedHeightFt = isSpacer
+                    ? Math.max(0.05, shimHeightFt - mortarJointFt * 0.35)
+                    : visBrickHeightFt;
+                  const renderedWidthFt = isSpacer
+                    ? Math.max(0.04, shimWidthFt - mortarJointFt * 0.35)
+                    : visBrickWidthFt;
 
-          return Array.from(
-            { length: output.capstone.capUnitsPerCourseRounded },
-            (_, capIdx) => {
-              const placement = getPlacement(
-                output,
-                capIdx,
-                output.capstone.capUnitsPerCourseRounded,
-                capstoneOffsetIn,
-                geometry.capSpanWidthFt,
-                geometry.capSpanDepthFt,
-                geometry.capRadiusFt,
-              );
-              const y =
-                geometry.capRiseFt + capBrickHeightFt / 2 + mortarJointFt / 2;
-              const brickQuad = capRequiresTaperCut
-                ? buildCircularCapBrickQuad({
-                    centerlineRadiusFt: geometry.capRadiusFt,
-                    innerRadiusFt: renderedCapInnerRadiusFt,
-                    outerRadiusFt: renderedCapOuterRadiusFt,
-                    brickLengthIn: renderedCapBrickLengthFt * 12,
-                  })
-                : undefined;
-
-              return (
-                <mesh
-                  key={`cap-${capIdx}`}
-                  position={[placement.x, y, placement.z]}
-                  rotation={[0, placement.rotationY, 0]}
-                >
-                  {capRequiresTaperCut && brickQuad ? (
-                    <CircularCapJointFiller
-                      polygonPoints={brickQuad.polygonPoints}
-                      heightFt={visCapBrickHeightFt}
-                      color='#ccb085'
-                      wireframe={wireframe}
-                      showEdges={showBrickOutlines}
-                    />
-                  ) : isHalfRoundCap ? (
-                    <>
+                  return isVentOpening ? (
+                    <group key={`${course.courseIndex}-${brickIdx}-vent`}>
                       <mesh
-                        position={[
-                          0,
-                          -visCapBrickHeightFt / 2 + halfRoundBaseHeightFt / 2,
-                          0,
-                        ]}
+                        position={[placement.x, y, placement.z]}
+                        rotation={[0, placement.rotationY, 0]}
                       >
                         <boxGeometry
                           args={[
-                            renderedCapBrickLengthFt,
-                            halfRoundBaseHeightFt,
-                            capBrickWidthFt,
+                            ventOpeningLengthFt,
+                            ventOpeningHeightFt,
+                            brickWidthFt + 0.05,
                           ]}
                         />
                         <meshStandardMaterial
-                          color='#ccb085'
-                          roughness={0.65}
+                          color='#241a12'
+                          roughness={1}
                           wireframe={wireframe}
                         />
                         {showBrickOutlines && (
-                          <Edges color='#3b2d1f' lineWidth={1} scale={1.003} />
+                          <Edges color='#14100a' lineWidth={1} scale={1.003} />
                         )}
                       </mesh>
-                      <mesh
-                        position={[
-                          0,
-                          -visCapBrickHeightFt / 2 + halfRoundBaseHeightFt,
-                          0,
-                        ]}
-                        rotation={[0, 0, Math.PI / 2]}
-                      >
-                        <cylinderGeometry
-                          args={[
-                            halfRoundCrownRadiusFt,
-                            halfRoundCrownRadiusFt,
-                            renderedCapBrickLengthFt,
-                            20,
-                          ]}
-                        />
-                        <meshStandardMaterial
-                          color='#d5bb93'
-                          roughness={0.58}
-                          wireframe={wireframe}
-                        />
-                      </mesh>
-                    </>
+                      {output.planShape !== 'circular' &&
+                        course.courseIndex ===
+                          output.ventSpec.targetCourseIndexes[0] && (
+                          <Html
+                            position={[
+                              placement.x,
+                              y + brickHeightFt * 0.64,
+                              placement.z,
+                            ]}
+                            center
+                            transform
+                            distanceFactor={8}
+                          >
+                            <div className='rounded-full border border-amber-900/35 bg-white/90 px-1.5 py-0.5 text-[10px] font-bold text-amber-950 shadow'>
+                              {getRectangularSideLabel(
+                                placement.x,
+                                placement.z,
+                                geometry.wallSpanWidthFt / 2,
+                                geometry.wallSpanDepthFt / 2,
+                              )}
+                            </div>
+                          </Html>
+                        )}
+                    </group>
                   ) : (
-                    <>
-                      <boxGeometry
-                        args={[
-                          renderedCapBrickLengthFt,
-                          visCapBrickHeightFt,
-                          capBrickWidthFt,
-                        ]}
-                      />
-                      <meshStandardMaterial
-                        color='#ccb085'
-                        roughness={0.65}
-                        wireframe={wireframe}
-                      />
-                      {showBrickOutlines && (
-                        <Edges color='#3b2d1f' lineWidth={1} scale={1.003} />
+                    <mesh
+                      key={`${course.courseIndex}-${brickIdx}`}
+                      position={[placement.x, y, placement.z]}
+                      rotation={[0, placement.rotationY, 0]}
+                    >
+                      {wallRequiresTaperCut && wallBrickQuad && !isSpacer ? (
+                        <CircularCapJointFiller
+                          polygonPoints={wallBrickQuad.polygonPoints}
+                          heightFt={renderedHeightFt}
+                          color={perBrickColor}
+                          wireframe={wireframe}
+                          showEdges={showBrickOutlines}
+                        />
+                      ) : (
+                        <>
+                          <boxGeometry
+                            args={[
+                              renderedLengthFt,
+                              renderedHeightFt,
+                              renderedWidthFt,
+                            ]}
+                          />
+                          <meshStandardMaterial
+                            color={perBrickColor}
+                            roughness={0.82}
+                            wireframe={wireframe}
+                          />
+                          {showBrickOutlines && (
+                            <Edges
+                              color='#2a1a10'
+                              lineWidth={1}
+                              scale={1.003}
+                            />
+                          )}
+                        </>
                       )}
-                    </>
-                  )}
-                </mesh>
-              );
-            },
-          );
-        })()}
+                    </mesh>
+                  );
+                })}
+              </group>
+            ))}
 
-        {capJointLengthFt > 0.02 &&
-          (() => {
-            let capstoneOffsetIn = 0;
-            if (output.planShape !== 'circular') {
-              const overhangPerimeterIn = output.capstone.overhangIn * 8;
-              capstoneOffsetIn = -overhangPerimeterIn / 2;
-            }
+            {(() => {
+              // For rectangular/square shapes with overhang, offset capstone placement to align corners with wall
+              let capstoneOffsetIn = 0;
+              if (output.planShape !== 'circular') {
+                // The capstone has larger dimensions due to overhang. To align it properly,
+                // we need to shift backward in the perimeter so corner bricks align.
+                // The perimeter of the capstone is 4*overhang larger than the wall perimeter.
+                const overhangPerimeterIn = output.capstone.overhangIn * 8;
+                // Offset by half to center the capstone over the wall
+                capstoneOffsetIn = -overhangPerimeterIn / 2;
+              }
 
-            return Array.from(
-              { length: output.capstone.capUnitsPerCourseRounded },
-              (_, capIdx) => {
-                const jointPlacement = getPlacement(
-                  output,
-                  capIdx + 0.5,
-                  output.capstone.capUnitsPerCourseRounded,
-                  capstoneOffsetIn,
-                  geometry.capSpanWidthFt,
-                  geometry.capSpanDepthFt,
-                  geometry.capRadiusFt,
-                );
-                const leftPlacement = getPlacement(
-                  output,
-                  capIdx,
-                  output.capstone.capUnitsPerCourseRounded,
-                  capstoneOffsetIn,
-                  geometry.capSpanWidthFt,
-                  geometry.capSpanDepthFt,
-                  geometry.capRadiusFt,
-                );
-                const rightPlacement = getPlacement(
-                  output,
-                  (capIdx + 1) % output.capstone.capUnitsPerCourseRounded,
-                  output.capstone.capUnitsPerCourseRounded,
-                  capstoneOffsetIn,
-                  geometry.capSpanWidthFt,
-                  geometry.capSpanDepthFt,
-                  geometry.capRadiusFt,
-                );
-                const jointQuad =
-                  output.planShape === 'circular' && capRequiresTaperCut
-                    ? buildCircularCapJointQuad({
+              return Array.from(
+                { length: output.capstone.capUnitsPerCourseRounded },
+                (_, capIdx) => {
+                  const placement = getPlacement(
+                    output,
+                    capIdx,
+                    output.capstone.capUnitsPerCourseRounded,
+                    capstoneOffsetIn,
+                    geometry.capSpanWidthFt,
+                    geometry.capSpanDepthFt,
+                    geometry.capRadiusFt,
+                  );
+                  const y =
+                    geometry.capRiseFt +
+                    capBrickHeightFt / 2 +
+                    mortarJointFt / 2;
+                  const brickQuad = capRequiresTaperCut
+                    ? buildCircularCapBrickQuad({
                         centerlineRadiusFt: geometry.capRadiusFt,
                         innerRadiusFt: renderedCapInnerRadiusFt,
                         outerRadiusFt: renderedCapOuterRadiusFt,
-                        actualJointIn: output.capstone.joint.actualJointIn,
+                        brickLengthIn: renderedCapBrickLengthFt * 12,
                       })
-                    : output.planShape !== 'circular'
-                      ? buildRectangularJointQuad(
-                          leftPlacement,
-                          rightPlacement,
-                          jointPlacement,
-                          renderedCapBrickLengthFt,
-                          capBrickWidthFt,
-                        )
-                      : undefined;
-                const jointY =
-                  geometry.capRiseFt + capBrickHeightFt / 2 + mortarJointFt / 2;
+                    : undefined;
 
-                return (
-                  <mesh
-                    key={`cap-joint-${capIdx}`}
-                    position={[jointPlacement.x, jointY, jointPlacement.z]}
-                    rotation={[0, jointPlacement.rotationY, 0]}
-                  >
-                    {output.planShape === 'circular' &&
-                    capRequiresTaperCut &&
-                    jointQuad ? (
-                      <CircularCapJointFiller
-                        polygonPoints={jointQuad.polygonPoints}
-                        heightFt={capJointHeightFt}
-                        color='#c6b39a'
-                        wireframe={wireframe}
-                        showEdges={showBrickOutlines}
-                      />
-                    ) : (
-                      <>
-                        <boxGeometry
-                          args={[
-                            renderedCapJointLengthFt,
-                            capJointHeightFt,
-                            capJointWidthFt,
-                          ]}
-                        />
-                        <meshStandardMaterial
-                          color='#c6b39a'
-                          roughness={0.93}
+                  return (
+                    <mesh
+                      key={`cap-${capIdx}`}
+                      position={[placement.x, y, placement.z]}
+                      rotation={[0, placement.rotationY, 0]}
+                    >
+                      {capRequiresTaperCut && brickQuad ? (
+                        <CircularCapJointFiller
+                          polygonPoints={brickQuad.polygonPoints}
+                          heightFt={visCapBrickHeightFt}
+                          color='#ccb085'
                           wireframe={wireframe}
+                          showEdges={showBrickOutlines}
                         />
-                      </>
-                    )}
-                  </mesh>
-                );
-              },
-            );
-          })()}
+                      ) : isHalfRoundCap ? (
+                        <>
+                          <mesh
+                            position={[
+                              0,
+                              -visCapBrickHeightFt / 2 +
+                                halfRoundBaseHeightFt / 2,
+                              0,
+                            ]}
+                          >
+                            <boxGeometry
+                              args={[
+                                renderedCapBrickLengthFt,
+                                halfRoundBaseHeightFt,
+                                capBrickWidthFt,
+                              ]}
+                            />
+                            <meshStandardMaterial
+                              color='#ccb085'
+                              roughness={0.65}
+                              wireframe={wireframe}
+                            />
+                            {showBrickOutlines && (
+                              <Edges
+                                color='#3b2d1f'
+                                lineWidth={1}
+                                scale={1.003}
+                              />
+                            )}
+                          </mesh>
+                          <mesh
+                            position={[
+                              0,
+                              -visCapBrickHeightFt / 2 + halfRoundBaseHeightFt,
+                              0,
+                            ]}
+                            rotation={[0, 0, Math.PI / 2]}
+                          >
+                            <cylinderGeometry
+                              args={[
+                                halfRoundCrownRadiusFt,
+                                halfRoundCrownRadiusFt,
+                                renderedCapBrickLengthFt,
+                                20,
+                              ]}
+                            />
+                            <meshStandardMaterial
+                              color='#d5bb93'
+                              roughness={0.58}
+                              wireframe={wireframe}
+                            />
+                          </mesh>
+                        </>
+                      ) : (
+                        <>
+                          <boxGeometry
+                            args={[
+                              renderedCapBrickLengthFt,
+                              visCapBrickHeightFt,
+                              capBrickWidthFt,
+                            ]}
+                          />
+                          <meshStandardMaterial
+                            color='#ccb085'
+                            roughness={0.65}
+                            wireframe={wireframe}
+                          />
+                          {showBrickOutlines && (
+                            <Edges
+                              color='#3b2d1f'
+                              lineWidth={1}
+                              scale={1.003}
+                            />
+                          )}
+                        </>
+                      )}
+                    </mesh>
+                  );
+                },
+              );
+            })()}
 
-        {output.planShape !== 'circular' && capCornerJointSizeFt > 0.02 && (
-          <>
-            {[
-              [geometry.capSpanWidthFt / 2, geometry.capSpanDepthFt / 2],
-              [geometry.capSpanWidthFt / 2, -geometry.capSpanDepthFt / 2],
-              [-geometry.capSpanWidthFt / 2, geometry.capSpanDepthFt / 2],
-              [-geometry.capSpanWidthFt / 2, -geometry.capSpanDepthFt / 2],
-            ].map(([x, z], index) => (
+            {capJointLengthFt > 0.02 &&
+              (() => {
+                let capstoneOffsetIn = 0;
+                if (output.planShape !== 'circular') {
+                  const overhangPerimeterIn = output.capstone.overhangIn * 8;
+                  capstoneOffsetIn = -overhangPerimeterIn / 2;
+                }
+
+                return Array.from(
+                  { length: output.capstone.capUnitsPerCourseRounded },
+                  (_, capIdx) => {
+                    const jointPlacement = getPlacement(
+                      output,
+                      capIdx + 0.5,
+                      output.capstone.capUnitsPerCourseRounded,
+                      capstoneOffsetIn,
+                      geometry.capSpanWidthFt,
+                      geometry.capSpanDepthFt,
+                      geometry.capRadiusFt,
+                    );
+                    const leftPlacement = getPlacement(
+                      output,
+                      capIdx,
+                      output.capstone.capUnitsPerCourseRounded,
+                      capstoneOffsetIn,
+                      geometry.capSpanWidthFt,
+                      geometry.capSpanDepthFt,
+                      geometry.capRadiusFt,
+                    );
+                    const rightPlacement = getPlacement(
+                      output,
+                      (capIdx + 1) % output.capstone.capUnitsPerCourseRounded,
+                      output.capstone.capUnitsPerCourseRounded,
+                      capstoneOffsetIn,
+                      geometry.capSpanWidthFt,
+                      geometry.capSpanDepthFt,
+                      geometry.capRadiusFt,
+                    );
+                    const jointQuad =
+                      output.planShape === 'circular' && capRequiresTaperCut
+                        ? buildCircularCapJointQuad({
+                            centerlineRadiusFt: geometry.capRadiusFt,
+                            innerRadiusFt: renderedCapInnerRadiusFt,
+                            outerRadiusFt: renderedCapOuterRadiusFt,
+                            actualJointIn: output.capstone.joint.actualJointIn,
+                          })
+                        : output.planShape !== 'circular'
+                          ? buildRectangularJointQuad(
+                              leftPlacement,
+                              rightPlacement,
+                              jointPlacement,
+                              renderedCapBrickLengthFt,
+                              capBrickWidthFt,
+                            )
+                          : undefined;
+                    const jointY =
+                      geometry.capRiseFt +
+                      capBrickHeightFt / 2 +
+                      mortarJointFt / 2;
+
+                    return (
+                      <mesh
+                        key={`cap-joint-${capIdx}`}
+                        position={[jointPlacement.x, jointY, jointPlacement.z]}
+                        rotation={[0, jointPlacement.rotationY, 0]}
+                      >
+                        {output.planShape === 'circular' &&
+                        capRequiresTaperCut &&
+                        jointQuad ? (
+                          <CircularCapJointFiller
+                            polygonPoints={jointQuad.polygonPoints}
+                            heightFt={capJointHeightFt}
+                            color='#c6b39a'
+                            wireframe={wireframe}
+                            showEdges={showBrickOutlines}
+                          />
+                        ) : (
+                          <>
+                            <boxGeometry
+                              args={[
+                                renderedCapJointLengthFt,
+                                capJointHeightFt,
+                                capJointWidthFt,
+                              ]}
+                            />
+                            <meshStandardMaterial
+                              color='#c6b39a'
+                              roughness={0.93}
+                              wireframe={wireframe}
+                            />
+                          </>
+                        )}
+                      </mesh>
+                    );
+                  },
+                );
+              })()}
+
+            {output.planShape !== 'circular' && capCornerJointSizeFt > 0.02 && (
+              <>
+                {[
+                  [geometry.capSpanWidthFt / 2, geometry.capSpanDepthFt / 2],
+                  [geometry.capSpanWidthFt / 2, -geometry.capSpanDepthFt / 2],
+                  [-geometry.capSpanWidthFt / 2, geometry.capSpanDepthFt / 2],
+                  [-geometry.capSpanWidthFt / 2, -geometry.capSpanDepthFt / 2],
+                ].map(([x, z], index) => (
+                  <mesh
+                    key={`cap-corner-joint-${index}`}
+                    position={[
+                      x as number,
+                      geometry.capRiseFt +
+                        capBrickHeightFt / 2 +
+                        mortarJointFt / 2,
+                      z as number,
+                    ]}
+                  >
+                    <boxGeometry
+                      args={[
+                        capCornerJointSizeFt,
+                        capJointHeightFt,
+                        capCornerJointSizeFt,
+                      ]}
+                    />
+                    <meshStandardMaterial
+                      color='#c6b39a'
+                      roughness={0.93}
+                      wireframe={wireframe}
+                    />
+                  </mesh>
+                ))}
+              </>
+            )}
+
+            {output.planShape === 'circular' ? (
               <mesh
-                key={`cap-corner-joint-${index}`}
-                position={[
-                  x as number,
-                  geometry.capRiseFt + capBrickHeightFt / 2 + mortarJointFt / 2,
-                  z as number,
-                ]}
+                rotation={[-Math.PI / 2, 0, 0]}
+                position={[0, capMortarBedY, 0]}
               >
-                <boxGeometry
+                <ringGeometry
                   args={[
-                    capCornerJointSizeFt,
-                    capJointHeightFt,
-                    capCornerJointSizeFt,
+                    renderedCapInnerRadiusFt,
+                    renderedCapOuterRadiusFt,
+                    128,
                   ]}
                 />
                 <meshStandardMaterial
@@ -1423,194 +1552,180 @@ export default function Stage3D({ output }: Stage3DProps) {
                   wireframe={wireframe}
                 />
               </mesh>
-            ))}
-          </>
-        )}
-
-        {output.planShape === 'circular' ? (
-          <mesh
-            rotation={[-Math.PI / 2, 0, 0]}
-            position={[0, capMortarBedY, 0]}
-          >
-            <ringGeometry
-              args={[renderedCapInnerRadiusFt, renderedCapOuterRadiusFt, 128]}
-            />
-            <meshStandardMaterial
-              color='#c6b39a'
-              roughness={0.93}
-              wireframe={wireframe}
-            />
-          </mesh>
-        ) : (
-          <RectangularRing
-            widthFt={geometry.capSpanWidthFt}
-            depthFt={geometry.capSpanDepthFt}
-            thicknessFt={capBrickWidthFt}
-            heightFt={capMortarBedHeightFt}
-            y={capMortarBedY}
-            color='#c6b39a'
-            wireframe={wireframe}
-            opacity={0.94}
-          />
-        )}
-
-        {output.linerSpec.enabled &&
-          output.planShape === 'circular' &&
-          output.linerSpec.type === 'fire-brick' && (
-            <>
-              <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
-                <ringGeometry
-                  args={[
-                    geometry.linerOuterRadiusFt,
-                    geometry.wallRadiusFt - brickWidthFt / 2,
-                    96,
-                  ]}
-                />
-                <meshStandardMaterial
-                  color='#dfc7a0'
-                  roughness={0.9}
-                  transparent
-                  opacity={0.6}
-                  wireframe={wireframe}
-                />
-              </mesh>
-              <mesh position={[0, linerMidY, 0]}>
-                <cylinderGeometry
-                  args={[
-                    geometry.linerOuterRadiusFt,
-                    geometry.linerOuterRadiusFt,
-                    linerHeightFt,
-                    96,
-                    1,
-                    true,
-                  ]}
-                />
-                <meshStandardMaterial
-                  color='#8e3b2f'
-                  roughness={0.82}
-                  wireframe={wireframe}
-                />
-              </mesh>
-              <mesh position={[0, linerMidY, 0]}>
-                <cylinderGeometry
-                  args={[
-                    geometry.linerInnerRadiusFt,
-                    geometry.linerInnerRadiusFt,
-                    linerHeightFt,
-                    96,
-                    1,
-                    true,
-                  ]}
-                />
-                <meshStandardMaterial
-                  color='#8e3b2f'
-                  roughness={0.82}
-                  side={BackSide}
-                  wireframe={wireframe}
-                />
-              </mesh>
-            </>
-          )}
-
-        {output.linerSpec.enabled &&
-          output.planShape === 'circular' &&
-          output.linerSpec.type === 'steel-ring' && (
-            <mesh position={[0, linerMidY, 0]}>
-              <cylinderGeometry
-                args={[
-                  geometry.linerOuterRadiusFt,
-                  geometry.linerOuterRadiusFt,
-                  linerHeightFt,
-                  96,
-                  1,
-                  true,
-                ]}
+            ) : (
+              <RectangularRing
+                widthFt={geometry.capSpanWidthFt}
+                depthFt={geometry.capSpanDepthFt}
+                thicknessFt={capBrickWidthFt}
+                heightFt={capMortarBedHeightFt}
+                y={capMortarBedY}
+                color='#c6b39a'
+                wireframe={wireframe}
+                opacity={0.94}
               />
-              <meshStandardMaterial
-                color='#7b7f86'
-                metalness={0.75}
-                roughness={0.28}
+            )}
+
+            {output.linerSpec.enabled &&
+              output.planShape === 'circular' &&
+              output.linerSpec.type === 'fire-brick' && (
+                <>
+                  <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
+                    <ringGeometry
+                      args={[
+                        geometry.linerOuterRadiusFt,
+                        geometry.wallRadiusFt - brickWidthFt / 2,
+                        96,
+                      ]}
+                    />
+                    <meshStandardMaterial
+                      color='#dfc7a0'
+                      roughness={0.9}
+                      transparent
+                      opacity={0.6}
+                      wireframe={wireframe}
+                    />
+                  </mesh>
+                  <mesh position={[0, linerMidY, 0]}>
+                    <cylinderGeometry
+                      args={[
+                        geometry.linerOuterRadiusFt,
+                        geometry.linerOuterRadiusFt,
+                        linerHeightFt,
+                        96,
+                        1,
+                        true,
+                      ]}
+                    />
+                    <meshStandardMaterial
+                      color='#8e3b2f'
+                      roughness={0.82}
+                      wireframe={wireframe}
+                    />
+                  </mesh>
+                  <mesh position={[0, linerMidY, 0]}>
+                    <cylinderGeometry
+                      args={[
+                        geometry.linerInnerRadiusFt,
+                        geometry.linerInnerRadiusFt,
+                        linerHeightFt,
+                        96,
+                        1,
+                        true,
+                      ]}
+                    />
+                    <meshStandardMaterial
+                      color='#8e3b2f'
+                      roughness={0.82}
+                      side={BackSide}
+                      wireframe={wireframe}
+                    />
+                  </mesh>
+                </>
+              )}
+
+            {output.linerSpec.enabled &&
+              output.planShape === 'circular' &&
+              output.linerSpec.type === 'steel-ring' && (
+                <mesh position={[0, linerMidY, 0]}>
+                  <cylinderGeometry
+                    args={[
+                      geometry.linerOuterRadiusFt,
+                      geometry.linerOuterRadiusFt,
+                      linerHeightFt,
+                      96,
+                      1,
+                      true,
+                    ]}
+                  />
+                  <meshStandardMaterial
+                    color='#7b7f86'
+                    metalness={0.75}
+                    roughness={0.28}
+                    wireframe={wireframe}
+                  />
+                </mesh>
+              )}
+
+            {output.linerSpec.enabled && output.planShape !== 'circular' && (
+              <RectangularRing
+                widthFt={geometry.linerOuterWidthFt}
+                depthFt={geometry.linerOuterDepthFt}
+                thicknessFt={Math.max(0.04, output.linerSpec.thicknessIn / 12)}
+                heightFt={linerHeightFt}
+                y={linerMidY}
+                color={
+                  output.linerSpec.type === 'steel-ring' ? '#7b7f86' : '#8e3b2f'
+                }
                 wireframe={wireframe}
               />
-            </mesh>
-          )}
+            )}
 
-        {output.linerSpec.enabled && output.planShape !== 'circular' && (
-          <RectangularRing
-            widthFt={geometry.linerOuterWidthFt}
-            depthFt={geometry.linerOuterDepthFt}
-            thicknessFt={Math.max(0.04, output.linerSpec.thicknessIn / 12)}
-            heightFt={linerHeightFt}
-            y={linerMidY}
-            color={
-              output.linerSpec.type === 'steel-ring' ? '#7b7f86' : '#8e3b2f'
-            }
-            wireframe={wireframe}
-          />
-        )}
+            {output.planShape === 'circular' ? (
+              <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
+                <circleGeometry args={[innerVoidRadiusFt, 72]} />
+                <meshStandardMaterial
+                  color='#3d3126'
+                  roughness={0.95}
+                  wireframe={wireframe}
+                />
+              </mesh>
+            ) : (
+              <mesh position={[0, 0.01, 0]}>
+                <boxGeometry
+                  args={[
+                    output.linerSpec.enabled && geometry.linerInnerWidthFt > 0
+                      ? geometry.linerInnerWidthFt
+                      : Math.max(0.2, output.innerSpanWidthIn / 12),
+                    0.03,
+                    output.linerSpec.enabled && geometry.linerInnerDepthFt > 0
+                      ? geometry.linerInnerDepthFt
+                      : Math.max(0.2, output.innerSpanDepthIn / 12),
+                  ]}
+                />
+                <meshStandardMaterial
+                  color='#3d3126'
+                  roughness={0.95}
+                  wireframe={wireframe}
+                />
+              </mesh>
+            )}
 
-        {output.planShape === 'circular' ? (
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
-            <circleGeometry args={[innerVoidRadiusFt, 72]} />
-            <meshStandardMaterial
-              color='#3d3126'
-              roughness={0.95}
-              wireframe={wireframe}
-            />
-          </mesh>
-        ) : (
-          <mesh position={[0, 0.01, 0]}>
-            <boxGeometry
-              args={[
-                output.linerSpec.enabled && geometry.linerInnerWidthFt > 0
-                  ? geometry.linerInnerWidthFt
-                  : Math.max(0.2, output.innerSpanWidthIn / 12),
-                0.03,
-                output.linerSpec.enabled && geometry.linerInnerDepthFt > 0
-                  ? geometry.linerInnerDepthFt
-                  : Math.max(0.2, output.innerSpanDepthIn / 12),
-              ]}
-            />
-            <meshStandardMaterial
-              color='#3d3126'
-              roughness={0.95}
-              wireframe={wireframe}
-            />
-          </mesh>
-        )}
+            {gasPlacement && (
+              <mesh
+                position={[gasPlacement.x, 0.12, gasPlacement.z]}
+                rotation={[0, gasPlacement.rotationY, 0]}
+              >
+                <boxGeometry
+                  args={[Math.max(0.2, brickWidthFt + 0.16), 0.045, 0.045]}
+                />
+                <meshStandardMaterial
+                  color={
+                    output.ventSpec.gasLineEntryClear ? '#2b6f9b' : '#a01d1d'
+                  }
+                  metalness={0.7}
+                  roughness={0.35}
+                  wireframe={wireframe}
+                />
+              </mesh>
+            )}
 
-        {gasPlacement && (
-          <mesh
-            position={[gasPlacement.x, 0.12, gasPlacement.z]}
-            rotation={[0, gasPlacement.rotationY, 0]}
-          >
-            <boxGeometry
-              args={[Math.max(0.2, brickWidthFt + 0.16), 0.045, 0.045]}
-            />
-            <meshStandardMaterial
-              color={output.ventSpec.gasLineEntryClear ? '#2b6f9b' : '#a01d1d'}
-              metalness={0.7}
-              roughness={0.35}
-              wireframe={wireframe}
-            />
-          </mesh>
-        )}
+            {showFlame && (
+              <FlameCore
+                innerRadiusFt={Math.max(0.18, innerVoidRadiusFt)}
+                wallHeightFt={wallHeightFt}
+              />
+            )}
 
-        {showFlame && (
-          <FlameCore
-            innerRadiusFt={Math.max(0.18, innerVoidRadiusFt)}
-            wallHeightFt={wallHeightFt}
-          />
-        )}
-
-        <ContactShadows
-          position={[0, -0.019, 0]}
-          opacity={0.5}
-          scale={7}
-          blur={2.8}
-          far={2.5}
-        />
-      </Canvas>
+            <ContactShadows
+              position={[0, -0.019, 0]}
+              opacity={0.5}
+              scale={7}
+              blur={2.8}
+              far={2.5}
+            />
+          </Canvas>
+        </Stage3DCanvasErrorBoundary>
+      )}
     </div>
   );
 }

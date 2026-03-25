@@ -251,7 +251,9 @@ function buildDiyStepsHtml(input: MasonryInput, output: MasonryOutput): string {
     linerStep,
     `Set the cap course with ${output.capstone.capUnitsPerCourseRounded} units on the cap centerline. Maintain a centerline cap joint of ${output.capstone.joint.actualJointIn.toFixed(3)} in.`,
     capDirectionNote,
-    `Tool exposed joints, clean mortar smears before they harden, and protect the installation while mortar cures. Follow the mortar manufacturer's cure window before loading the wall or applying sustained heat.`,
+    input.mortarJointIn > 0
+      ? `Tool exposed joints, clean mortar smears before they harden, and protect the installation from rain and freezing while mortar cures. Allow a minimum 28-day curing period before lighting the first fire. Do not apply sustained heat until the mortar has reached full strength.`
+      : `Clean any joint debris and protect the dry-stacked installation from displacement while it settles.`,
     `Before first burn, verify the vent path is unobstructed, the liner is seated correctly, the cap units are stable, and the safety clearance remains unchanged at the installed location.`,
   ];
 

@@ -109,7 +109,7 @@ describe('construction packet export', () => {
     expect(html).toContain('Build Sequence');
     expect(html).toContain('Call for utility locates');
     expect(html).toContain('Foundation review status');
-    expect(html).toContain('Follow the mortar manufacturer');
+    expect(html).toContain('28-day curing period');
   });
 
   it('uses width and depth text for rectangular plans', () => {
