@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { MasonryInput, MasonryOutput } from '../types';
 import type { FoundationAdvisory } from '../utils/foundationAdvisory';
 
@@ -49,12 +49,14 @@ export default function ProjectInfoCard({
     }
   };
 
+  const accessibilityProps = !toast ? { 'aria-hidden': true as const } : {};
+
   return (
     <div className='card-rise relative rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 text-sm shadow-lg'>
       <div
+        {...accessibilityProps} // 2. Spread the props here
         role='status'
         aria-live='polite'
-        aria-hidden={!toast}
         className={`absolute right-4 top-4 z-50 rounded-md bg-amber-900 px-3 py-2 text-sm font-semibold text-amber-50 shadow transform transition-all duration-300 ${
           toast
             ? 'opacity-100 translate-y-0 scale-100'
@@ -63,7 +65,6 @@ export default function ProjectInfoCard({
       >
         {toast ?? ''}
       </div>
-
       <div className='grid gap-3 sm:grid-cols-4'>
         <div className='rounded-xl bg-white/90 p-3 text-center shadow-sm border border-amber-900/10'>
           <p className='text-xs uppercase tracking-wide text-amber-950/75'>
@@ -102,7 +103,6 @@ export default function ProjectInfoCard({
           </p>
         </div>
       </div>
-
       <div className='mt-4 grid gap-4 md:grid-cols-2'>
         <div>
           <h3 className='mb-2 text-sm font-semibold uppercase text-amber-900/80'>
@@ -213,7 +213,6 @@ export default function ProjectInfoCard({
           </dl>
         </div>
       </div>
-
       <details className='mt-4 rounded-lg border border-amber-900/15 bg-white/70 p-3'>
         <summary className='cursor-pointer font-medium'>
           Site context & notes
@@ -236,7 +235,6 @@ export default function ProjectInfoCard({
           </ul>
         </div>
       </details>
-
       <details className='mt-3 rounded-lg border border-amber-900/15 bg-white/70 p-3'>
         <summary className='cursor-pointer font-medium'>Cut plan notes</summary>
         <div className='mt-2 text-sm text-amber-900/85'>
@@ -257,7 +255,6 @@ export default function ProjectInfoCard({
           )}
         </div>
       </details>
-
       <div className='mt-4 flex flex-wrap gap-2'>
         <button
           type='button'
