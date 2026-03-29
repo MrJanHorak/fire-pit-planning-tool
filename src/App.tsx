@@ -6,6 +6,7 @@ import {
   FoundationRiskLegend,
 } from './components/FoundationReview';
 import SafetyClearanceDiagram from './components/SafetyClearanceDiagram';
+import ProjectInfoCard from './components/ProjectInfoCard';
 import { MasonryEngine } from './engine/MasonryEngine';
 import type { MasonryInput } from './types';
 import { DEFAULT_MASONRY_INPUT } from './utils/defaultInput';
@@ -1060,99 +1061,12 @@ export default function App() {
 
             <SafetyClearanceDiagram input={input} output={output} />
 
-            <div className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 text-sm shadow-lg'>
-              <p>
-                Unit basis:{' '}
-                <strong>
-                  {output.resolvedUnit.name}{' '}
-                  {output.resolvedUnit.lengthIn.toFixed(3)}
-                  in x {output.resolvedUnit.widthIn.toFixed(3)} in x{' '}
-                  {output.resolvedUnit.heightIn.toFixed(3)} in
-                </strong>
-              </p>
-              <p>
-                Plan footprint:{' '}
-                <strong>
-                  {output.innerSpanWidthIn.toFixed(2)} in x{' '}
-                  {output.innerSpanDepthIn.toFixed(2)} in inner
-                </strong>
-              </p>
-              <p>
-                Vent rule:{' '}
-                <strong>
-                  {output.ventSpec.placement === 'base'
-                    ? 'Base Venting'
-                    : 'Upper Venting'}
-                </strong>{' '}
-                ({output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in total open
-                area, {output.ventSpec.layout})
-              </p>
-              <p>
-                Vent brick indexes:{' '}
-                <strong>{output.ventSpec.ventBrickIndexes.join(', ')}</strong>
-              </p>
-              <p>
-                Liner system: <strong>{output.linerSpec.description}</strong>
-              </p>
-              {input.fuelType !== 'wood' &&
-                output.ventSpec.gasLineEntryAngleDeg !== undefined && (
-                  <p>
-                    Gas line entry:{' '}
-                    <strong>
-                      {output.ventSpec.gasLineEntryAngleDeg.toFixed(0)} deg at
-                      brick {output.ventSpec.gasLineEntryBrickIndex}
-                    </strong>
-                    {output.ventSpec.gasLineAutoAdjusted &&
-                      ' (auto-shifted off vent gap)'}
-                  </p>
-                )}
-              <p>
-                Foundation footprint:{' '}
-                <strong>
-                  {output.foundation.footprintWidthIn.toFixed(2)} in x{' '}
-                  {output.foundation.footprintDepthIn.toFixed(2)} in
-                </strong>{' '}
-                with 8 in angular stone depth.
-              </p>
-              <p>
-                Foundation advisory:{' '}
-                <strong>{foundationAdvisory.heading}</strong> (
-                {foundationAdvisory.risk} risk).
-              </p>
-              <p>
-                Site context:{' '}
-                <strong>
-                  {input.soilType ?? 'unknown'} soil,{' '}
-                  {input.drainageCondition ?? 'unknown'} drainage,{' '}
-                  {input.frostClimate
-                    ? 'freeze-thaw climate'
-                    : 'minimal frost risk'}
-                </strong>
-              </p>
-              {foundationAdvisory.checks.map((check) => (
-                <p key={check}>- {check}</p>
-              ))}
-              <p>
-                Capstone span:{' '}
-                <strong>
-                  {output.capstone.capOuterWidthIn.toFixed(2)} in x{' '}
-                  {output.capstone.capOuterDepthIn.toFixed(2)} in
-                </strong>{' '}
-                ({input.capstoneOverhangIn.toFixed(2)} in overhang each side).
-              </p>
-              <p>
-                Capstone type: <strong>{output.resolvedCapUnit.name}</strong> (
-                {input.capPlacementMode})
-              </p>
-              <p>
-                Cut guidance:{' '}
-                <strong>
-                  {output.cutPlan.requiresCutting
-                    ? `Taper each brick by ${output.cutPlan.recommendedTaperPerBrickIn.toFixed(3)} in (${output.cutPlan.recommendedCutPerSideIn.toFixed(3)} in per side)`
-                    : 'No taper cuts required at this diameter'}
-                </strong>
-              </p>
-            </div>
+            <ProjectInfoCard
+              input={input}
+              output={output}
+              foundationAdvisory={foundationAdvisory}
+              noCutGuidance={noCutGuidance}
+            />
           </section>
         </div>
       ) : (
