@@ -51,15 +51,18 @@ export default function ProjectInfoCard({
 
   return (
     <div className='card-rise relative rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 text-sm shadow-lg'>
-      {toast && (
-        <div
-          role='status'
-          aria-live='polite'
-          className='absolute right-4 top-4 z-50 rounded-md bg-amber-900 px-3 py-2 text-sm font-semibold text-amber-50 shadow'
-        >
-          {toast}
-        </div>
-      )}
+      <div
+        role='status'
+        aria-live='polite'
+        aria-hidden={!toast}
+        className={`absolute right-4 top-4 z-50 rounded-md bg-amber-900 px-3 py-2 text-sm font-semibold text-amber-50 shadow transform transition-all duration-300 ${
+          toast
+            ? 'opacity-100 translate-y-0 scale-100'
+            : 'opacity-0 -translate-y-2 scale-95 pointer-events-none'
+        }`}
+      >
+        {toast ?? ''}
+      </div>
 
       <div className='grid gap-3 sm:grid-cols-4'>
         <div className='rounded-xl bg-white/90 p-3 text-center shadow-sm border border-amber-900/10'>
