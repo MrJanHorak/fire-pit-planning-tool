@@ -376,7 +376,7 @@ function buildFirePitMaterialsTable(output: MasonryOutput): string {
     0,
   );
 
-  const rows = [
+  const rows: Array<[string, string]> = [
     ['Bricks per Course', `${output.unitsPerCourseRounded}`],
     ['Total Bricks', `${output.totalUnits}`],
     ['Main Wall Units', `${mainWallUnits}`],
