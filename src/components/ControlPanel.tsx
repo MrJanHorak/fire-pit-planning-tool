@@ -51,6 +51,7 @@ export default function ControlPanel({
   noCutGuidance,
 }: ControlPanelProps) {
   const [showNoCutDetails, setShowNoCutDetails] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const usingCustomBrick =
     input.brickPresetKey === 'custom' ||
     input.brickPresetKey === 'custom-radial';
@@ -69,9 +70,23 @@ export default function ControlPanel({
             Design Inputs
           </h2>
           <p className='mt-1 text-sm text-amber-900/75'>
-            Set the size, fuel, and finish details for your fire pit.
+            Start with size, fuel, and safety distance. Expand advanced options
+            only if you need detailed tuning.
           </p>
         </div>
+      </div>
+
+      <div className='mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-900/15 bg-white/65 px-3 py-2'>
+        <p className='text-xs font-medium text-amber-900/80'>
+          Beginner view shows core build decisions first.
+        </p>
+        <button
+          type='button'
+          className='rounded-full border border-amber-900/25 bg-white px-3 py-1 text-xs font-semibold text-amber-950 hover:bg-amber-50'
+          onClick={() => setShowAdvanced((value) => !value)}
+        >
+          {showAdvanced ? 'Hide Advanced Options' : 'Show Advanced Options'}
+        </button>
       </div>
 
       <div className='control-panel-grid grid gap-3 sm:grid-cols-2'>
@@ -784,352 +799,356 @@ export default function ControlPanel({
           </select>
         </label>
 
-        <SectionHeading
-          title='Course Strategy'
-          description='Use practical presets for shim spacers or vent-heavy accent courses while keeping running bond behavior.'
-        />
-
-        <label className='flex flex-col gap-1 sm:col-span-2'>
-          <FieldLabel
-            label='Wall Course Strategy'
-            tip='Uniform keeps a consistent course recipe. Shim Spacer inserts thin units between primary units. Vented Accent applies a more open alternate course.'
-          />
-          <select
-            className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
-            aria-label='Wall Course Strategy'
-            title='Wall Course Strategy'
-            value={courseStrategy}
-            onChange={(event) =>
-              setInput((prev) => ({
-                ...prev,
-                wallCourseStrategy: event.target.value as NonNullable<
-                  MasonryInput['wallCourseStrategy']
-                >,
-              }))
-            }
-          >
-            <option value='uniform'>Uniform Running Bond</option>
-            <option value='shim-spacer'>Shim Spacer Course</option>
-            <option value='vented-accent'>Vented Accent Course</option>
-          </select>
-        </label>
-
-        {courseStrategy === 'shim-spacer' && (
-          <div className='rounded-md border border-amber-700/20 bg-white/60 p-3 sm:col-span-2'>
-            <h4 className='text-xs font-semibold uppercase tracking-[0.12em] text-amber-900/75'>
-              Shim Spacer Settings
-            </h4>
-            <p className='mt-1 text-xs text-amber-900/70'>
-              Configure a thin spacer inserted between larger units. Spacer
-              height should generally match the adjacent course height. The
-              engine adaptively spaces inserts to match curve geometry.
-            </p>
-            <div className='mt-2 grid gap-2 sm:grid-cols-4'>
-              <label className='flex flex-col gap-1'>
-                <span className='text-xs font-medium text-amber-900'>
-                  Spacer Length (in)
-                </span>
-                <input
-                  className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
-                  type='number'
-                  min={0.5}
-                  step={0.125}
-                  value={input.shimUnitLengthIn ?? 1.25}
-                  onChange={(event) =>
-                    setInput((prev) => ({
-                      ...prev,
-                      shimUnitLengthIn: Number(event.target.value),
-                    }))
-                  }
-                />
-              </label>
-              <label className='flex flex-col gap-1'>
-                <span className='text-xs font-medium text-amber-900'>
-                  Spacer Width (in)
-                </span>
-                <input
-                  className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
-                  type='number'
-                  min={0.5}
-                  step={0.125}
-                  value={input.shimUnitWidthIn ?? 1.125}
-                  onChange={(event) =>
-                    setInput((prev) => ({
-                      ...prev,
-                      shimUnitWidthIn: Number(event.target.value),
-                    }))
-                  }
-                />
-              </label>
-              <label className='flex flex-col gap-1'>
-                <span className='text-xs font-medium text-amber-900'>
-                  Spacer Height (in)
-                </span>
-                <input
-                  className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
-                  type='number'
-                  min={0.5}
-                  step={0.125}
-                  value={input.shimUnitHeightIn ?? 2.25}
-                  onChange={(event) =>
-                    setInput((prev) => ({
-                      ...prev,
-                      shimUnitHeightIn: Number(event.target.value),
-                    }))
-                  }
-                />
-              </label>
-              <label className='flex flex-col gap-1'>
-                <span className='text-xs font-medium text-amber-900'>
-                  Max Shim Share (%)
-                </span>
-                <input
-                  className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
-                  type='number'
-                  min={10}
-                  max={33}
-                  step={1}
-                  value={input.shimMaxSharePct ?? 25}
-                  onChange={(event) =>
-                    setInput((prev) => ({
-                      ...prev,
-                      shimMaxSharePct: Number(event.target.value),
-                    }))
-                  }
-                />
-              </label>
-            </div>
-          </div>
-        )}
-
-        {courseStrategy === 'vented-accent' && (
-          <div className='rounded-md border border-amber-700/20 bg-white/60 p-3 sm:col-span-2'>
-            <h4 className='text-xs font-semibold uppercase tracking-[0.12em] text-amber-900/75'>
-              Vented Accent Settings
-            </h4>
-            <p className='mt-1 text-xs text-amber-900/70'>
-              Define a repeating cycle where one course uses larger joints and
-              an alternate orientation for airflow.
-            </p>
-            <div className='mt-2 grid grid-cols-2 gap-2 lg:grid-cols-4'>
-              <label className='flex flex-col gap-1'>
-                <span className='min-h-15 text-xs font-medium leading-5 text-amber-900'>
-                  Joint Multiplier
-                </span>
-                <input
-                  className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
-                  type='number'
-                  min={1}
-                  step={0.1}
-                  value={input.accentJointMultiplier ?? 1.75}
-                  onChange={(event) =>
-                    setInput((prev) => ({
-                      ...prev,
-                      accentJointMultiplier: Number(event.target.value),
-                    }))
-                  }
-                />
-              </label>
-              <label className='flex flex-col gap-1'>
-                <span className='min-h-15 text-xs font-medium leading-5 text-amber-900'>
-                  Cycle Length
-                </span>
-                <input
-                  className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
-                  type='number'
-                  min={2}
-                  step={1}
-                  value={input.accentCycleLength ?? 3}
-                  onChange={(event) =>
-                    setInput((prev) => ({
-                      ...prev,
-                      accentCycleLength: Number(event.target.value),
-                    }))
-                  }
-                />
-              </label>
-              <label className='flex flex-col gap-1'>
-                <span className='min-h-15 text-xs font-medium leading-5 text-amber-900'>
-                  Accent Course Position
-                </span>
-                <input
-                  className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
-                  type='number'
-                  min={1}
-                  step={1}
-                  value={input.accentCoursePosition ?? 2}
-                  onChange={(event) =>
-                    setInput((prev) => ({
-                      ...prev,
-                      accentCoursePosition: Number(event.target.value),
-                    }))
-                  }
-                />
-              </label>
-              <label className='flex flex-col gap-1'>
-                <span className='min-h-15 text-xs font-medium leading-5 text-amber-900'>
-                  Accent Orientation
-                </span>
-                <select
-                  className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
-                  aria-label='Accent Orientation'
-                  title='Accent Orientation'
-                  value={input.accentCourseOrientation ?? 'header'}
-                  onChange={(event) =>
-                    setInput((prev) => ({
-                      ...prev,
-                      accentCourseOrientation: event.target
-                        .value as NonNullable<
-                        MasonryInput['accentCourseOrientation']
-                      >,
-                    }))
-                  }
-                >
-                  <option value='stretcher'>Stretcher</option>
-                  <option value='header'>Header</option>
-                </select>
-              </label>
-            </div>
-          </div>
-        )}
-
-        <label className='flex flex-col gap-1'>
-          <FieldLabel
-            label='Expansion Gap (in)'
-            tip='This affects liner geometry. It matters most when a steel ring or fire-brick liner needs room to move independently of the outer shell.'
-          />
-          <input
-            className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
-            aria-label='Expansion Gap in inches'
-            title='Expansion Gap in inches'
-            type='number'
-            min={0}
-            step={0.125}
-            value={input.expansionGapIn}
-            onChange={(event) =>
-              setInput((prev) => ({
-                ...prev,
-                expansionGapIn: Number(event.target.value),
-              }))
-            }
-          />
-        </label>
-
-        <label className='flex flex-col gap-1'>
-          <FieldLabel
-            label='Vent Count'
-            tip='Use enough vents to satisfy total open area and to support balanced airflow around the firebox.'
-          />
-          <input
-            className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
-            aria-label='Vent Count'
-            title='Vent Count'
-            type='number'
-            min={2}
-            value={input.ventCount}
-            onChange={(event) =>
-              setInput((prev) => ({
-                ...prev,
-                ventCount: Number(event.target.value),
-              }))
-            }
-          />
-        </label>
-
-        <label className='flex flex-col gap-1'>
-          <FieldLabel
-            label='Vent Opening Area (sq in)'
-            tip='The engine uses this to calculate total open area. Gas features often target a broader 18 to 36 sq in range depending on hardware.'
-          />
-          <input
-            className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
-            aria-label='Vent Opening Area in square inches'
-            title='Vent Opening Area in square inches'
-            type='number'
-            min={1}
-            step={0.5}
-            value={input.ventOpeningAreaSqIn}
-            onChange={(event) =>
-              setInput((prev) => ({
-                ...prev,
-                ventOpeningAreaSqIn: Number(event.target.value),
-              }))
-            }
-          />
-        </label>
-
-        <SectionHeading
-          title='Cap And Routing'
-          description='Finish the top profile and keep utilities clear of vent openings.'
-        />
-
-        <label className='flex flex-col gap-1'>
-          <FieldLabel
-            label='Capstone Overhang (in)'
-            tip='A modest 1 to 2 in overhang usually improves water shedding and gives the cap more visual presence.'
-          />
-          <input
-            className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
-            aria-label='Capstone Overhang in inches'
-            title='Capstone Overhang in inches'
-            type='number'
-            min={0}
-            step={0.25}
-            value={input.capstoneOverhangIn}
-            onChange={(event) =>
-              setInput((prev) => ({
-                ...prev,
-                capstoneOverhangIn: Number(event.target.value),
-              }))
-            }
-          />
-        </label>
-
-        <label className='flex flex-col gap-1'>
-          <FieldLabel
-            label='Cap Placement'
-            tip='Outward-only keeps the overhang outside the wall. Symmetric splits the cap extension inward and outward.'
-          />
-          <select
-            className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
-            aria-label='Cap Placement'
-            title='Cap Placement'
-            value={input.capPlacementMode}
-            onChange={(event) =>
-              setInput((prev) => ({
-                ...prev,
-                capPlacementMode: event.target
-                  .value as MasonryInput['capPlacementMode'],
-              }))
-            }
-          >
-            <option value='outward-only'>Outward Only</option>
-            <option value='symmetric'>Symmetric</option>
-          </select>
-        </label>
-
-        {input.fuelType !== 'wood' && (
-          <label className='flex flex-col gap-1 sm:col-span-2'>
-            <FieldLabel
-              label='Gas Line Entry Angle (deg)'
-              tip='Use this to route the gas line away from planned vent axes. The engine can auto-shift the entry if it conflicts with a vent.'
+        {showAdvanced && (
+          <>
+            <SectionHeading
+              title='Course Strategy'
+              description='Use practical presets for shim spacers or vent-heavy accent courses while keeping running bond behavior.'
             />
-            <input
-              className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
-              aria-label='Gas Line Entry Angle in degrees'
-              title='Gas Line Entry Angle in degrees'
-              type='number'
-              min={0}
-              max={359}
-              value={input.gasLineEntryAngleDeg}
-              onChange={(event) =>
-                setInput((prev) => ({
-                  ...prev,
-                  gasLineEntryAngleDeg: Number(event.target.value),
-                }))
-              }
+
+            <label className='flex flex-col gap-1 sm:col-span-2'>
+              <FieldLabel
+                label='Wall Course Strategy'
+                tip='Uniform keeps a consistent course recipe. Shim Spacer inserts thin units between primary units. Vented Accent applies a more open alternate course.'
+              />
+              <select
+                className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+                aria-label='Wall Course Strategy'
+                title='Wall Course Strategy'
+                value={courseStrategy}
+                onChange={(event) =>
+                  setInput((prev) => ({
+                    ...prev,
+                    wallCourseStrategy: event.target.value as NonNullable<
+                      MasonryInput['wallCourseStrategy']
+                    >,
+                  }))
+                }
+              >
+                <option value='uniform'>Uniform Running Bond</option>
+                <option value='shim-spacer'>Shim Spacer Course</option>
+                <option value='vented-accent'>Vented Accent Course</option>
+              </select>
+            </label>
+
+            {courseStrategy === 'shim-spacer' && (
+              <div className='rounded-md border border-amber-700/20 bg-white/60 p-3 sm:col-span-2'>
+                <h4 className='text-xs font-semibold uppercase tracking-[0.12em] text-amber-900/75'>
+                  Shim Spacer Settings
+                </h4>
+                <p className='mt-1 text-xs text-amber-900/70'>
+                  Configure a thin spacer inserted between larger units. Spacer
+                  height should generally match the adjacent course height. The
+                  engine adaptively spaces inserts to match curve geometry.
+                </p>
+                <div className='mt-2 grid gap-2 sm:grid-cols-4'>
+                  <label className='flex flex-col gap-1'>
+                    <span className='text-xs font-medium text-amber-900'>
+                      Spacer Length (in)
+                    </span>
+                    <input
+                      className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                      type='number'
+                      min={0.5}
+                      step={0.125}
+                      value={input.shimUnitLengthIn ?? 1.25}
+                      onChange={(event) =>
+                        setInput((prev) => ({
+                          ...prev,
+                          shimUnitLengthIn: Number(event.target.value),
+                        }))
+                      }
+                    />
+                  </label>
+                  <label className='flex flex-col gap-1'>
+                    <span className='text-xs font-medium text-amber-900'>
+                      Spacer Width (in)
+                    </span>
+                    <input
+                      className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                      type='number'
+                      min={0.5}
+                      step={0.125}
+                      value={input.shimUnitWidthIn ?? 1.125}
+                      onChange={(event) =>
+                        setInput((prev) => ({
+                          ...prev,
+                          shimUnitWidthIn: Number(event.target.value),
+                        }))
+                      }
+                    />
+                  </label>
+                  <label className='flex flex-col gap-1'>
+                    <span className='text-xs font-medium text-amber-900'>
+                      Spacer Height (in)
+                    </span>
+                    <input
+                      className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                      type='number'
+                      min={0.5}
+                      step={0.125}
+                      value={input.shimUnitHeightIn ?? 2.25}
+                      onChange={(event) =>
+                        setInput((prev) => ({
+                          ...prev,
+                          shimUnitHeightIn: Number(event.target.value),
+                        }))
+                      }
+                    />
+                  </label>
+                  <label className='flex flex-col gap-1'>
+                    <span className='text-xs font-medium text-amber-900'>
+                      Max Shim Share (%)
+                    </span>
+                    <input
+                      className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                      type='number'
+                      min={10}
+                      max={33}
+                      step={1}
+                      value={input.shimMaxSharePct ?? 25}
+                      onChange={(event) =>
+                        setInput((prev) => ({
+                          ...prev,
+                          shimMaxSharePct: Number(event.target.value),
+                        }))
+                      }
+                    />
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {courseStrategy === 'vented-accent' && (
+              <div className='rounded-md border border-amber-700/20 bg-white/60 p-3 sm:col-span-2'>
+                <h4 className='text-xs font-semibold uppercase tracking-[0.12em] text-amber-900/75'>
+                  Vented Accent Settings
+                </h4>
+                <p className='mt-1 text-xs text-amber-900/70'>
+                  Define a repeating cycle where one course uses larger joints
+                  and an alternate orientation for airflow.
+                </p>
+                <div className='mt-2 grid grid-cols-2 gap-2 lg:grid-cols-4'>
+                  <label className='flex flex-col gap-1'>
+                    <span className='min-h-15 text-xs font-medium leading-5 text-amber-900'>
+                      Joint Multiplier
+                    </span>
+                    <input
+                      className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                      type='number'
+                      min={1}
+                      step={0.1}
+                      value={input.accentJointMultiplier ?? 1.75}
+                      onChange={(event) =>
+                        setInput((prev) => ({
+                          ...prev,
+                          accentJointMultiplier: Number(event.target.value),
+                        }))
+                      }
+                    />
+                  </label>
+                  <label className='flex flex-col gap-1'>
+                    <span className='min-h-15 text-xs font-medium leading-5 text-amber-900'>
+                      Cycle Length
+                    </span>
+                    <input
+                      className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                      type='number'
+                      min={2}
+                      step={1}
+                      value={input.accentCycleLength ?? 3}
+                      onChange={(event) =>
+                        setInput((prev) => ({
+                          ...prev,
+                          accentCycleLength: Number(event.target.value),
+                        }))
+                      }
+                    />
+                  </label>
+                  <label className='flex flex-col gap-1'>
+                    <span className='min-h-15 text-xs font-medium leading-5 text-amber-900'>
+                      Accent Course Position
+                    </span>
+                    <input
+                      className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                      type='number'
+                      min={1}
+                      step={1}
+                      value={input.accentCoursePosition ?? 2}
+                      onChange={(event) =>
+                        setInput((prev) => ({
+                          ...prev,
+                          accentCoursePosition: Number(event.target.value),
+                        }))
+                      }
+                    />
+                  </label>
+                  <label className='flex flex-col gap-1'>
+                    <span className='min-h-15 text-xs font-medium leading-5 text-amber-900'>
+                      Accent Orientation
+                    </span>
+                    <select
+                      className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                      aria-label='Accent Orientation'
+                      title='Accent Orientation'
+                      value={input.accentCourseOrientation ?? 'header'}
+                      onChange={(event) =>
+                        setInput((prev) => ({
+                          ...prev,
+                          accentCourseOrientation: event.target
+                            .value as NonNullable<
+                            MasonryInput['accentCourseOrientation']
+                          >,
+                        }))
+                      }
+                    >
+                      <option value='stretcher'>Stretcher</option>
+                      <option value='header'>Header</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+            )}
+
+            <label className='flex flex-col gap-1'>
+              <FieldLabel
+                label='Expansion Gap (in)'
+                tip='This affects liner geometry. It matters most when a steel ring or fire-brick liner needs room to move independently of the outer shell.'
+              />
+              <input
+                className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+                aria-label='Expansion Gap in inches'
+                title='Expansion Gap in inches'
+                type='number'
+                min={0}
+                step={0.125}
+                value={input.expansionGapIn}
+                onChange={(event) =>
+                  setInput((prev) => ({
+                    ...prev,
+                    expansionGapIn: Number(event.target.value),
+                  }))
+                }
+              />
+            </label>
+
+            <label className='flex flex-col gap-1'>
+              <FieldLabel
+                label='Vent Count'
+                tip='Use enough vents to satisfy total open area and to support balanced airflow around the firebox.'
+              />
+              <input
+                className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+                aria-label='Vent Count'
+                title='Vent Count'
+                type='number'
+                min={2}
+                value={input.ventCount}
+                onChange={(event) =>
+                  setInput((prev) => ({
+                    ...prev,
+                    ventCount: Number(event.target.value),
+                  }))
+                }
+              />
+            </label>
+
+            <label className='flex flex-col gap-1'>
+              <FieldLabel
+                label='Vent Opening Area (sq in)'
+                tip='The engine uses this to calculate total open area. Gas features often target a broader 18 to 36 sq in range depending on hardware.'
+              />
+              <input
+                className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+                aria-label='Vent Opening Area in square inches'
+                title='Vent Opening Area in square inches'
+                type='number'
+                min={1}
+                step={0.5}
+                value={input.ventOpeningAreaSqIn}
+                onChange={(event) =>
+                  setInput((prev) => ({
+                    ...prev,
+                    ventOpeningAreaSqIn: Number(event.target.value),
+                  }))
+                }
+              />
+            </label>
+
+            <SectionHeading
+              title='Cap And Routing'
+              description='Finish the top profile and keep utilities clear of vent openings.'
             />
-          </label>
+
+            <label className='flex flex-col gap-1'>
+              <FieldLabel
+                label='Capstone Overhang (in)'
+                tip='A modest 1 to 2 in overhang usually improves water shedding and gives the cap more visual presence.'
+              />
+              <input
+                className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+                aria-label='Capstone Overhang in inches'
+                title='Capstone Overhang in inches'
+                type='number'
+                min={0}
+                step={0.25}
+                value={input.capstoneOverhangIn}
+                onChange={(event) =>
+                  setInput((prev) => ({
+                    ...prev,
+                    capstoneOverhangIn: Number(event.target.value),
+                  }))
+                }
+              />
+            </label>
+
+            <label className='flex flex-col gap-1'>
+              <FieldLabel
+                label='Cap Placement'
+                tip='Outward-only keeps the overhang outside the wall. Symmetric splits the cap extension inward and outward.'
+              />
+              <select
+                className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+                aria-label='Cap Placement'
+                title='Cap Placement'
+                value={input.capPlacementMode}
+                onChange={(event) =>
+                  setInput((prev) => ({
+                    ...prev,
+                    capPlacementMode: event.target
+                      .value as MasonryInput['capPlacementMode'],
+                  }))
+                }
+              >
+                <option value='outward-only'>Outward Only</option>
+                <option value='symmetric'>Symmetric</option>
+              </select>
+            </label>
+
+            {input.fuelType !== 'wood' && (
+              <label className='flex flex-col gap-1 sm:col-span-2'>
+                <FieldLabel
+                  label='Gas Line Entry Angle (deg)'
+                  tip='Use this to route the gas line away from planned vent axes. The engine can auto-shift the entry if it conflicts with a vent.'
+                />
+                <input
+                  className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+                  aria-label='Gas Line Entry Angle in degrees'
+                  title='Gas Line Entry Angle in degrees'
+                  type='number'
+                  min={0}
+                  max={359}
+                  value={input.gasLineEntryAngleDeg}
+                  onChange={(event) =>
+                    setInput((prev) => ({
+                      ...prev,
+                      gasLineEntryAngleDeg: Number(event.target.value),
+                    }))
+                  }
+                />
+              </label>
+            )}
+          </>
         )}
       </div>
     </section>

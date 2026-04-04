@@ -106,7 +106,7 @@ export default function ProjectInfoCard({
       <div className='mt-4 grid gap-4 md:grid-cols-2'>
         <div>
           <h3 className='mb-2 text-sm font-semibold uppercase text-amber-900/80'>
-            Core
+            Build Summary
           </h3>
           <dl className='grid gap-2'>
             <div className='flex justify-between'>
@@ -130,7 +130,7 @@ export default function ProjectInfoCard({
             </div>
 
             <div className='flex justify-between items-center'>
-              <dt className='text-xs text-amber-950/75'>Vent brick indexes</dt>
+              <dt className='text-xs text-amber-950/75'>Vent locations</dt>
               <dd className='flex items-center gap-2 font-semibold'>
                 <span>
                   {output.ventSpec.ventBrickIndexes.join(', ') || '—'}
@@ -141,7 +141,7 @@ export default function ProjectInfoCard({
                   onClick={() =>
                     copyToClipboard(
                       output.ventSpec.ventBrickIndexes.join(', '),
-                      'Vent indexes',
+                      'Vent locations',
                     )
                   }
                 >
@@ -173,7 +173,7 @@ export default function ProjectInfoCard({
 
         <div>
           <h3 className='mb-2 text-sm font-semibold uppercase text-amber-900/80'>
-            Foundation & Capstone
+            Foundation And Cap
           </h3>
           <dl className='grid gap-2'>
             <div className='flex justify-between'>
@@ -187,7 +187,7 @@ export default function ProjectInfoCard({
             </div>
 
             <div className='flex justify-between items-center'>
-              <dt className='text-xs text-amber-950/75'>Foundation advisory</dt>
+              <dt className='text-xs text-amber-950/75'>Foundation check</dt>
               <dd className='flex items-center gap-2'>
                 <span className={riskClass(foundationAdvisory.risk)}>
                   {foundationAdvisory.heading}
@@ -214,9 +214,7 @@ export default function ProjectInfoCard({
         </div>
       </div>
       <details className='mt-4 rounded-lg border border-amber-900/15 bg-white/70 p-3'>
-        <summary className='cursor-pointer font-medium'>
-          Site context & notes
-        </summary>
+        <summary className='cursor-pointer font-medium'>Site notes</summary>
         <div className='mt-2 text-sm text-amber-900/85'>
           <p>
             Site context:{' '}
@@ -236,7 +234,7 @@ export default function ProjectInfoCard({
         </div>
       </details>
       <details className='mt-3 rounded-lg border border-amber-900/15 bg-white/70 p-3'>
-        <summary className='cursor-pointer font-medium'>Cut plan notes</summary>
+        <summary className='cursor-pointer font-medium'>Cut notes</summary>
         <div className='mt-2 text-sm text-amber-900/85'>
           {output.cutPlan.notes.length > 0 ? (
             <ul className='list-disc pl-4'>
@@ -276,7 +274,7 @@ export default function ProjectInfoCard({
             )
           }
         >
-          Copy summary
+          Copy build summary
         </button>
 
         <button

@@ -1,10 +1,7 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import ConfirmDialog from './components/ConfirmDialog';
 import ControlPanel from './components/ControlPanel';
-import {
-  FoundationRiskBadge,
-  FoundationRiskLegend,
-} from './components/FoundationReview';
+import { FoundationRiskBadge } from './components/FoundationReview';
 import SafetyClearanceDiagram from './components/SafetyClearanceDiagram';
 import ProjectInfoCard from './components/ProjectInfoCard';
 import { MasonryEngine } from './engine/MasonryEngine';
@@ -50,6 +47,8 @@ type PendingSnapshotAction = {
   type: 'overwrite' | 'delete';
   snapshot: StoredFirepitProjectSnapshot;
 } | null;
+
+type QuickPresetKey = 'classic-propane' | 'wood-weekend' | 'compact-patio';
 
 function slugifyProjectName(projectName: string): string {
   const slug = projectName
@@ -167,6 +166,7 @@ export default function App() {
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('');
   const [pendingSnapshotAction, setPendingSnapshotAction] =
     useState<PendingSnapshotAction>(null);
+  const [showWorkspaceTools, setShowWorkspaceTools] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const hasInitializedAutosave = useRef(false);
   const hasConfiguredAnalytics = useRef(false);
@@ -396,6 +396,7 @@ export default function App() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     setProjectNotice(`Downloaded project JSON for ${projectName}.`);
+    setShowWorkspaceTools(false);
   };
 
   const handleImportButtonClick = () => {
@@ -442,6 +443,7 @@ export default function App() {
       label: 'Saved snapshot',
       timestamp: snapshot.savedAt,
     });
+    setShowWorkspaceTools(false);
   };
 
   const handleLoadSnapshot = () => {
@@ -462,6 +464,7 @@ export default function App() {
       label: 'Loaded snapshot',
       timestamp: snapshot.savedAt,
     });
+    setShowWorkspaceTools(false);
   };
 
   const handleOverwriteSnapshot = () => {
@@ -534,6 +537,7 @@ export default function App() {
     }
 
     setPendingSnapshotAction(null);
+    setShowWorkspaceTools(false);
   };
 
   const handleImportProject = async (
@@ -559,6 +563,7 @@ export default function App() {
         label: 'Imported project',
         timestamp: parsedProject.savedAt ?? new Date().toISOString(),
       });
+      setShowWorkspaceTools(false);
     } catch (error) {
       setProjectNotice(
         error instanceof Error
@@ -637,6 +642,107 @@ export default function App() {
     };
   }, [input, output]);
 
+  const blockingWarningCodes = new Set([
+    'clearance-too-low',
+    'gas-vent-area-out-of-range',
+    'gas-vent-layout-invalid',
+    'gas-line-near-vent',
+    'course-bearing-risk',
+  ]);
+
+  const hasBlockingWarnings = output.warnings.some((warning) =>
+    blockingWarningCodes.has(warning.code),
+  );
+
+  const nextSteps = useMemo(() => {
+    const steps: Array<{
+      key: string;
+      label: string;
+      status: 'done' | 'todo' | 'info';
+    }> = [
+      {
+        key: 'clearance',
+        label: 'Set structure clearance to at least 10 ft.',
+        status: input.proximityToStructuresFt >= 10 ? 'done' : 'todo',
+      },
+      {
+        key: 'venting',
+        label: 'Keep venting at 18 sq in or more total open area.',
+        status: output.ventSpec.totalOpenAreaSqIn >= 18 ? 'done' : 'todo',
+      },
+      {
+        key: 'cuts',
+        label: output.cutPlan.requiresCutting
+          ? 'Review taper cut guidance before buying material.'
+          : 'No taper cuts required at the current size.',
+        status: output.cutPlan.requiresCutting ? 'todo' : 'done',
+      },
+    ];
+
+    if (input.mortarJointIn > 0) {
+      steps.push({
+        key: 'curing',
+        label: 'Reminder: allow 28 days of mortar curing before heavy use.',
+        status: 'info',
+      });
+    }
+
+    return steps;
+  }, [input.mortarJointIn, input.proximityToStructuresFt, output]);
+
+  const applyQuickPreset = (preset: QuickPresetKey) => {
+    if (preset === 'classic-propane') {
+      setInput((prev) => ({
+        ...prev,
+        planShape: 'circular',
+        innerDiameterIn: 36,
+        innerWidthIn: 36,
+        innerDepthIn: 36,
+        wallHeightIn: 18,
+        fuelType: 'propane',
+        linerType: 'steel-ring',
+        ventCount: 4,
+        ventOpeningAreaSqIn: 5,
+        proximityToStructuresFt: Math.max(prev.proximityToStructuresFt, 12),
+      }));
+      setProjectNotice('Applied quick preset: Classic 36 in propane ring.');
+      return;
+    }
+
+    if (preset === 'wood-weekend') {
+      setInput((prev) => ({
+        ...prev,
+        planShape: 'circular',
+        innerDiameterIn: 42,
+        innerWidthIn: 42,
+        innerDepthIn: 42,
+        wallHeightIn: 16,
+        fuelType: 'wood',
+        linerType: 'fire-brick',
+        ventCount: 4,
+        ventOpeningAreaSqIn: 5,
+        proximityToStructuresFt: Math.max(prev.proximityToStructuresFt, 12),
+      }));
+      setProjectNotice('Applied quick preset: Weekend 42 in wood pit.');
+      return;
+    }
+
+    setInput((prev) => ({
+      ...prev,
+      planShape: 'circular',
+      innerDiameterIn: 30,
+      innerWidthIn: 30,
+      innerDepthIn: 30,
+      wallHeightIn: 16,
+      fuelType: 'natural-gas',
+      linerType: 'steel-ring',
+      ventCount: 4,
+      ventOpeningAreaSqIn: 5,
+      proximityToStructuresFt: Math.max(prev.proximityToStructuresFt, 10),
+    }));
+    setProjectNotice('Applied quick preset: Compact 30 in patio gas pit.');
+  };
+
   const siteTabs: Array<{ value: SiteView; label: string }> = [
     { value: 'designer', label: 'Designer' },
     { value: 'guide', label: 'Instructions' },
@@ -666,195 +772,295 @@ export default function App() {
         onCancel={handleCancelSnapshotAction}
       />
 
-      <header className='mb-5 card-rise rounded-2xl border border-amber-900/20 bg-amber-100/70 p-5 shadow-lg backdrop-blur'>
-        <div className='flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between'>
+      <header className='mb-5 card-rise rounded-2xl border border-amber-900/20 bg-amber-100/70 p-4 shadow-lg backdrop-blur'>
+        <div className='flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between'>
           <div>
             <p className='text-xs font-semibold uppercase tracking-[0.2em] text-amber-900/75'>
               Fire Pit Design Studio
             </p>
-            <h1 className='mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl'>
+            <h1 className='mt-1 text-2xl font-extrabold tracking-tight sm:text-[2.05rem]'>
               Parametric Masonry Designer
             </h1>
-            <p className='mt-2 max-w-3xl text-sm leading-6 sm:text-base'>
+            <p className='mt-1.5 max-w-2xl text-sm leading-5 sm:text-[15px]'>
               Plan masonry fire pits with real unit dimensions, venting rules,
               safety checks, material estimates, and build-focused reference
               guidance.
             </p>
           </div>
 
-          <nav className='flex flex-wrap gap-2' aria-label='Site sections'>
-            {siteTabs.map((tab) => {
-              const selected = siteView === tab.value;
+          <div className='flex flex-wrap items-center justify-end gap-2'>
+            <nav className='flex flex-wrap gap-2' aria-label='Site sections'>
+              {siteTabs.map((tab) => {
+                const selected = siteView === tab.value;
 
-              return (
-                <button
-                  key={tab.value}
-                  type='button'
-                  className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-                    selected
-                      ? 'bg-amber-900 text-amber-50'
-                      : 'bg-white/70 text-amber-900 hover:bg-white'
-                  }`}
-                  onClick={() => handleOpenSiteView(tab.value)}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
+                return (
+                  <button
+                    key={tab.value}
+                    type='button'
+                    className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
+                      selected
+                        ? 'bg-amber-900 text-amber-50'
+                        : 'bg-white/70 text-amber-900 hover:bg-white'
+                    }`}
+                    onClick={() => handleOpenSiteView(tab.value)}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </nav>
 
-        <details className='group mt-4 rounded-2xl border border-amber-900/20 bg-white/35'>
-          <summary className='cursor-pointer list-none px-4 py-3'>
-            <div className='flex items-center justify-between gap-3'>
-              <div>
-                <p className='text-xs font-semibold uppercase tracking-[0.2em] text-amber-900/70'>
-                  Project Workspace
-                </p>
-                <p className='mt-1 text-sm text-amber-900/80'>
-                  Name, import/export, autosave, and snapshot controls.
-                </p>
-              </div>
-              <span className='rounded-full border border-amber-900/20 bg-amber-50/70 px-3 py-1 text-xs font-semibold text-amber-900 transition-transform group-open:rotate-180'>
-                Expand
-              </span>
-            </div>
-          </summary>
-
-          <div className='border-t border-amber-900/15 px-4 pb-4 pt-3'>
-            <div className='flex flex-wrap items-center gap-2'>
-              <label className='flex min-w-[240px] flex-1 flex-col gap-1'>
-                <span className='text-xs font-semibold uppercase tracking-[0.2em] text-amber-900/70'>
-                  Project Name
-                </span>
-                <input
-                  className='rounded-xl border border-amber-900/20 bg-white/80 px-3 py-2 text-sm font-medium text-amber-950'
-                  aria-label='Project Name'
-                  title='Project Name'
-                  value={projectName}
-                  onChange={(event) => setProjectName(event.target.value)}
-                />
-              </label>
+            {!showWorkspaceTools && (
               <button
                 type='button'
-                className='rounded-full border border-amber-900/20 bg-white/80 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-white'
-                onClick={handleExportProject}
+                className='rounded-full border border-amber-900/20 bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-amber-900 hover:bg-white'
+                onClick={() => setShowWorkspaceTools(true)}
+                aria-controls='project-workspace-panel'
               >
-                Save Project JSON
+                Open Workspace Tools
               </button>
-              <button
-                type='button'
-                className='rounded-full border border-amber-900/20 bg-white/80 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-white'
-                onClick={handleImportButtonClick}
-              >
-                Import Project
-              </button>
-              <button
-                type='button'
-                className='rounded-full border border-amber-900/20 bg-amber-50/80 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-amber-50'
-                onClick={handleResetProject}
-              >
-                New Project
-              </button>
-              <button
-                type='button'
-                className='rounded-full border border-amber-900/20 bg-amber-900 px-4 py-2 text-sm font-semibold text-amber-50 hover:bg-amber-950'
-                onClick={handleSaveSnapshot}
-              >
-                Save As Snapshot
-              </button>
-              <input
-                ref={fileInputRef}
-                type='file'
-                accept='application/json,.json'
-                className='hidden'
-                aria-label='Import project JSON'
-                onChange={handleImportProject}
-              />
-              <p className='text-sm text-amber-900/75'>
-                Projects autosave in this browser and can also be exported or
-                imported as JSON.
-              </p>
-            </div>
-
-            <div className='mt-3 flex flex-wrap items-end gap-2'>
-              <label className='flex min-w-[260px] flex-1 flex-col gap-1'>
-                <span className='text-xs font-semibold uppercase tracking-[0.2em] text-amber-900/70'>
-                  Browser Snapshots
-                </span>
-                <select
-                  className='rounded-xl border border-amber-900/20 bg-white/80 px-3 py-2 text-sm text-amber-950'
-                  aria-label='Browser Snapshots'
-                  title='Browser Snapshots'
-                  value={selectedSnapshotId}
-                  onChange={(event) =>
-                    setSelectedSnapshotId(event.target.value)
-                  }
-                >
-                  <option value=''>No snapshot selected</option>
-                  {snapshots.map((snapshot) => (
-                    <option key={snapshot.id} value={snapshot.id}>
-                      {snapshot.projectName ?? DEFAULT_PROJECT_NAME} -{' '}
-                      {formatProjectTimestamp(snapshot.savedAt)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                type='button'
-                className='rounded-full border border-amber-900/20 bg-white/80 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50'
-                onClick={handleLoadSnapshot}
-                disabled={!selectedSnapshotId}
-              >
-                Load Snapshot
-              </button>
-              <button
-                type='button'
-                className='rounded-full border border-amber-900/20 bg-amber-900 px-4 py-2 text-sm font-semibold text-amber-50 hover:bg-amber-950 disabled:cursor-not-allowed disabled:opacity-50'
-                onClick={handleOverwriteSnapshot}
-                disabled={!selectedSnapshotId}
-              >
-                Overwrite Snapshot
-              </button>
-              <button
-                type='button'
-                className='rounded-full border border-red-800/20 bg-red-50 px-4 py-2 text-sm font-semibold text-red-900 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50'
-                onClick={handleDeleteSnapshot}
-                disabled={!selectedSnapshotId}
-              >
-                Delete Snapshot
-              </button>
-            </div>
-
-            {projectStatus && (
-              <div className='mt-3 rounded-xl border border-amber-900/15 bg-white/70 px-3 py-2 text-sm text-amber-950/85'>
-                <strong>{projectStatus.label}</strong>: {projectName} at{' '}
-                {formatProjectTimestamp(projectStatus.timestamp)}.
-              </div>
-            )}
-
-            {projectNotice && (
-              <div className='mt-3 rounded-xl border border-amber-900/15 bg-white/70 px-3 py-2 text-sm text-amber-950/85'>
-                {projectNotice}
-              </div>
             )}
           </div>
-        </details>
+        </div>
+
+        {showWorkspaceTools && (
+          <details
+            open
+            onToggle={(event) =>
+              setShowWorkspaceTools(event.currentTarget.open)
+            }
+            className='group mt-3 rounded-2xl border border-amber-900/20 bg-white/35'
+            id='project-workspace-panel'
+          >
+            <summary className='cursor-pointer list-none px-4 py-3'>
+              <div className='flex items-center justify-between gap-3'>
+                <div>
+                  <p className='text-xs font-semibold uppercase tracking-[0.2em] text-amber-900/70'>
+                    Project Workspace
+                  </p>
+                  <p className='mt-1 text-sm text-amber-900/80'>
+                    Name, import/export, autosave, and snapshot controls.
+                  </p>
+                </div>
+                <span className='rounded-full border border-amber-900/20 bg-amber-50/70 px-3 py-1 text-xs font-semibold text-amber-900'>
+                  Collapse
+                </span>
+              </div>
+            </summary>
+
+            <div className='border-t border-amber-900/15 px-4 pb-4 pt-3'>
+              <div className='flex flex-wrap items-center gap-2'>
+                <label className='flex min-w-[240px] flex-1 flex-col gap-1'>
+                  <span className='text-xs font-semibold uppercase tracking-[0.2em] text-amber-900/70'>
+                    Project Name
+                  </span>
+                  <input
+                    className='rounded-xl border border-amber-900/20 bg-white/80 px-3 py-2 text-sm font-medium text-amber-950'
+                    aria-label='Project Name'
+                    title='Project Name'
+                    value={projectName}
+                    onChange={(event) => setProjectName(event.target.value)}
+                  />
+                </label>
+                <button
+                  type='button'
+                  className='rounded-full border border-amber-900/20 bg-white/80 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-white'
+                  onClick={handleExportProject}
+                >
+                  Save Project JSON
+                </button>
+                <button
+                  type='button'
+                  className='rounded-full border border-amber-900/20 bg-white/80 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-white'
+                  onClick={handleImportButtonClick}
+                >
+                  Import Project
+                </button>
+                <button
+                  type='button'
+                  className='rounded-full border border-amber-900/20 bg-amber-50/80 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-amber-50'
+                  onClick={handleResetProject}
+                >
+                  New Project
+                </button>
+                <button
+                  type='button'
+                  className='rounded-full border border-amber-900/20 bg-amber-900 px-4 py-2 text-sm font-semibold text-amber-50 hover:bg-amber-950'
+                  onClick={handleSaveSnapshot}
+                >
+                  Save As Snapshot
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type='file'
+                  accept='application/json,.json'
+                  className='hidden'
+                  aria-label='Import project JSON'
+                  onChange={handleImportProject}
+                />
+                <p className='text-sm text-amber-900/75'>
+                  Projects autosave in this browser and can also be exported or
+                  imported as JSON.
+                </p>
+              </div>
+
+              <div className='mt-3 flex flex-wrap items-end gap-2'>
+                <label className='flex min-w-[260px] flex-1 flex-col gap-1'>
+                  <span className='text-xs font-semibold uppercase tracking-[0.2em] text-amber-900/70'>
+                    Browser Snapshots
+                  </span>
+                  <select
+                    className='rounded-xl border border-amber-900/20 bg-white/80 px-3 py-2 text-sm text-amber-950'
+                    aria-label='Browser Snapshots'
+                    title='Browser Snapshots'
+                    value={selectedSnapshotId}
+                    onChange={(event) =>
+                      setSelectedSnapshotId(event.target.value)
+                    }
+                  >
+                    <option value=''>No snapshot selected</option>
+                    {snapshots.map((snapshot) => (
+                      <option key={snapshot.id} value={snapshot.id}>
+                        {snapshot.projectName ?? DEFAULT_PROJECT_NAME} -{' '}
+                        {formatProjectTimestamp(snapshot.savedAt)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type='button'
+                  className='rounded-full border border-amber-900/20 bg-white/80 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50'
+                  onClick={handleLoadSnapshot}
+                  disabled={!selectedSnapshotId}
+                >
+                  Load Snapshot
+                </button>
+                <button
+                  type='button'
+                  className='rounded-full border border-amber-900/20 bg-amber-900 px-4 py-2 text-sm font-semibold text-amber-50 hover:bg-amber-950 disabled:cursor-not-allowed disabled:opacity-50'
+                  onClick={handleOverwriteSnapshot}
+                  disabled={!selectedSnapshotId}
+                >
+                  Overwrite Snapshot
+                </button>
+                <button
+                  type='button'
+                  className='rounded-full border border-red-800/20 bg-red-50 px-4 py-2 text-sm font-semibold text-red-900 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50'
+                  onClick={handleDeleteSnapshot}
+                  disabled={!selectedSnapshotId}
+                >
+                  Delete Snapshot
+                </button>
+              </div>
+
+              {projectStatus && (
+                <div className='mt-3 rounded-xl border border-amber-900/15 bg-white/70 px-3 py-2 text-sm text-amber-950/85'>
+                  <strong>{projectStatus.label}</strong>: {projectName} at{' '}
+                  {formatProjectTimestamp(projectStatus.timestamp)}.
+                </div>
+              )}
+
+              {projectNotice && (
+                <div className='mt-3 rounded-xl border border-amber-900/15 bg-white/70 px-3 py-2 text-sm text-amber-950/85'>
+                  {projectNotice}
+                </div>
+              )}
+            </div>
+          </details>
+        )}
       </header>
 
       {siteView === 'designer' ? (
         <div className='grid gap-4 lg:grid-cols-[360px_1fr]'>
-          <ControlPanel
-            input={input}
-            setInput={setInput}
-            noCutGuidance={noCutGuidance}
-          />
+          <div className='space-y-4'>
+            <section className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg'>
+              <p className='text-xs font-semibold uppercase tracking-[0.15em] text-amber-900/75'>
+                Quick Start
+              </p>
+              <p className='mt-2 text-sm text-amber-900/80'>
+                Pick a starter setup, then fine-tune dimensions on the left.
+              </p>
+              <div className='mt-3 flex flex-wrap gap-2'>
+                <button
+                  type='button'
+                  className='rounded-full border border-amber-900/20 bg-white/80 px-3 py-1.5 text-xs font-semibold text-amber-950 hover:bg-white'
+                  onClick={() => applyQuickPreset('classic-propane')}
+                >
+                  Classic 36 in Propane
+                </button>
+                <button
+                  type='button'
+                  className='rounded-full border border-amber-900/20 bg-white/80 px-3 py-1.5 text-xs font-semibold text-amber-950 hover:bg-white'
+                  onClick={() => applyQuickPreset('wood-weekend')}
+                >
+                  Weekend 42 in Wood
+                </button>
+                <button
+                  type='button'
+                  className='rounded-full border border-amber-900/20 bg-white/80 px-3 py-1.5 text-xs font-semibold text-amber-950 hover:bg-white'
+                  onClick={() => applyQuickPreset('compact-patio')}
+                >
+                  Compact 30 in Patio Gas
+                </button>
+              </div>
+            </section>
+
+            <ControlPanel
+              input={input}
+              setInput={setInput}
+              noCutGuidance={noCutGuidance}
+            />
+          </div>
 
           <section className='min-w-0 space-y-4'>
+            <div className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg'>
+              <div className='flex flex-wrap items-center justify-between gap-2'>
+                <p className='text-xs font-semibold uppercase tracking-[0.15em] text-amber-900/75'>
+                  What To Do Next
+                </p>
+                <span
+                  className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                    hasBlockingWarnings
+                      ? 'border-red-800/25 bg-red-100 text-red-900'
+                      : 'border-emerald-800/25 bg-emerald-100 text-emerald-900'
+                  }`}
+                >
+                  {hasBlockingWarnings
+                    ? 'Address safety items first'
+                    : 'Ready to plan build'}
+                </span>
+              </div>
+              <ul className='mt-3 space-y-2'>
+                {nextSteps.map((step) => (
+                  <li
+                    key={step.key}
+                    className='flex items-start gap-2 rounded-lg border border-amber-900/15 bg-white/70 px-3 py-2 text-sm text-amber-950/90'
+                  >
+                    <span
+                      className={`mt-0.5 inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold ${
+                        step.status === 'done'
+                          ? 'bg-emerald-600 text-emerald-50'
+                          : step.status === 'todo'
+                            ? 'bg-amber-200 text-amber-900'
+                            : 'bg-sky-200 text-sky-900'
+                      }`}
+                    >
+                      {step.status === 'done'
+                        ? 'OK'
+                        : step.status === 'todo'
+                          ? '!'
+                          : 'i'}
+                    </span>
+                    <span>{step.label}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
             <div className='card-rise grid gap-3 rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg sm:grid-cols-3'>
               <div>
                 <p className='text-xs uppercase tracking-wide text-amber-950/75'>
-                  Units/Course
+                  Bricks Per Layer
                 </p>
                 <p className='text-2xl font-bold'>
                   {output.unitsPerCourseRounded}
@@ -868,7 +1074,7 @@ export default function App() {
               </div>
               <div>
                 <p className='text-xs uppercase tracking-wide text-amber-950/75'>
-                  Plan Shape
+                  Shape
                 </p>
                 <p className='text-2xl font-bold'>{output.planShape}</p>
               </div>
@@ -908,7 +1114,7 @@ export default function App() {
             <div className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg'>
               <div className='flex flex-wrap items-center justify-between gap-2'>
                 <p className='text-xs uppercase tracking-wide text-amber-950/75'>
-                  Course Strategy
+                  Build Method
                 </p>
                 <span className='rounded-full border border-amber-900/20 bg-white px-3 py-1 text-xs font-semibold text-amber-950'>
                   {output.courseStrategy.strategy}
@@ -952,10 +1158,6 @@ export default function App() {
                   Vent opening marker
                 </span>
               </div>
-            </div>
-
-            <div className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg'>
-              <FoundationRiskLegend />
             </div>
 
             <div className='card-rise grid gap-3 rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg sm:grid-cols-2 lg:grid-cols-5'>
@@ -1008,42 +1210,24 @@ export default function App() {
               </div>
             </div>
 
-            {output.warnings.length > 0 && (
-              <div className='card-rise rounded-2xl border border-red-800/25 bg-red-50 p-4 text-red-900 shadow-lg'>
-                {output.warnings.map((warning) => (
-                  <p key={warning.code} className='text-sm font-medium'>
-                    {warning.message}
-                    {warning.actualValue !== undefined && (
-                      <>
-                        {' '}
-                        Entered: {warning.actualValue.toFixed(1)}
-                        {warning.code === 'clearance-too-low'
-                          ? ' ft'
-                          : warning.code === 'gas-line-near-vent'
-                            ? ' deg'
-                            : ''}
-                        .
-                      </>
-                    )}
-                  </p>
-                ))}
-              </div>
-            )}
-
             <div className='flex gap-2'>
               <button
                 className={`rounded-full px-4 py-2 text-sm font-semibold ${view === '3d' ? 'bg-amber-900 text-amber-50' : 'bg-amber-100 text-amber-900'}`}
                 onClick={() => setView('3d')}
               >
-                3D Stage
+                3D Preview
               </button>
               <button
                 className={`rounded-full px-4 py-2 text-sm font-semibold ${view === 'construction' ? 'bg-amber-900 text-amber-50' : 'bg-amber-100 text-amber-900'}`}
                 onClick={() => setView('construction')}
               >
-                Construction Mode
+                Build Plan
               </button>
             </div>
+            <p className='text-xs text-amber-900/75'>
+              3D Preview: drag to rotate and scroll to zoom. Build Plan: use
+              this for print-ready layout and cut references.
+            </p>
 
             <Suspense
               fallback={

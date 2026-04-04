@@ -9,6 +9,7 @@ import {
   termsOfUseSections,
   type ContentSection,
 } from '../content/siteContent';
+import { FoundationRiskLegend } from './FoundationReview';
 
 export type LibraryView = 'guide' | 'tips' | 'research' | 'privacy' | 'terms';
 
@@ -104,6 +105,22 @@ export default function KnowledgeCenter({ view }: KnowledgeCenterProps) {
           <SectionCard key={section.title} section={section} />
         ))}
       </div>
+
+      {view === 'guide' && (
+        <section className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/80 p-5 shadow-lg'>
+          <h3 className='text-lg font-semibold text-amber-950'>
+            Foundation Review Scale
+          </h3>
+          <p className='mt-2 text-sm leading-6 text-amber-950/80'>
+            Use this legend when reading foundation advisory output. It is a
+            planning guide, not a substitute for local engineering or code
+            review.
+          </p>
+          <div className='mt-3'>
+            <FoundationRiskLegend />
+          </div>
+        </section>
+      )}
 
       {(view === 'guide' || view === 'tips' || view === 'research') && (
         <section className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/80 p-5 shadow-lg'>
