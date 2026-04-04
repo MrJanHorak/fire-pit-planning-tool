@@ -70,28 +70,14 @@ export default function ControlPanel({
             Design Inputs
           </h2>
           <p className='mt-1 text-sm text-amber-900/75'>
-            Start with size, fuel, and safety distance. Expand advanced options
-            only if you need detailed tuning.
+            Work from layout to materials, then finish with fuel and safety.
           </p>
         </div>
       </div>
 
-      <div className='mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-900/15 bg-white/65 px-3 py-2'>
-        <p className='text-xs font-medium text-amber-900/80'>
-          Beginner view shows core build decisions first.
-        </p>
-        <button
-          type='button'
-          className='rounded-full border border-amber-900/25 bg-white px-3 py-1 text-xs font-semibold text-amber-950 hover:bg-amber-50'
-          onClick={() => setShowAdvanced((value) => !value)}
-        >
-          {showAdvanced ? 'Hide Advanced Options' : 'Show Advanced Options'}
-        </button>
-      </div>
-
       <div className='control-panel-grid grid gap-3 sm:grid-cols-2'>
         <SectionHeading
-          title='Layout'
+          title='1 Layout'
           description='Set the shape, opening size, and overall wall mass.'
         />
 
@@ -125,6 +111,11 @@ export default function ControlPanel({
             <option value='rectangular'>Rectangular</option>
           </select>
         </label>
+
+        <SectionHeading
+          title='2 Materials'
+          description='Select wall and cap units, then tune orientation details.'
+        />
 
         <label className='flex flex-col gap-1 sm:col-span-2'>
           <FieldLabel
@@ -641,8 +632,8 @@ export default function ControlPanel({
         </label>
 
         <SectionHeading
-          title='Foundation Context'
-          description='The engine keeps the baseline 8 in angular stone model; this context adds site-aware review guidance.'
+          title='3 Fuel + Safety'
+          description='Set setback, site context, fuel behavior, and thermal controls.'
         />
 
         <label className='flex flex-col gap-1 sm:col-span-2'>
@@ -726,11 +717,6 @@ export default function ControlPanel({
           </select>
         </label>
 
-        <SectionHeading
-          title='Fuel And Thermal'
-          description='Choose how the pit behaves under heat and how it vents.'
-        />
-
         <label className='flex flex-col gap-1'>
           <FieldLabel
             label='Fuel Type'
@@ -799,10 +785,25 @@ export default function ControlPanel({
           </select>
         </label>
 
+        <div className='sm:col-span-2 rounded-xl border border-amber-900/15 bg-white/65 px-3 py-2'>
+          <div className='flex flex-wrap items-center justify-between gap-2'>
+            <p className='text-xs font-medium text-amber-900/80'>
+              4 Advanced controls for vent routing and course tuning.
+            </p>
+            <button
+              type='button'
+              className='rounded-full border border-amber-900/25 bg-white px-3 py-1 text-xs font-semibold text-amber-950 hover:bg-amber-50'
+              onClick={() => setShowAdvanced((value) => !value)}
+            >
+              {showAdvanced ? 'Hide Advanced Options' : 'Show Advanced Options'}
+            </button>
+          </div>
+        </div>
+
         {showAdvanced && (
           <>
             <SectionHeading
-              title='Course Strategy'
+              title='4 Advanced'
               description='Use practical presets for shim spacers or vent-heavy accent courses while keeping running bond behavior.'
             />
 

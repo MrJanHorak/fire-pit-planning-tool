@@ -52,7 +52,151 @@ type PendingSnapshotAction = {
   snapshot: StoredFirepitProjectSnapshot;
 } | null;
 
-type QuickPresetKey = 'classic-propane' | 'wood-weekend' | 'compact-patio';
+type QuickPresetKey =
+  | 'classic-propane'
+  | 'wood-weekend'
+  | 'compact-patio'
+  | 'entertainer-wood'
+  | 'balanced-gas'
+  | 'square-social'
+  | 'rectangular-host';
+
+type QuickPresetGroupKey = 'round-popular' | 'more-shapes';
+
+const QUICK_PRESET_CONFIG: Record<
+  QuickPresetKey,
+  { label: string; detail: string }
+> = {
+  'classic-propane': {
+    label: 'Classic 36 in Propane',
+    detail: 'Balanced default for most patios.',
+  },
+  'wood-weekend': {
+    label: 'Weekend 42 in Wood',
+    detail: 'Larger flame view for gatherings.',
+  },
+  'compact-patio': {
+    label: 'Compact 30 in Patio Gas',
+    detail: 'Smaller footprint for tighter spaces.',
+  },
+  'entertainer-wood': {
+    label: 'Entertainer 48 in Wood',
+    detail: 'Wide opening and taller social pit profile.',
+  },
+  'balanced-gas': {
+    label: 'Balanced 36 in Natural Gas',
+    detail: '36 in geometry with fixed gas utility feed.',
+  },
+  'square-social': {
+    label: 'Square 36 in Wood',
+    detail: 'Crisp square layout with a broad seating edge.',
+  },
+  'rectangular-host': {
+    label: 'Rectangular 42 x 30 Propane',
+    detail: 'Longer front edge for hosting and seating lines.',
+  },
+};
+
+const QUICK_PRESET_GROUPS: Array<{
+  key: QuickPresetGroupKey;
+  label: string;
+  description: string;
+  presetKeys: QuickPresetKey[];
+}> = [
+  {
+    key: 'round-popular',
+    label: 'Round Popular',
+    description: 'Most common circular baseline layouts.',
+    presetKeys: ['classic-propane', 'wood-weekend', 'compact-patio'],
+  },
+  {
+    key: 'more-shapes',
+    label: 'More Shapes',
+    description: 'Larger round plus square and rectangular options.',
+    presetKeys: [
+      'entertainer-wood',
+      'balanced-gas',
+      'square-social',
+      'rectangular-host',
+    ],
+  },
+];
+
+function detectActiveQuickPreset(input: MasonryInput): QuickPresetKey | null {
+  if (
+    input.planShape === 'circular' &&
+    input.innerDiameterIn === 36 &&
+    input.wallHeightIn === 18 &&
+    input.fuelType === 'propane' &&
+    input.linerType === 'steel-ring'
+  ) {
+    return 'classic-propane';
+  }
+
+  if (
+    input.planShape === 'circular' &&
+    input.innerDiameterIn === 42 &&
+    input.wallHeightIn === 16 &&
+    input.fuelType === 'wood' &&
+    input.linerType === 'fire-brick'
+  ) {
+    return 'wood-weekend';
+  }
+
+  if (
+    input.planShape === 'circular' &&
+    input.innerDiameterIn === 30 &&
+    input.wallHeightIn === 16 &&
+    input.fuelType === 'natural-gas' &&
+    input.linerType === 'steel-ring'
+  ) {
+    return 'compact-patio';
+  }
+
+  if (
+    input.planShape === 'circular' &&
+    input.innerDiameterIn === 48 &&
+    input.wallHeightIn === 18 &&
+    input.fuelType === 'wood' &&
+    input.linerType === 'fire-brick'
+  ) {
+    return 'entertainer-wood';
+  }
+
+  if (
+    input.planShape === 'circular' &&
+    input.innerDiameterIn === 36 &&
+    input.wallHeightIn === 18 &&
+    input.fuelType === 'natural-gas' &&
+    input.linerType === 'steel-ring'
+  ) {
+    return 'balanced-gas';
+  }
+
+  if (
+    input.planShape === 'square' &&
+    input.innerWidthIn === 36 &&
+    input.innerDepthIn === 36 &&
+    input.wallHeightIn === 18 &&
+    input.fuelType === 'wood' &&
+    input.linerType === 'fire-brick'
+  ) {
+    return 'square-social';
+  }
+
+  if (
+    input.planShape === 'rectangular' &&
+    input.innerWidthIn === 42 &&
+    input.innerDepthIn === 30 &&
+    input.wallHeightIn === 18 &&
+    input.fuelType === 'propane' &&
+    input.linerType === 'steel-ring'
+  ) {
+    return 'rectangular-host';
+  }
+
+  return null;
+}
 
 function slugifyProjectName(projectName: string): string {
   const slug = projectName
@@ -153,6 +297,8 @@ export default function App() {
   const [projectName, setProjectName] = useState<string>(
     () => initialProject?.projectName ?? DEFAULT_PROJECT_NAME,
   );
+  const [quickPresetGroup, setQuickPresetGroup] =
+    useState<QuickPresetGroupKey>('round-popular');
   const [view, setView] = useState<ViewMode>('3d');
   const [siteView, setSiteView] = useState<SiteView>('designer');
   const [projectNotice, setProjectNotice] = useState<string | null>(null);
@@ -667,6 +813,13 @@ export default function App() {
   const hasBlockingWarnings = output.warnings.some((warning) =>
     blockingWarningCodes.has(warning.code),
   );
+  const activeQuickPreset = useMemo(
+    () => detectActiveQuickPreset(input),
+    [input],
+  );
+  const selectedQuickPresetGroup =
+    QUICK_PRESET_GROUPS.find((group) => group.key === quickPresetGroup) ??
+    QUICK_PRESET_GROUPS[0];
 
   const nextSteps = useMemo(() => {
     const steps: Array<{
@@ -738,6 +891,80 @@ export default function App() {
         proximityToStructuresFt: Math.max(prev.proximityToStructuresFt, 12),
       }));
       setProjectNotice('Applied quick preset: Weekend 42 in wood pit.');
+      return;
+    }
+
+    if (preset === 'entertainer-wood') {
+      setInput((prev) => ({
+        ...prev,
+        planShape: 'circular',
+        innerDiameterIn: 48,
+        innerWidthIn: 48,
+        innerDepthIn: 48,
+        wallHeightIn: 18,
+        fuelType: 'wood',
+        linerType: 'fire-brick',
+        ventCount: 6,
+        ventOpeningAreaSqIn: 5,
+        proximityToStructuresFt: Math.max(prev.proximityToStructuresFt, 12),
+      }));
+      setProjectNotice('Applied quick preset: Entertainer 48 in wood pit.');
+      return;
+    }
+
+    if (preset === 'balanced-gas') {
+      setInput((prev) => ({
+        ...prev,
+        planShape: 'circular',
+        innerDiameterIn: 36,
+        innerWidthIn: 36,
+        innerDepthIn: 36,
+        wallHeightIn: 18,
+        fuelType: 'natural-gas',
+        linerType: 'steel-ring',
+        ventCount: 4,
+        ventOpeningAreaSqIn: 5,
+        proximityToStructuresFt: Math.max(prev.proximityToStructuresFt, 10),
+      }));
+      setProjectNotice('Applied quick preset: Balanced 36 in natural gas pit.');
+      return;
+    }
+
+    if (preset === 'square-social') {
+      setInput((prev) => ({
+        ...prev,
+        planShape: 'square',
+        innerDiameterIn: 36,
+        innerWidthIn: 36,
+        innerDepthIn: 36,
+        wallHeightIn: 18,
+        fuelType: 'wood',
+        linerType: 'fire-brick',
+        ventCount: 4,
+        ventOpeningAreaSqIn: 5,
+        proximityToStructuresFt: Math.max(prev.proximityToStructuresFt, 12),
+      }));
+      setProjectNotice('Applied quick preset: Square 36 in wood pit.');
+      return;
+    }
+
+    if (preset === 'rectangular-host') {
+      setInput((prev) => ({
+        ...prev,
+        planShape: 'rectangular',
+        innerDiameterIn: 42,
+        innerWidthIn: 42,
+        innerDepthIn: 30,
+        wallHeightIn: 18,
+        fuelType: 'propane',
+        linerType: 'steel-ring',
+        ventCount: 4,
+        ventOpeningAreaSqIn: 5,
+        proximityToStructuresFt: Math.max(prev.proximityToStructuresFt, 12),
+      }));
+      setProjectNotice(
+        'Applied quick preset: Rectangular 42 x 30 propane pit.',
+      );
       return;
     }
 
@@ -992,30 +1219,62 @@ export default function App() {
                 Quick Start
               </p>
               <p className='mt-2 text-sm text-amber-900/80'>
-                Pick a starter setup, then fine-tune dimensions on the left.
+                Pick a starter setup, then fine-tune details in Design Inputs
+                below.
               </p>
-              <div className='mt-3 flex flex-wrap gap-2'>
-                <button
-                  type='button'
-                  className='rounded-full border border-amber-900/20 bg-white/80 px-3 py-1.5 text-xs font-semibold text-amber-950 hover:bg-white'
-                  onClick={() => applyQuickPreset('classic-propane')}
-                >
-                  Classic 36 in Propane
-                </button>
-                <button
-                  type='button'
-                  className='rounded-full border border-amber-900/20 bg-white/80 px-3 py-1.5 text-xs font-semibold text-amber-950 hover:bg-white'
-                  onClick={() => applyQuickPreset('wood-weekend')}
-                >
-                  Weekend 42 in Wood
-                </button>
-                <button
-                  type='button'
-                  className='rounded-full border border-amber-900/20 bg-white/80 px-3 py-1.5 text-xs font-semibold text-amber-950 hover:bg-white'
-                  onClick={() => applyQuickPreset('compact-patio')}
-                >
-                  Compact 30 in Patio Gas
-                </button>
+              <p className='mt-2 text-xs text-amber-900/70'>
+                These are common starter baselines. Apply one, then adjust any
+                field or save your own snapshot style.
+              </p>
+              <div className='mt-3 grid grid-cols-2 gap-2'>
+                {QUICK_PRESET_GROUPS.map((group) => {
+                  const selected = quickPresetGroup === group.key;
+
+                  return (
+                    <button
+                      key={group.key}
+                      type='button'
+                      className={`w-full rounded-full border px-3 py-2 text-center text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-700/60 ${
+                        selected
+                          ? 'border-amber-900/45 bg-amber-900 text-amber-50'
+                          : 'border-amber-900/20 bg-white/80 text-amber-900 hover:bg-white'
+                      }`}
+                      onClick={() => setQuickPresetGroup(group.key)}
+                      aria-label={`Show ${group.label} presets`}
+                      title={`Show ${group.label} presets`}
+                    >
+                      {group.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className='mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2'>
+                {selectedQuickPresetGroup.presetKeys.map((presetKey) => {
+                  const selected = activeQuickPreset === presetKey;
+                  const preset = QUICK_PRESET_CONFIG[presetKey];
+
+                  return (
+                    <button
+                      key={presetKey}
+                      type='button'
+                      className={`rounded-2xl border px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-700/60 ${
+                        selected
+                          ? 'border-amber-900/45 bg-amber-200/55 text-amber-950'
+                          : 'border-amber-900/20 bg-white/85 text-amber-950 hover:bg-white'
+                      }`}
+                      onClick={() => applyQuickPreset(presetKey)}
+                      aria-label={`Apply ${preset.label} quick start preset`}
+                      title={`Apply ${preset.label} quick start`}
+                    >
+                      <span className='block text-xs font-semibold'>
+                        {preset.label}
+                      </span>
+                      <span className='mt-0.5 block text-[11px] text-amber-900/75'>
+                        {preset.detail}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </section>
 
