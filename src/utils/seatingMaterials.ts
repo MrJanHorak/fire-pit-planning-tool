@@ -1,4 +1,10 @@
-import type { SeatingAreaMaterials, SeatingGroundType } from '../types';
+import type {
+  SeatingAreaMaterials,
+  SeatingDensity,
+  SeatingAreaShape,
+  SeatingFurnitureStyle,
+  SeatingGroundType,
+} from '../types';
 
 /**
  * Calculate seating area materials based on ground type and radius.
@@ -6,25 +12,78 @@ import type { SeatingAreaMaterials, SeatingGroundType } from '../types';
  */
 export function calculateSeatingMaterials(
   groundType: SeatingGroundType,
+  shape: SeatingAreaShape,
+  furnitureStyle: SeatingFurnitureStyle,
+  density: SeatingDensity,
   radiusFt: number,
 ): SeatingAreaMaterials {
-  const areaSquareFeet = Math.PI * radiusFt * radiusFt;
+  const overallWidthFt = shape === 'square' ? radiusFt * 2 : radiusFt * 2;
+  const overallDepthFt = overallWidthFt;
+  const areaSquareFeet =
+    shape === 'square'
+      ? overallWidthFt * overallDepthFt
+      : Math.PI * radiusFt * radiusFt;
 
   switch (groundType) {
     case 'gravel':
-      return calculateGravelMaterials(radiusFt, areaSquareFeet);
+      return calculateGravelMaterials(
+        radiusFt,
+        areaSquareFeet,
+        shape,
+        furnitureStyle,
+        density,
+        overallWidthFt,
+        overallDepthFt,
+      );
     case 'mulch':
-      return calculateMulchMaterials(radiusFt, areaSquareFeet);
+      return calculateMulchMaterials(
+        radiusFt,
+        areaSquareFeet,
+        shape,
+        furnitureStyle,
+        density,
+        overallWidthFt,
+        overallDepthFt,
+      );
     case 'decomposed-granite':
-      return calculateDGMaterials(radiusFt, areaSquareFeet);
+      return calculateDGMaterials(
+        radiusFt,
+        areaSquareFeet,
+        shape,
+        furnitureStyle,
+        density,
+        overallWidthFt,
+        overallDepthFt,
+      );
     case 'permeable-paver':
-      return calculatePermablePayerMaterials(radiusFt, areaSquareFeet);
+      return calculatePermablePayerMaterials(
+        radiusFt,
+        areaSquareFeet,
+        shape,
+        furnitureStyle,
+        density,
+        overallWidthFt,
+        overallDepthFt,
+      );
     case 'hardscape':
-      return calculateHardscapeMaterials(radiusFt, areaSquareFeet);
+      return calculateHardscapeMaterials(
+        radiusFt,
+        areaSquareFeet,
+        shape,
+        furnitureStyle,
+        density,
+        overallWidthFt,
+        overallDepthFt,
+      );
     default:
       return {
         groundType: 'gravel',
+        shape,
+        furnitureStyle,
+        density,
         radiusFt,
+        overallWidthFt,
+        overallDepthFt,
         areaSquareFeet,
         materials: [],
         notes: [],
@@ -32,14 +91,38 @@ export function calculateSeatingMaterials(
   }
 }
 
+function getSeatingPerimeterFt(
+  shape: SeatingAreaShape,
+  radiusFt: number,
+): number {
+  return shape === 'square' ? radiusFt * 8 : 2 * Math.PI * radiusFt;
+}
+
+function buildSeatingAreaNote(
+  shape: SeatingAreaShape,
+  radiusFt: number,
+  areaSquareFeet: number,
+): string {
+  if (shape === 'square') {
+    return `Square seating zone: ${Math.round(radiusFt * 2 * 10) / 10} ft x ${Math.round(radiusFt * 2 * 10) / 10} ft, total area: ${Math.round(areaSquareFeet)} sq ft`;
+  }
+
+  return `Circular seating zone: ${radiusFt} ft radius, total area: ${Math.round(areaSquareFeet)} sq ft`;
+}
+
 function calculateGravelMaterials(
   radiusFt: number,
   areaSquareFeet: number,
+  shape: SeatingAreaShape,
+  furnitureStyle: SeatingFurnitureStyle,
+  density: SeatingDensity,
+  overallWidthFt: number,
+  overallDepthFt: number,
 ): SeatingAreaMaterials {
   // Compacted gravel: 4" base + 2" finished layer
   const baseLayerDepthIn = 4;
   const finishLayerDepthIn = 2;
-  const edgingLinearFt = 2 * Math.PI * radiusFt;
+  const edgingLinearFt = getSeatingPerimeterFt(shape, radiusFt);
 
   // Volume in cubic feet: area (sq ft) × depth (ft)
   const baseVolumeCubicFt = areaSquareFeet * (baseLayerDepthIn / 12);
@@ -51,7 +134,12 @@ function calculateGravelMaterials(
 
   return {
     groundType: 'gravel',
+    shape,
+    furnitureStyle,
+    density,
     radiusFt,
+    overallWidthFt,
+    overallDepthFt,
     areaSquareFeet,
     materials: [
       {
@@ -78,7 +166,7 @@ function calculateGravelMaterials(
       },
     ],
     notes: [
-      `Seating zone radius: ${radiusFt} ft, total area: ${Math.round(areaSquareFeet)} sq ft`,
+      buildSeatingAreaNote(shape, radiusFt, areaSquareFeet),
       'Extend gravel zone at least 10 feet from pit outer wall for safe sight lines and ember fall.',
       'Slope gravel surface 2–3% outward to prevent water pooling.',
       'Keep gravel 1–2" away from pit wall for fire safety.',
@@ -90,17 +178,27 @@ function calculateGravelMaterials(
 function calculateMulchMaterials(
   radiusFt: number,
   areaSquareFeet: number,
+  shape: SeatingAreaShape,
+  furnitureStyle: SeatingFurnitureStyle,
+  density: SeatingDensity,
+  overallWidthFt: number,
+  overallDepthFt: number,
 ): SeatingAreaMaterials {
   // Mulch: 3" standard depth
   const mulchDepthIn = 3;
-  const edgingLinearFt = 2 * Math.PI * radiusFt;
+  const edgingLinearFt = getSeatingPerimeterFt(shape, radiusFt);
 
   const mulchVolumeCubicFt = areaSquareFeet * (mulchDepthIn / 12);
   const mulchVolumeCubicYards = mulchVolumeCubicFt / 27;
 
   return {
     groundType: 'mulch',
+    shape,
+    furnitureStyle,
+    density,
     radiusFt,
+    overallWidthFt,
+    overallDepthFt,
     areaSquareFeet,
     materials: [
       {
@@ -121,7 +219,7 @@ function calculateMulchMaterials(
       },
     ],
     notes: [
-      `Seating zone radius: ${radiusFt} ft, total area: ${Math.round(areaSquareFeet)} sq ft`,
+      buildSeatingAreaNote(shape, radiusFt, areaSquareFeet),
       'Install landscape fabric or cardboard first to suppress weeds.',
       'Extend fabric 6 inches beyond the seating zone to prevent grass creep.',
       'Lay mulch 3–4" deep, but keep it 1–2" away from the pit wall.',
@@ -133,10 +231,15 @@ function calculateMulchMaterials(
 function calculateDGMaterials(
   radiusFt: number,
   areaSquareFeet: number,
+  shape: SeatingAreaShape,
+  furnitureStyle: SeatingFurnitureStyle,
+  density: SeatingDensity,
+  overallWidthFt: number,
+  overallDepthFt: number,
 ): SeatingAreaMaterials {
   // Decomposed granite: 2–3" depth (use 2.5" average)
   const dgDepthIn = 2.5;
-  const edgingLinearFt = 2 * Math.PI * radiusFt;
+  const edgingLinearFt = getSeatingPerimeterFt(shape, radiusFt);
 
   const dgVolumeCubicFt = areaSquareFeet * (dgDepthIn / 12);
   const dgVolumeCubicYards = dgVolumeCubicFt / 27;
@@ -149,7 +252,12 @@ function calculateDGMaterials(
 
   return {
     groundType: 'decomposed-granite',
+    shape,
+    furnitureStyle,
+    density,
     radiusFt,
+    overallWidthFt,
+    overallDepthFt,
     areaSquareFeet,
     materials: [
       {
@@ -175,7 +283,7 @@ function calculateDGMaterials(
       },
     ],
     notes: [
-      `Seating zone radius: ${radiusFt} ft, total area: ${Math.round(areaSquareFeet)} sq ft`,
+      buildSeatingAreaNote(shape, radiusFt, areaSquareFeet),
       'Decomposed granite offers a durable, packed surface with good drainage.',
       'Apply stabilizer binder if a more solid, unified surface is desired.',
       'Compact the material after initial placement for best results.',
@@ -187,6 +295,11 @@ function calculateDGMaterials(
 function calculatePermablePayerMaterials(
   radiusFt: number,
   areaSquareFeet: number,
+  shape: SeatingAreaShape,
+  furnitureStyle: SeatingFurnitureStyle,
+  density: SeatingDensity,
+  overallWidthFt: number,
+  overallDepthFt: number,
 ): SeatingAreaMaterials {
   // Permeable paver grids: typically 2' × 2' = 4 sq ft per grid
   const sqFtPerGrid = 4;
@@ -208,7 +321,12 @@ function calculatePermablePayerMaterials(
 
   return {
     groundType: 'permeable-paver',
+    shape,
+    furnitureStyle,
+    density,
     radiusFt,
+    overallWidthFt,
+    overallDepthFt,
     areaSquareFeet,
     materials: [
       {
@@ -240,7 +358,7 @@ function calculatePermablePayerMaterials(
       },
     ],
     notes: [
-      `Seating zone radius: ${radiusFt} ft, total area: ${Math.round(areaSquareFeet)} sq ft`,
+      buildSeatingAreaNote(shape, radiusFt, areaSquareFeet),
       'Permeable pavers support grass growth while allowing water drainage.',
       'Install geotextile layer to prevent sand migration into gravel base.',
       'Level sand bed carefully; uneven base causes settling and paver tilt.',
@@ -253,6 +371,11 @@ function calculatePermablePayerMaterials(
 function calculateHardscapeMaterials(
   radiusFt: number,
   areaSquareFeet: number,
+  shape: SeatingAreaShape,
+  furnitureStyle: SeatingFurnitureStyle,
+  density: SeatingDensity,
+  overallWidthFt: number,
+  overallDepthFt: number,
 ): SeatingAreaMaterials {
   // Concrete pad: 4" depth standard
   const concreteDepthIn = 4;
@@ -270,7 +393,12 @@ function calculateHardscapeMaterials(
 
   return {
     groundType: 'hardscape',
+    shape,
+    furnitureStyle,
+    density,
     radiusFt,
+    overallWidthFt,
+    overallDepthFt,
     areaSquareFeet,
     materials: [
       {
@@ -298,7 +426,7 @@ function calculateHardscapeMaterials(
       },
     ],
     notes: [
-      `Seating zone radius: ${radiusFt} ft, total area: ${Math.round(areaSquareFeet)} sq ft`,
+      buildSeatingAreaNote(shape, radiusFt, areaSquareFeet),
       'Hardscape (concrete or flagstone) offers the most durable, low-maintenance option.',
       'Slope concrete surface at least 1/8" per foot to permit drainage.',
       'Complete 28-day curing before heavy traffic or furniture placement.',

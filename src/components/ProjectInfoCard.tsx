@@ -2,6 +2,30 @@ import { useEffect, useState } from 'react';
 import type { MasonryInput, MasonryOutput } from '../types';
 import type { FoundationAdvisory } from '../utils/foundationAdvisory';
 
+const seatingGroundTypeLabel: Record<string, string> = {
+  gravel: 'Compacted gravel',
+  mulch: 'Mulch / wood chips',
+  'decomposed-granite': 'Decomposed granite',
+  'permeable-paver': 'Permeable paver + grass',
+  hardscape: 'Hardscape',
+};
+
+const seatingShapeLabel: Record<string, string> = {
+  circular: 'circular',
+  square: 'square',
+};
+
+const seatingFurnitureLabel: Record<string, string> = {
+  adirondack: 'Adirondack seating',
+  bench: 'bench seating',
+};
+
+const seatingDensityLabel: Record<string, string> = {
+  cozy: 'cozy density',
+  standard: 'standard density',
+  spacious: 'spacious density',
+};
+
 interface ProjectInfoCardProps {
   input: MasonryInput;
   output: MasonryOutput;
@@ -260,9 +284,28 @@ export default function ProjectInfoCard({
           </summary>
           <div className='mt-2 text-sm text-amber-900/85'>
             <p>
-              <strong>{output.logistics.seatingAreaMaterials.groundType}</strong> seating zone:{' '}
-              {output.logistics.seatingAreaMaterials.radiusFt} ft radius, ~
-              {Math.round(output.logistics.seatingAreaMaterials.areaSquareFeet)} sq ft
+              <strong>
+                {seatingGroundTypeLabel[
+                  output.logistics.seatingAreaMaterials.groundType
+                ] ?? output.logistics.seatingAreaMaterials.groundType}
+              </strong>{' '}
+              {seatingShapeLabel[output.logistics.seatingAreaMaterials.shape] ??
+                output.logistics.seatingAreaMaterials.shape}{' '}
+              seating zone with{' '}
+              {seatingFurnitureLabel[
+                output.logistics.seatingAreaMaterials.furnitureStyle
+              ] ?? output.logistics.seatingAreaMaterials.furnitureStyle}{' '}
+              at{' '}
+              {seatingDensityLabel[
+                output.logistics.seatingAreaMaterials.density
+              ] ?? output.logistics.seatingAreaMaterials.density}
+              :{' '}
+              {output.logistics.seatingAreaMaterials.shape === 'square'
+                ? `${output.logistics.seatingAreaMaterials.overallWidthFt.toFixed(1)} ft x ${output.logistics.seatingAreaMaterials.overallDepthFt.toFixed(1)} ft`
+                : `${output.logistics.seatingAreaMaterials.radiusFt.toFixed(1)} ft radius`}
+              , ~
+              {Math.round(output.logistics.seatingAreaMaterials.areaSquareFeet)}{' '}
+              sq ft
             </p>
             <table className='mt-2 w-full border-collapse text-xs'>
               <tbody>
@@ -271,9 +314,13 @@ export default function ProjectInfoCard({
                     <tr key={i} className='border-b border-amber-900/10'>
                       <td className='py-1 pr-2'>{material.name}</td>
                       <td className='py-1 pr-2 font-semibold text-right'>
-                        {material.quantity.toFixed(material.unit === 'units' ? 0 : 1)}
+                        {material.quantity.toFixed(
+                          material.unit === 'units' ? 0 : 1,
+                        )}
                       </td>
-                      <td className='py-1 text-amber-900/75'>{material.unit}</td>
+                      <td className='py-1 text-amber-900/75'>
+                        {material.unit}
+                      </td>
                     </tr>
                   ),
                 )}

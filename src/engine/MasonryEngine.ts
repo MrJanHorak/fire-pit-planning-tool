@@ -1189,6 +1189,9 @@ export class MasonryEngine {
     ) {
       logistics.seatingAreaMaterials = calculateSeatingMaterials(
         input.seatingGroundType,
+        input.seatingAreaShape ?? 'circular',
+        input.seatingFurnitureStyle ?? 'adirondack',
+        input.seatingDensity ?? 'standard',
         input.seatingAreaRadiusFt,
       );
     }

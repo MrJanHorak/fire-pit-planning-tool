@@ -792,6 +792,29 @@ export default function ControlPanel({
 
         <label className='flex flex-col gap-1'>
           <FieldLabel
+            label='Seating Shape'
+            tip='Circular is the most common social layout. Square seating zones feel more patio-like and use the center-to-edge half-width for quantity math.'
+          />
+          <select
+            className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label='Seating Area Shape'
+            title='Seating Area Shape'
+            value={input.seatingAreaShape ?? 'circular'}
+            onChange={(event) =>
+              setInput((prev) => ({
+                ...prev,
+                seatingAreaShape: event.target
+                  .value as MasonryInput['seatingAreaShape'],
+              }))
+            }
+          >
+            <option value='circular'>Circular</option>
+            <option value='square'>Square</option>
+          </select>
+        </label>
+
+        <label className='flex flex-col gap-1'>
+          <FieldLabel
             label='Ground Type'
             tip='Select the finish surface for your seating zone. The engine will calculate material quantities based on the radius you set.'
           />
@@ -818,13 +841,76 @@ export default function ControlPanel({
 
         <label className='flex flex-col gap-1'>
           <FieldLabel
-            label='Seating Area Radius (ft)'
-            tip='Distance from pit center to outer edge of the seating zone. Typical range is 8–15 ft for comfortable social gathering.'
+            label='Furniture Style'
+            tip='Use Adirondack for individual gathering chairs or Bench for a simpler built-in seating reference in the 3D preview.'
+          />
+          <select
+            className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label='Seating Furniture Style'
+            title='Seating Furniture Style'
+            value={input.seatingFurnitureStyle ?? 'adirondack'}
+            onChange={(event) =>
+              setInput((prev) => ({
+                ...prev,
+                seatingFurnitureStyle: event.target
+                  .value as MasonryInput['seatingFurnitureStyle'],
+              }))
+            }
+          >
+            <option value='adirondack'>Adirondack Chairs</option>
+            <option value='bench'>Bench Seating</option>
+          </select>
+        </label>
+
+        <label className='flex flex-col gap-1'>
+          <FieldLabel
+            label='Seating Density'
+            tip='Cozy pulls seating inward with tighter spacing, Standard balances movement and conversation, Spacious opens circulation around the fire.'
+          />
+          <select
+            className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label='Seating Density'
+            title='Seating Density'
+            value={input.seatingDensity ?? 'standard'}
+            onChange={(event) =>
+              setInput((prev) => ({
+                ...prev,
+                seatingDensity: event.target
+                  .value as MasonryInput['seatingDensity'],
+              }))
+            }
+          >
+            <option value='cozy'>Cozy</option>
+            <option value='standard'>Standard</option>
+            <option value='spacious'>Spacious</option>
+          </select>
+        </label>
+
+        <label className='flex flex-col gap-1'>
+          <FieldLabel
+            label={
+              input.seatingAreaShape === 'square'
+                ? 'Seating Half-Width (ft)'
+                : 'Seating Area Radius (ft)'
+            }
+            tip={
+              input.seatingAreaShape === 'square'
+                ? 'For square seating, this is the center-to-edge half-width. A value of 10 ft creates a 20 ft by 20 ft seating zone.'
+                : 'Distance from pit center to outer edge of the seating zone. Typical range is 8–15 ft for comfortable social gathering.'
+            }
           />
           <input
             className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
-            aria-label='Seating Area Radius in feet'
-            title='Seating Area Radius in feet'
+            aria-label={
+              input.seatingAreaShape === 'square'
+                ? 'Seating half-width in feet'
+                : 'Seating area radius in feet'
+            }
+            title={
+              input.seatingAreaShape === 'square'
+                ? 'Seating half-width in feet'
+                : 'Seating area radius in feet'
+            }
             type='number'
             min={5}
             max={30}

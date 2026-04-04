@@ -18,11 +18,17 @@ import {
   TextureLoader,
 } from 'three';
 import type { Group, Mesh } from 'three';
-import type { MasonryOutput } from '../types';
+import type {
+  MasonryOutput,
+  SeatingAreaShape,
+  SeatingDensity,
+  SeatingFurnitureStyle,
+  SeatingGroundType,
+} from '../types';
 
 interface Stage3DProps {
   output: MasonryOutput;
-  captureSignal?: number;
+  captureSignal?: number | null;
   onStakeholderRenderComplete?: (result: {
     ok: boolean;
     message: string;
@@ -85,6 +91,243 @@ const STYLE_PALETTES: Record<
   },
 };
 
+interface SeatingSurfaceVisual {
+  label: string;
+  baseColor: string;
+  accentColor: string;
+  roughness: number;
+  metalness: number;
+  pattern: 'speckle' | 'fibers' | 'grid' | 'slab';
+}
+
+interface SeatingChairDimensions {
+  widthFt: number;
+  depthFt: number;
+  seatHeightFt: number;
+  backHeightFt: number;
+  armHeightFt: number;
+}
+
+const SEATING_CHAIR_DIMENSIONS_FT: SeatingChairDimensions = {
+  widthFt: 2.25,
+  depthFt: 2.5,
+  seatHeightFt: 1.35,
+  backHeightFt: 3.1,
+  armHeightFt: 1.85,
+};
+
+const SEATING_BENCH_DIMENSIONS_FT = {
+  widthFt: 5.25,
+  depthFt: 1.85,
+  seatHeightFt: 1.45,
+  backHeightFt: 2.85,
+};
+
+const SEATING_FURNITURE_LABELS: Record<SeatingFurnitureStyle, string> = {
+  adirondack: 'Adirondack Seating',
+  bench: 'Bench Seating',
+};
+
+const SEATING_DENSITY_LABELS: Record<SeatingDensity, string> = {
+  cozy: 'Cozy',
+  standard: 'Standard',
+  spacious: 'Spacious',
+};
+
+const SEATING_SURFACE_VISUALS: Record<SeatingGroundType, SeatingSurfaceVisual> =
+  {
+    gravel: {
+      label: 'Compacted Gravel',
+      baseColor: '#c8b79a',
+      accentColor: '#9f8b72',
+      roughness: 0.96,
+      metalness: 0.01,
+      pattern: 'speckle',
+    },
+    mulch: {
+      label: 'Mulch / Chips',
+      baseColor: '#80502f',
+      accentColor: '#5f3820',
+      roughness: 0.98,
+      metalness: 0,
+      pattern: 'fibers',
+    },
+    'decomposed-granite': {
+      label: 'Decomposed Granite',
+      baseColor: '#d7c3a2',
+      accentColor: '#bda37f',
+      roughness: 0.92,
+      metalness: 0.01,
+      pattern: 'speckle',
+    },
+    'permeable-paver': {
+      label: 'Permeable Paver + Grass',
+      baseColor: '#758460',
+      accentColor: '#c2b6a2',
+      roughness: 0.94,
+      metalness: 0.02,
+      pattern: 'grid',
+    },
+    hardscape: {
+      label: 'Hardscape',
+      baseColor: '#b7b4ae',
+      accentColor: '#8f8b85',
+      roughness: 0.76,
+      metalness: 0.04,
+      pattern: 'slab',
+    },
+  };
+
+export function getSeatingSurfaceVisual(
+  groundType: SeatingGroundType,
+): SeatingSurfaceVisual {
+  return SEATING_SURFACE_VISUALS[groundType];
+}
+
+export function getStageGroundRadiusFt(seatingRadiusFt?: number): number {
+  if (!seatingRadiusFt || seatingRadiusFt <= 0) {
+    return 3.4;
+  }
+
+  return Math.max(3.4, seatingRadiusFt + 1.75);
+}
+
+export function getStageGroundRadiusForShapeFt(
+  seatingExtentFt?: number,
+  shape: SeatingAreaShape = 'circular',
+): number {
+  if (!seatingExtentFt || seatingExtentFt <= 0) {
+    return 3.4;
+  }
+
+  if (shape === 'square') {
+    return Math.max(3.4, Math.sqrt(seatingExtentFt ** 2 * 2) + 1.75);
+  }
+
+  return getStageGroundRadiusFt(seatingExtentFt);
+}
+
+export function getSeatingGuideInsetFt(
+  furnitureStyle: SeatingFurnitureStyle = 'adirondack',
+  density: SeatingDensity = 'standard',
+): number {
+  const depthFt =
+    furnitureStyle === 'bench'
+      ? SEATING_BENCH_DIMENSIONS_FT.depthFt
+      : SEATING_CHAIR_DIMENSIONS_FT.depthFt;
+
+  const baseAdditionalOffsetFt = furnitureStyle === 'bench' ? 0.85 : 1.15;
+
+  const densityOffsetFt =
+    density === 'cozy' ? 0.8 : density === 'spacious' ? -0.8 : 0;
+
+  return Math.max(0.35, depthFt / 2 + baseAdditionalOffsetFt + densityOffsetFt);
+}
+
+export function getSeatingReferenceCount(
+  seatingRadiusFt: number,
+  furnitureStyle: SeatingFurnitureStyle = 'adirondack',
+  shape: SeatingAreaShape = 'circular',
+  density: SeatingDensity = 'standard',
+): number {
+  if (furnitureStyle === 'bench') {
+    const baseBenchCount = seatingRadiusFt >= 11 ? 5 : 4;
+    if (density === 'cozy') {
+      return Math.min(6, baseBenchCount + 1);
+    }
+    if (density === 'spacious') {
+      return Math.max(3, baseBenchCount - 1);
+    }
+    return baseBenchCount;
+  }
+
+  if (shape === 'square') {
+    const baseSquareCount = seatingRadiusFt >= 8 ? 8 : 6;
+    if (density === 'cozy') {
+      return Math.min(12, baseSquareCount + 2);
+    }
+    if (density === 'spacious') {
+      return Math.max(4, baseSquareCount - 2);
+    }
+    return baseSquareCount;
+  }
+
+  // Typical Adirondack center spacing around firepits lands near 4.5-5.5 ft.
+  const baseCircularCount = Math.min(
+    12,
+    Math.max(6, Math.round(seatingRadiusFt * 1.05)),
+  );
+  if (density === 'cozy') {
+    return Math.min(14, baseCircularCount + 3);
+  }
+  if (density === 'spacious') {
+    return Math.max(4, baseCircularCount - 3);
+  }
+  return baseCircularCount;
+}
+
+export function buildSeatingReferencePlacements(
+  shape: SeatingAreaShape,
+  seatingRadiusFt: number,
+  count: number,
+  insetFt = getSeatingGuideInsetFt(),
+  density: SeatingDensity = 'standard',
+  furnitureStyle: SeatingFurnitureStyle = 'adirondack',
+): Placement[] {
+  if (shape === 'square') {
+    const placementRadiusFt = Math.max(0.6, seatingRadiusFt - insetFt);
+    const sideRadiusFt =
+      density === 'cozy' ? placementRadiusFt * 0.64 : placementRadiusFt;
+    const cornerRadiusFt =
+      density === 'cozy'
+        ? placementRadiusFt * 0.9
+        : density === 'spacious'
+          ? placementRadiusFt * 0.72
+          : placementRadiusFt * 0.78;
+    const sidePlacements: Placement[] = [
+      { x: 0, z: -sideRadiusFt, rotationY: 0 },
+      { x: sideRadiusFt, z: 0, rotationY: -Math.PI / 2 },
+      { x: 0, z: sideRadiusFt, rotationY: Math.PI },
+      { x: -sideRadiusFt, z: 0, rotationY: Math.PI / 2 },
+    ];
+
+    // For square cozy bench, always use only the 4 inner side benches
+    if (
+      count <= 4 ||
+      (shape === 'square' && density === 'cozy' && furnitureStyle === 'bench')
+    ) {
+      return sidePlacements;
+    }
+
+    const cornerPlacements = [
+      { x: cornerRadiusFt, z: -cornerRadiusFt },
+      { x: cornerRadiusFt, z: cornerRadiusFt },
+      { x: -cornerRadiusFt, z: cornerRadiusFt },
+      { x: -cornerRadiusFt, z: -cornerRadiusFt },
+    ].map((point) => {
+      const angle = Math.atan2(point.z, point.x);
+      return {
+        x: point.x,
+        z: point.z,
+        rotationY: -angle - Math.PI / 2,
+      };
+    });
+
+    return [...sidePlacements, ...cornerPlacements];
+  }
+
+  const placementRadiusFt = Math.max(0.6, seatingRadiusFt - insetFt);
+
+  return Array.from({ length: count }, (_, index) => {
+    const angle = (index / count) * Math.PI * 2;
+    return {
+      x: Math.cos(angle) * placementRadiusFt,
+      z: Math.sin(angle) * placementRadiusFt,
+      rotationY: -angle - Math.PI / 2,
+    };
+  });
+}
+
 function createProceduralTexture(
   painter: (ctx: CanvasRenderingContext2D, size: number) => void,
 ): CanvasTexture | undefined {
@@ -124,6 +367,75 @@ function paintNoise(
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
     ctx.fill();
+  }
+}
+
+function paintSeatingPattern(
+  ctx: CanvasRenderingContext2D,
+  size: number,
+  visual: SeatingSurfaceVisual,
+) {
+  ctx.fillStyle = visual.baseColor;
+  ctx.fillRect(0, 0, size, size);
+
+  if (visual.pattern === 'speckle') {
+    paintNoise(ctx, size, 0.26, 2600);
+    ctx.fillStyle = `${visual.accentColor}44`;
+    for (let i = 0; i < 180; i += 1) {
+      const x = Math.random() * size;
+      const y = Math.random() * size;
+      const radius = 1 + Math.random() * 2.6;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    return;
+  }
+
+  if (visual.pattern === 'fibers') {
+    for (let i = 0; i < 340; i += 1) {
+      const x = Math.random() * size;
+      const y = Math.random() * size;
+      const length = 8 + Math.random() * 20;
+      const angle = Math.random() * Math.PI;
+      ctx.strokeStyle = `${visual.accentColor}${Math.random() > 0.4 ? '66' : '33'}`;
+      ctx.lineWidth = 1 + Math.random() * 1.2;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + Math.cos(angle) * length, y + Math.sin(angle) * length);
+      ctx.stroke();
+    }
+    return;
+  }
+
+  if (visual.pattern === 'grid') {
+    const cell = size / 8;
+    for (let x = 0; x <= size; x += cell) {
+      ctx.fillStyle = `${visual.accentColor}88`;
+      ctx.fillRect(x, 0, 2, size);
+    }
+    for (let y = 0; y <= size; y += cell) {
+      ctx.fillStyle = `${visual.accentColor}88`;
+      ctx.fillRect(0, y, size, 2);
+    }
+    for (let row = 0; row < 8; row += 1) {
+      for (let col = 0; col < 8; col += 1) {
+        if ((row + col) % 3 === 0) {
+          ctx.fillStyle = '#7f925f55';
+          ctx.fillRect(col * cell + 4, row * cell + 4, cell - 8, cell - 8);
+        }
+      }
+    }
+    return;
+  }
+
+  const slabSize = size / 4;
+  for (let row = 0; row < 4; row += 1) {
+    for (let col = 0; col < 4; col += 1) {
+      ctx.fillStyle =
+        (row + col) % 2 === 0 ? visual.baseColor : `${visual.accentColor}dd`;
+      ctx.fillRect(col * slabSize, row * slabSize, slabSize - 2, slabSize - 2);
+    }
   }
 }
 
@@ -823,6 +1135,143 @@ function RectangularRing({
   );
 }
 
+function SeatingChairMarker({
+  x,
+  z,
+  rotationY,
+  wireframe,
+}: {
+  x: number;
+  z: number;
+  rotationY: number;
+  wireframe: boolean;
+}) {
+  const dims = SEATING_CHAIR_DIMENSIONS_FT;
+
+  return (
+    <group position={[x, 0, z]} rotation={[0, rotationY, 0]}>
+      <mesh position={[0, dims.seatHeightFt - 0.09, -0.08]}>
+        <boxGeometry args={[dims.widthFt, 0.12, dims.depthFt * 0.62]} />
+        <meshStandardMaterial
+          color='#7b5b41'
+          roughness={0.88}
+          metalness={0.02}
+          wireframe={wireframe}
+        />
+      </mesh>
+      <mesh
+        position={[0, dims.backHeightFt * 0.52, -dims.depthFt * 0.48]}
+        rotation={[-0.32, 0, 0]}
+      >
+        <boxGeometry args={[dims.widthFt, dims.backHeightFt * 0.72, 0.1]} />
+        <meshStandardMaterial
+          color='#6d513b'
+          roughness={0.9}
+          metalness={0.02}
+          wireframe={wireframe}
+        />
+      </mesh>
+      {[
+        [-dims.widthFt * 0.42, dims.armHeightFt * 0.5, -0.06],
+        [dims.widthFt * 0.42, dims.armHeightFt * 0.5, -0.06],
+      ].map(([armX, armY, armZ], index) => (
+        <mesh key={`arm-${index}`} position={[armX, armY, armZ]}>
+          <boxGeometry args={[0.12, 0.12, dims.depthFt * 0.72]} />
+          <meshStandardMaterial
+            color='#6f533c'
+            roughness={0.9}
+            metalness={0.02}
+            wireframe={wireframe}
+          />
+        </mesh>
+      ))}
+      {[
+        [-dims.widthFt * 0.42, dims.armHeightFt * 0.18, dims.depthFt * 0.1],
+        [dims.widthFt * 0.42, dims.armHeightFt * 0.18, dims.depthFt * 0.1],
+      ].map(([postX, postY, postZ], index) => (
+        <mesh key={`post-${index}`} position={[postX, postY, postZ]}>
+          <boxGeometry args={[0.1, dims.armHeightFt * 0.72, 0.1]} />
+          <meshStandardMaterial
+            color='#4e3928'
+            roughness={0.92}
+            metalness={0.02}
+            wireframe={wireframe}
+          />
+        </mesh>
+      ))}
+      {[
+        [-dims.widthFt * 0.42, dims.seatHeightFt * 0.36, -dims.depthFt * 0.36],
+        [dims.widthFt * 0.42, dims.seatHeightFt * 0.36, -dims.depthFt * 0.36],
+        [-dims.widthFt * 0.34, dims.seatHeightFt * 0.36, dims.depthFt * 0.16],
+        [dims.widthFt * 0.34, dims.seatHeightFt * 0.36, dims.depthFt * 0.16],
+      ].map(([legX, legY, legZ], index) => (
+        <mesh key={index} position={[legX, legY, legZ]}>
+          <boxGeometry args={[0.09, dims.seatHeightFt * 0.78, 0.09]} />
+          <meshStandardMaterial
+            color='#4e3928'
+            roughness={0.92}
+            metalness={0.02}
+            wireframe={wireframe}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function SeatingBenchMarker({
+  x,
+  z,
+  rotationY,
+  wireframe,
+}: {
+  x: number;
+  z: number;
+  rotationY: number;
+  wireframe: boolean;
+}) {
+  const dims = SEATING_BENCH_DIMENSIONS_FT;
+
+  return (
+    <group position={[x, 0, z]} rotation={[0, rotationY, 0]}>
+      <mesh position={[0, dims.seatHeightFt - 0.08, 0]}>
+        <boxGeometry args={[dims.widthFt, 0.14, dims.depthFt * 0.78]} />
+        <meshStandardMaterial
+          color='#7a5b3e'
+          roughness={0.88}
+          metalness={0.02}
+          wireframe={wireframe}
+        />
+      </mesh>
+      <mesh position={[0, dims.backHeightFt * 0.52, -dims.depthFt * 0.38]}>
+        <boxGeometry args={[dims.widthFt, dims.backHeightFt * 0.64, 0.12]} />
+        <meshStandardMaterial
+          color='#6a4e36'
+          roughness={0.9}
+          metalness={0.02}
+          wireframe={wireframe}
+        />
+      </mesh>
+      {[
+        [-dims.widthFt * 0.44, dims.seatHeightFt * 0.36, -dims.depthFt * 0.22],
+        [dims.widthFt * 0.44, dims.seatHeightFt * 0.36, -dims.depthFt * 0.22],
+        [-dims.widthFt * 0.44, dims.seatHeightFt * 0.36, dims.depthFt * 0.22],
+        [dims.widthFt * 0.44, dims.seatHeightFt * 0.36, dims.depthFt * 0.22],
+      ].map(([legX, legY, legZ], index) => (
+        <mesh key={index} position={[legX, legY, legZ]}>
+          <boxGeometry args={[0.12, dims.seatHeightFt * 0.8, 0.12]} />
+          <meshStandardMaterial
+            color='#4e3928'
+            roughness={0.92}
+            metalness={0.02}
+            wireframe={wireframe}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
 function getRectangularSideLabel(
   x: number,
   z: number,
@@ -860,13 +1309,16 @@ export default function Stage3D({
   const [wireframe, setWireframe] = useState(false);
   const [showBrickOutlines, setShowBrickOutlines] = useState(true);
   const [showFlame, setShowFlame] = useState(false);
+  const [showSeatingGuides, setShowSeatingGuides] = useState(true);
   const [mortarMode, setMortarMode] = useState<MortarMode>('solid');
   const [materialStyle, setMaterialStyle] =
     useState<MaterialStyle>('classic-red');
   const [webglBlocked, setWebglBlocked] = useState(false);
+  const [showLegend, setShowLegend] = useState(false);
+  const [showControls, setShowControls] = useState(false);
   const orbitRef = useRef<OrbitHandle>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const lastCaptureSignalRef = useRef<number | undefined>(undefined);
+  const lastCaptureSignalRef = useRef<number | null | undefined>(undefined);
 
   useEffect(() => {
     if (!canCreateWebGLContext()) {
@@ -1084,6 +1536,35 @@ export default function Stage3D({
   const isPhotoreal = true;
   const effectiveWireframe = wireframe;
   const effectiveShowBrickOutlines = showBrickOutlines;
+  const seatingArea = output.logistics.seatingAreaMaterials;
+  const seatingShape = seatingArea?.shape ?? 'circular';
+  const seatingFurnitureStyle = seatingArea?.furnitureStyle ?? 'adirondack';
+  const seatingDensity = seatingArea?.density ?? 'standard';
+  const seatingSurfaceVisual = seatingArea
+    ? getSeatingSurfaceVisual(seatingArea.groundType)
+    : undefined;
+  const seatingReferencePlacements = seatingArea
+    ? buildSeatingReferencePlacements(
+        seatingShape,
+        seatingArea.radiusFt,
+        getSeatingReferenceCount(
+          seatingArea.radiusFt,
+          seatingFurnitureStyle,
+          seatingShape,
+          seatingDensity,
+        ),
+        getSeatingGuideInsetFt(seatingFurnitureStyle, seatingDensity),
+        seatingDensity,
+        seatingFurnitureStyle,
+      )
+    : [];
+  const stageGroundRadiusFt = getStageGroundRadiusForShapeFt(
+    seatingArea?.radiusFt,
+    seatingShape,
+  );
+  const cameraDistanceFt = Math.max(5.2, stageGroundRadiusFt * 1.35);
+  const topCameraHeightFt = Math.max(6, stageGroundRadiusFt * 1.55);
+  const orbitMaxDistanceFt = Math.max(9, stageGroundRadiusFt * 2.6);
   const textureMaps = useMemo(() => {
     const loader = new TextureLoader();
     const brickDiffuseMap = loader.load('/textures/brick_diffuse.jpg');
@@ -1171,6 +1652,20 @@ export default function Stage3D({
     return texture;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [materialStyle]);
+  const seatingTexture = useMemo(() => {
+    if (!seatingSurfaceVisual) {
+      return undefined;
+    }
+
+    const texture = createProceduralTexture((ctx, size) => {
+      paintSeatingPattern(ctx, size, seatingSurfaceVisual);
+    });
+    if (texture) {
+      texture.colorSpace = SRGBColorSpace;
+      texture.repeat.set(2.6, 2.6);
+    }
+    return texture;
+  }, [seatingSurfaceVisual]);
   const innerVoidRadiusFt =
     output.linerSpec.enabled && geometry.linerInnerRadiusFt > 0
       ? geometry.linerInnerRadiusFt
@@ -1220,7 +1715,7 @@ export default function Stage3D({
     }
 
     orbitRef.current.target.set(0, wallHeightFt / 2, 0);
-    orbitRef.current.object.position.set(0, 6, 0.001);
+    orbitRef.current.object.position.set(0, topCameraHeightFt, 0.001);
     orbitRef.current.update();
   };
 
@@ -1230,175 +1725,282 @@ export default function Stage3D({
     }
 
     orbitRef.current.target.set(0, wallHeightFt / 3, 0);
-    orbitRef.current.object.position.set(0, 2.4, 5.2);
+    orbitRef.current.object.position.set(
+      0,
+      Math.max(2.4, stageGroundRadiusFt * 0.72),
+      cameraDistanceFt,
+    );
     orbitRef.current.update();
   };
 
   return (
     <div className='card-rise relative h-[460px] rounded-2xl border border-amber-900/20 bg-amber-100/70 p-2 shadow-lg sm:h-[500px]'>
       <div className='absolute right-2 top-2 z-10 flex flex-col items-end gap-2 sm:right-4 sm:top-4'>
+        {/* Hoverable wrapper - always has presence for hover detection */}
+        <div
+          className='flex flex-col items-end gap-2'
+          onMouseEnter={() => setShowControls(true)}
+          onMouseLeave={() => setShowControls(false)}
+        >
+          {/* Main controls panel - expands on hover */}
+          <div
+            className='overflow-hidden transition-all duration-300 ease-out'
+            style={{
+              maxWidth: showControls ? '300px' : '0px',
+              maxHeight: showControls ? '520px' : '0px',
+              opacity: showControls ? 1 : 0,
+            }}
+          >
+            <div className='rounded-xl bg-amber-50/95 px-3 py-2 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
+              <p className='mb-1 text-[10px] uppercase tracking-wide text-amber-900/70'>
+                Mortar
+              </p>
+              <div className='flex gap-1'>
+                {(['solid', 'ghost', 'off'] as MortarMode[]).map((mode) => (
+                  <button
+                    key={mode}
+                    className={`rounded-full px-2 py-1 ${mortarMode === mode ? 'bg-amber-900 text-amber-50' : 'bg-amber-200/80 text-amber-950'}`}
+                    onClick={() => setMortarMode(mode)}
+                    aria-label={`Set mortar mode to ${mode}`}
+                  >
+                    {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
 
+            <div className='mt-2 rounded-xl bg-amber-50/95 px-3 py-2 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
+              <p className='mb-1 text-[10px] uppercase tracking-wide text-amber-900/70'>
+                Style
+              </p>
+              <div className='flex gap-1.5'>
+                {(
+                  ['classic-red', 'charcoal', 'limestone'] as MaterialStyle[]
+                ).map((s) => (
+                  <button
+                    key={s}
+                    style={{ backgroundColor: STYLE_PALETTES[s].swatch }}
+                    className={`h-6 w-6 rounded-full border-2 transition-transform ${
+                      materialStyle === s
+                        ? 'scale-110 border-amber-900'
+                        : 'border-transparent opacity-70 hover:opacity-100'
+                    }`}
+                    onClick={() => setMaterialStyle(s)}
+                    aria-label={`Set style to ${STYLE_PALETTES[s].label}`}
+                    title={STYLE_PALETTES[s].label}
+                  />
+                ))}
+              </div>
+            </div>
 
-        <div className='rounded-xl bg-amber-50/95 px-3 py-2 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
-          <p className='mb-1 text-[10px] uppercase tracking-wide text-amber-900/70'>
-            Mortar
-          </p>
-          <div className='flex gap-1'>
-            {(['solid', 'ghost', 'off'] as MortarMode[]).map((mode) => (
+            <div className='mt-2 flex items-center gap-2 rounded-full bg-amber-50/95 px-3 py-1.5 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
+              <span>Wireframe</span>
               <button
-                key={mode}
-                className={`rounded-full px-2 py-1 ${mortarMode === mode ? 'bg-amber-900 text-amber-50' : 'bg-amber-200/80 text-amber-950'}`}
-                onClick={() => setMortarMode(mode)}
-                aria-label={`Set mortar mode to ${mode}`}
+                className={`h-5 w-10 rounded-full transition-colors ${wireframe ? 'bg-amber-900' : 'bg-amber-300'}`}
+                onClick={() => setWireframe((value) => !value)}
+                aria-label='Toggle wireframe'
               >
-                {mode.charAt(0).toUpperCase() + mode.slice(1)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-                <div className='rounded-xl bg-amber-50/95 px-3 py-2 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
-          <p className='mb-1 text-[10px] uppercase tracking-wide text-amber-900/70'>
-            Style
-          </p>
-          <div className='flex gap-1.5'>
-            {(['classic-red', 'charcoal', 'limestone'] as MaterialStyle[]).map(
-              (s) => (
-                <button
-                  key={s}
-                  style={{ backgroundColor: STYLE_PALETTES[s].swatch }}
-                  className={`h-6 w-6 rounded-full border-2 transition-transform ${
-                    materialStyle === s
-                      ? 'scale-110 border-amber-900'
-                      : 'border-transparent opacity-70 hover:opacity-100'
-                  }`}
-                  onClick={() => setMaterialStyle(s)}
-                  aria-label={`Set style to ${STYLE_PALETTES[s].label}`}
-                  title={STYLE_PALETTES[s].label}
+                <span
+                  className={`block h-4 w-4 rounded-full bg-amber-50 transition-transform ${wireframe ? 'translate-x-5' : 'translate-x-0.5'}`}
                 />
-              ),
+              </button>
+            </div>
+
+            <div className='mt-2 flex items-center gap-2 rounded-full bg-amber-50/95 px-3 py-1.5 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
+              <span>Outlines</span>
+              <button
+                className={`h-5 w-10 rounded-full transition-colors ${showBrickOutlines ? 'bg-amber-900' : 'bg-amber-300'}`}
+                onClick={() => setShowBrickOutlines((value) => !value)}
+                aria-label='Toggle brick outlines'
+              >
+                <span
+                  className={`block h-4 w-4 rounded-full bg-amber-50 transition-transform ${showBrickOutlines ? 'translate-x-5' : 'translate-x-0.5'}`}
+                />
+              </button>
+            </div>
+
+            <div className='mt-2 flex items-center gap-2 rounded-full bg-amber-50/95 px-3 py-1.5 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
+              <span>Flame</span>
+              <button
+                className={`h-5 w-10 rounded-full transition-colors ${showFlame ? 'bg-orange-500' : 'bg-amber-300'}`}
+                onClick={() => setShowFlame((value) => !value)}
+                aria-label='Toggle flame'
+              >
+                <span
+                  className={`block h-4 w-4 rounded-full bg-amber-50 transition-transform ${showFlame ? 'translate-x-5' : 'translate-x-0.5'}`}
+                />
+              </button>
+            </div>
+
+            {seatingArea && (
+              <div className='mt-2 flex items-center gap-2 rounded-full bg-amber-50/95 px-3 py-1.5 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
+                <span>Seating</span>
+                <button
+                  className={`h-5 w-10 rounded-full transition-colors ${showSeatingGuides ? 'bg-amber-900' : 'bg-amber-300'}`}
+                  onClick={() => setShowSeatingGuides((value) => !value)}
+                  aria-label='Toggle seating reference guides'
+                >
+                  <span
+                    className={`block h-4 w-4 rounded-full bg-amber-50 transition-transform ${showSeatingGuides ? 'translate-x-5' : 'translate-x-0.5'}`}
+                  />
+                </button>
+              </div>
             )}
+
+            <div className='mt-2 flex gap-1.5'>
+              <button
+                className='rounded-full bg-amber-50/95 px-3 py-1.5 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'
+                onClick={topDown}
+              >
+                Top
+              </button>
+              <button
+                className='rounded-full bg-amber-50/95 px-3 py-1.5 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'
+                onClick={sideView}
+              >
+                Side
+              </button>
+            </div>
           </div>
-        </div>
 
-        <div className='flex items-center gap-2 rounded-full bg-amber-50/95 px-3 py-1.5 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
-          <span>Wireframe</span>
-          <button
-            className={`h-5 w-10 rounded-full transition-colors ${wireframe ? 'bg-amber-900' : 'bg-amber-300'}`}
-            onClick={() => setWireframe((value) => !value)}
-            aria-label='Toggle wireframe'
-          >
-            <span
-              className={`block h-4 w-4 rounded-full bg-amber-50 transition-transform ${wireframe ? 'translate-x-5' : 'translate-x-0.5'}`}
-            />
-          </button>
-        </div>
-
-        <div className='flex items-center gap-2 rounded-full bg-amber-50/95 px-3 py-1.5 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
-          <span>Outlines</span>
-          <button
-            className={`h-5 w-10 rounded-full transition-colors ${showBrickOutlines ? 'bg-amber-900' : 'bg-amber-300'}`}
-            onClick={() => setShowBrickOutlines((value) => !value)}
-            aria-label='Toggle brick outlines'
-          >
-            <span
-              className={`block h-4 w-4 rounded-full bg-amber-50 transition-transform ${showBrickOutlines ? 'translate-x-5' : 'translate-x-0.5'}`}
-            />
-          </button>
-        </div>
-
-        <div className='flex items-center gap-2 rounded-full bg-amber-50/95 px-3 py-1.5 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
-          <span>Flame</span>
-          <button
-            className={`h-5 w-10 rounded-full transition-colors ${showFlame ? 'bg-orange-500' : 'bg-amber-300'}`}
-            onClick={() => setShowFlame((value) => !value)}
-            aria-label='Toggle flame'
-          >
-            <span
-              className={`block h-4 w-4 rounded-full bg-amber-50 transition-transform ${showFlame ? 'translate-x-5' : 'translate-x-0.5'}`}
-            />
-          </button>
-        </div>
-
-        <div className='flex gap-1.5'>
-          <button
-            className='rounded-full bg-amber-50/95 px-3 py-1.5 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'
-            onClick={topDown}
-          >
-            Top
-          </button>
-          <button
-            className='rounded-full bg-amber-50/95 px-3 py-1.5 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'
-            onClick={sideView}
-          >
-            Side
-          </button>
+          {/* Visual queue hint when controls are hidden - gear icon */}
+          {!showControls && (
+            <div className='flex h-8 w-8 items-center justify-center rounded-full bg-amber-50/90 shadow transition-colors hover:bg-amber-100'>
+              <svg
+                className='h-5 w-5 text-amber-900'
+                fill='none'
+                stroke='currentColor'
+                viewBox='0 0 24 24'
+              >
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  strokeWidth={2}
+                  d='M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z'
+                />
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  strokeWidth={2}
+                  d='M15 12a3 3 0 11-6 0 3 3 0 016 0z'
+                />
+              </svg>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className='absolute bottom-2 left-2 z-10 max-w-[78%] rounded-xl border border-amber-900/15 bg-amber-50/95 px-3 py-2 text-[11px] text-amber-950 shadow sm:bottom-4 sm:left-4 sm:max-w-sm sm:text-xs'>
-        <p className='mb-1 text-[11px] font-bold uppercase tracking-wide text-amber-900/80 sm:text-xs'>
-          3D Legend
-        </p>
-        <p className='leading-5'>
-          <span
-            className='mr-1 inline-block h-2 w-2 rounded-full'
-            style={{ backgroundColor: palette.wallOddColor }}
-          />
-          Wall Brick
-        </p>
-        {output.courseStrategy.strategy === 'shim-spacer' && (
-          <p className='leading-5'>
-            <span className='mr-1 inline-block h-2 w-2 rounded-full bg-[#5f4f96]' />
-            Shim Spacer Course
-          </p>
-        )}
-        {output.courseStrategy.strategy === 'vented-accent' && (
-          <p className='leading-5'>
-            <span className='mr-1 inline-block h-2 w-2 rounded-full bg-[#8a5a13]' />
-            Vented Accent Course
-          </p>
-        )}
-        <p className='leading-5'>
-          <span
-            className='mr-1 inline-block h-2 w-2 rounded-full'
-            style={{ backgroundColor: palette.capColor }}
-          />
-          Cap Brick
-        </p>
-        <p className='leading-5'>
-          <span
-            className='mr-1 inline-block h-2 w-2 rounded-full'
-            style={{ backgroundColor: palette.mortarColor }}
-          />
-          Mortar ({mortarMode === 'off' ? 'hidden' : mortarMode})
-        </p>
-        <p className='leading-5'>
-          <span className='mr-1 inline-block h-2 w-2 rounded-full bg-[#241a12]' />
-          Vent Opening
-        </p>
-        {output.planShape !== 'circular' && (
-          <p className='leading-5'>
-            <span className='mr-1 inline-block h-2 w-2 rounded-full bg-[#f2f2f2]' />
-            Side Labels (N/E/S/W)
-          </p>
-        )}
-        {output.linerSpec.enabled && (
-          <p className='leading-5'>
-            <span className='mr-1 inline-block h-2 w-2 rounded-full bg-[#8e3b2f]' />
-            Thermal Liner
-          </p>
-        )}
-        <p
-          className={`mt-1 rounded-md border px-2 py-1 text-[11px] font-semibold ${wallCutStatusTone}`}
+      {/* Hoverable legend trigger and panel */}
+      <div
+        className='absolute left-2 top-2 z-10 sm:left-4 sm:top-4'
+        onMouseEnter={() => setShowLegend(true)}
+        onMouseLeave={() => setShowLegend(false)}
+      >
+        <div className='flex h-8 w-8 items-center justify-center rounded-full bg-amber-50/90 shadow transition-colors hover:bg-amber-100'>
+          <svg
+            className='h-5 w-5 text-amber-900'
+            fill='none'
+            stroke='currentColor'
+            viewBox='0 0 24 24'
+          >
+            <path
+              strokeLinecap='round'
+              strokeLinejoin='round'
+              strokeWidth={2}
+              d='M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+            />
+          </svg>
+        </div>
+
+        <div
+          className='mt-2 overflow-hidden transition-all duration-300 ease-out'
+          style={{
+            maxWidth: showLegend ? '360px' : '0px',
+            maxHeight: showLegend ? '520px' : '0px',
+            opacity: showLegend ? 1 : 0,
+          }}
         >
-          {wallCutStatusText}
-        </p>
-        <p
-          className={`mt-1 rounded-md border px-2 py-1 text-[11px] font-semibold ${capCutStatusTone}`}
-        >
-          {capCutStatusText}
-        </p>
+          <div className='max-w-sm rounded-xl border border-amber-900/15 bg-amber-50/95 px-3 py-2 text-[11px] text-amber-950 shadow sm:text-xs'>
+            <p className='mb-1 text-[11px] font-bold uppercase tracking-wide text-amber-900/80 sm:text-xs'>
+              3D Legend
+            </p>
+            <p className='leading-5'>
+              <span
+                className='mr-1 inline-block h-2 w-2 rounded-full'
+                style={{ backgroundColor: palette.wallOddColor }}
+              />
+              Wall Brick
+            </p>
+            {output.courseStrategy.strategy === 'shim-spacer' && (
+              <p className='leading-5'>
+                <span className='mr-1 inline-block h-2 w-2 rounded-full bg-[#5f4f96]' />
+                Shim Spacer Course
+              </p>
+            )}
+            {output.courseStrategy.strategy === 'vented-accent' && (
+              <p className='leading-5'>
+                <span className='mr-1 inline-block h-2 w-2 rounded-full bg-[#8a5a13]' />
+                Vented Accent Course
+              </p>
+            )}
+            <p className='leading-5'>
+              <span
+                className='mr-1 inline-block h-2 w-2 rounded-full'
+                style={{ backgroundColor: palette.capColor }}
+              />
+              Cap Brick
+            </p>
+            <p className='leading-5'>
+              <span
+                className='mr-1 inline-block h-2 w-2 rounded-full'
+                style={{ backgroundColor: palette.mortarColor }}
+              />
+              Mortar ({mortarMode === 'off' ? 'hidden' : mortarMode})
+            </p>
+            <p className='leading-5'>
+              <span className='mr-1 inline-block h-2 w-2 rounded-full bg-[#241a12]' />
+              Vent Opening
+            </p>
+            {output.planShape !== 'circular' && (
+              <p className='leading-5'>
+                <span className='mr-1 inline-block h-2 w-2 rounded-full bg-[#f2f2f2]' />
+                Side Labels (N/E/S/W)
+              </p>
+            )}
+            {output.linerSpec.enabled && (
+              <p className='leading-5'>
+                <span className='mr-1 inline-block h-2 w-2 rounded-full bg-[#8e3b2f]' />
+                Thermal Liner
+              </p>
+            )}
+            {seatingSurfaceVisual && (
+              <p className='leading-5'>
+                <span
+                  className='mr-1 inline-block h-2 w-2 rounded-full'
+                  style={{ backgroundColor: seatingSurfaceVisual.baseColor }}
+                />
+                Seating Surface ({seatingShape}, {seatingSurfaceVisual.label})
+              </p>
+            )}
+            {seatingArea && showSeatingGuides && (
+              <p className='leading-5'>
+                <span className='mr-1 inline-block h-2 w-2 rounded-full bg-[#f3ece0]' />
+                {SEATING_FURNITURE_LABELS[seatingFurnitureStyle]} Guides (
+                {SEATING_DENSITY_LABELS[seatingDensity]})
+              </p>
+            )}
+            <p
+              className={`mt-1 rounded-md border px-2 py-1 text-[11px] font-semibold ${wallCutStatusTone}`}
+            >
+              {wallCutStatusText}
+            </p>
+            <p
+              className={`mt-1 rounded-md border px-2 py-1 text-[11px] font-semibold ${capCutStatusTone}`}
+            >
+              {capCutStatusText}
+            </p>
+          </div>
+        </div>
       </div>
 
       {webglBlocked ? (
@@ -1417,7 +2019,14 @@ export default function Stage3D({
       ) : (
         <Stage3DCanvasErrorBoundary onError={() => setWebglBlocked(true)}>
           <Canvas
-            camera={{ position: [0, 2.4, 5.2], fov: 48 }}
+            camera={{
+              position: [
+                0,
+                Math.max(2.4, stageGroundRadiusFt * 0.72),
+                cameraDistanceFt,
+              ],
+              fov: 48,
+            }}
             dpr={[1, 1.5]}
             gl={{
               antialias: false,
@@ -1450,11 +2059,11 @@ export default function Stage3D({
               enablePan={false}
               maxPolarAngle={Math.PI * 0.49}
               minDistance={2.2}
-              maxDistance={9}
+              maxDistance={orbitMaxDistanceFt}
             />
 
             <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]}>
-              <circleGeometry args={[3.4, 96]} />
+              <circleGeometry args={[stageGroundRadiusFt, 96]} />
               <meshStandardMaterial
                 color='#dbc8a6'
                 map={isPhotoreal ? groundDiffuseMap : undefined}
@@ -1463,6 +2072,218 @@ export default function Stage3D({
                 wireframe={effectiveWireframe}
               />
             </mesh>
+
+            {seatingArea && seatingSurfaceVisual && (
+              <>
+                {seatingShape === 'circular' ? (
+                  <>
+                    <mesh
+                      rotation={[-Math.PI / 2, 0, 0]}
+                      position={[0, -0.012, 0]}
+                    >
+                      <circleGeometry args={[seatingArea.radiusFt, 96]} />
+                      <meshStandardMaterial
+                        color={seatingSurfaceVisual.baseColor}
+                        map={isPhotoreal ? seatingTexture : undefined}
+                        roughness={seatingSurfaceVisual.roughness}
+                        metalness={seatingSurfaceVisual.metalness}
+                        wireframe={effectiveWireframe}
+                      />
+                    </mesh>
+                    <mesh
+                      rotation={[-Math.PI / 2, 0, 0]}
+                      position={[0, -0.006, 0]}
+                    >
+                      <ringGeometry
+                        args={[
+                          Math.max(0, seatingArea.radiusFt - 0.12),
+                          seatingArea.radiusFt,
+                          96,
+                        ]}
+                      />
+                      <meshStandardMaterial
+                        color={seatingSurfaceVisual.accentColor}
+                        roughness={0.9}
+                        metalness={0.02}
+                        wireframe={effectiveWireframe}
+                      />
+                    </mesh>
+                  </>
+                ) : (
+                  <>
+                    <mesh position={[0, -0.012, 0]}>
+                      <boxGeometry
+                        args={[
+                          seatingArea.overallWidthFt,
+                          0.03,
+                          seatingArea.overallDepthFt,
+                        ]}
+                      />
+                      <meshStandardMaterial
+                        color={seatingSurfaceVisual.baseColor}
+                        map={isPhotoreal ? seatingTexture : undefined}
+                        roughness={seatingSurfaceVisual.roughness}
+                        metalness={seatingSurfaceVisual.metalness}
+                        wireframe={effectiveWireframe}
+                      />
+                    </mesh>
+                    <RectangularRing
+                      widthFt={seatingArea.overallWidthFt}
+                      depthFt={seatingArea.overallDepthFt}
+                      thicknessFt={0.12}
+                      heightFt={0.03}
+                      y={-0.006}
+                      color={seatingSurfaceVisual.accentColor}
+                      wireframe={effectiveWireframe}
+                    />
+                  </>
+                )}
+                {showSeatingGuides && (
+                  <>
+                    {seatingShape === 'circular' ? (
+                      <>
+                        <mesh
+                          rotation={[-Math.PI / 2, 0, 0]}
+                          position={[0, 0.018, 0]}
+                        >
+                          <ringGeometry
+                            args={[
+                              Math.max(0, seatingArea.radiusFt - 0.06),
+                              seatingArea.radiusFt + 0.02,
+                              96,
+                            ]}
+                          />
+                          <meshStandardMaterial
+                            color='#f3ece0'
+                            roughness={0.9}
+                            metalness={0.02}
+                            transparent
+                            opacity={0.95}
+                            wireframe={effectiveWireframe}
+                          />
+                        </mesh>
+                        <mesh position={[seatingArea.radiusFt / 2, 0.08, 0]}>
+                          <boxGeometry
+                            args={[seatingArea.radiusFt, 0.03, 0.03]}
+                          />
+                          <meshStandardMaterial
+                            color='#f7f1e8'
+                            roughness={0.88}
+                            metalness={0.02}
+                            wireframe={effectiveWireframe}
+                          />
+                        </mesh>
+                        <mesh position={[0, 0.08, 0]}>
+                          <boxGeometry args={[0.05, 0.22, 0.05]} />
+                          <meshStandardMaterial
+                            color='#f7f1e8'
+                            roughness={0.88}
+                            metalness={0.02}
+                            wireframe={effectiveWireframe}
+                          />
+                        </mesh>
+                        <mesh position={[seatingArea.radiusFt, 0.08, 0]}>
+                          <boxGeometry args={[0.05, 0.22, 0.05]} />
+                          <meshStandardMaterial
+                            color='#f7f1e8'
+                            roughness={0.88}
+                            metalness={0.02}
+                            wireframe={effectiveWireframe}
+                          />
+                        </mesh>
+                        <Html
+                          position={[seatingArea.radiusFt / 2, 0.36, 0]}
+                          center
+                          transform
+                          distanceFactor={9}
+                        >
+                          <div className='rounded-full border border-amber-900/35 bg-white/92 px-2 py-1 text-[10px] font-bold text-amber-950 shadow'>
+                            Seating radius {seatingArea.radiusFt.toFixed(1)} ft
+                          </div>
+                        </Html>
+                      </>
+                    ) : (
+                      <>
+                        <RectangularRing
+                          widthFt={seatingArea.overallWidthFt}
+                          depthFt={seatingArea.overallDepthFt}
+                          thicknessFt={0.05}
+                          heightFt={0.04}
+                          y={0.02}
+                          color='#f3ece0'
+                          wireframe={effectiveWireframe}
+                          opacity={0.95}
+                        />
+                        <mesh position={[0, 0.08, 0]}>
+                          <boxGeometry
+                            args={[seatingArea.overallWidthFt, 0.03, 0.03]}
+                          />
+                          <meshStandardMaterial
+                            color='#f7f1e8'
+                            roughness={0.88}
+                            metalness={0.02}
+                            wireframe={effectiveWireframe}
+                          />
+                        </mesh>
+                        <mesh
+                          position={[-seatingArea.overallWidthFt / 2, 0.08, 0]}
+                        >
+                          <boxGeometry args={[0.05, 0.22, 0.05]} />
+                          <meshStandardMaterial
+                            color='#f7f1e8'
+                            roughness={0.88}
+                            metalness={0.02}
+                            wireframe={effectiveWireframe}
+                          />
+                        </mesh>
+                        <mesh
+                          position={[seatingArea.overallWidthFt / 2, 0.08, 0]}
+                        >
+                          <boxGeometry args={[0.05, 0.22, 0.05]} />
+                          <meshStandardMaterial
+                            color='#f7f1e8'
+                            roughness={0.88}
+                            metalness={0.02}
+                            wireframe={effectiveWireframe}
+                          />
+                        </mesh>
+                        <Html
+                          position={[0, 0.36, 0]}
+                          center
+                          transform
+                          distanceFactor={9}
+                        >
+                          <div className='rounded-full border border-amber-900/35 bg-white/92 px-2 py-1 text-[10px] font-bold text-amber-950 shadow'>
+                            Square seating{' '}
+                            {seatingArea.overallWidthFt.toFixed(1)} ft x{' '}
+                            {seatingArea.overallDepthFt.toFixed(1)} ft
+                          </div>
+                        </Html>
+                      </>
+                    )}
+                    {seatingReferencePlacements.map((placement, index) =>
+                      seatingFurnitureStyle === 'bench' ? (
+                        <SeatingBenchMarker
+                          key={`seat-marker-${index}`}
+                          x={placement.x}
+                          z={placement.z}
+                          rotationY={placement.rotationY}
+                          wireframe={effectiveWireframe}
+                        />
+                      ) : (
+                        <SeatingChairMarker
+                          key={`seat-marker-${index}`}
+                          x={placement.x}
+                          z={placement.z}
+                          rotationY={placement.rotationY}
+                          wireframe={effectiveWireframe}
+                        />
+                      ),
+                    )}
+                  </>
+                )}
+              </>
+            )}
 
             {output.planShape === 'circular' ? (
               <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.001, 0]}>
@@ -2226,9 +3047,9 @@ export default function Stage3D({
             <ContactShadows
               position={[0, -0.019, 0]}
               opacity={isPhotoreal ? 0.7 : 0.5}
-              scale={7}
+              scale={Math.max(7, stageGroundRadiusFt * 2)}
               blur={isPhotoreal ? 1.6 : 2.8}
-              far={2.5}
+              far={Math.max(2.5, stageGroundRadiusFt * 0.85)}
             />
           </Canvas>
         </Stage3DCanvasErrorBoundary>

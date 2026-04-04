@@ -300,7 +300,9 @@ export default function App() {
   const [quickPresetGroup, setQuickPresetGroup] =
     useState<QuickPresetGroupKey>('round-popular');
   const [view, setView] = useState<ViewMode>('3d');
-  const [stakeholderRenderSignal, setStakeholderRenderSignal] = useState(0);
+  const [stakeholderRenderSignal, setStakeholderRenderSignal] = useState<
+    number | null
+  >(null);
   const [siteView, setSiteView] = useState<SiteView>('designer');
   const [projectNotice, setProjectNotice] = useState<string | null>(null);
   const [projectStatus, setProjectStatus] = useState<ProjectStatus | null>(
@@ -763,7 +765,7 @@ export default function App() {
 
   const handleStakeholderRender = () => {
     setView('3d');
-    setStakeholderRenderSignal((value) => value + 1);
+    setStakeholderRenderSignal((value) => (value ?? 0) + 1);
   };
 
   const handleClearBrowserData = () => {

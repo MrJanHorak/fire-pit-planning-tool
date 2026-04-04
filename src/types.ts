@@ -25,6 +25,9 @@ export type SeatingGroundType =
   | 'decomposed-granite'
   | 'permeable-paver'
   | 'hardscape';
+export type SeatingAreaShape = 'circular' | 'square';
+export type SeatingFurnitureStyle = 'adirondack' | 'bench';
+export type SeatingDensity = 'cozy' | 'standard' | 'spacious';
 
 export interface MasonryUnit {
   name: string;
@@ -78,6 +81,9 @@ export interface MasonryInput {
   accentCoursePosition?: number;
   accentCourseOrientation?: UnitOrientation;
   seatingGroundType?: SeatingGroundType;
+  seatingAreaShape?: SeatingAreaShape;
+  seatingFurnitureStyle?: SeatingFurnitureStyle;
+  seatingDensity?: SeatingDensity;
   seatingAreaRadiusFt?: number;
 }
 
@@ -156,7 +162,12 @@ export interface FoundationSpec {
 
 export interface SeatingAreaMaterials {
   groundType: SeatingGroundType;
+  shape: SeatingAreaShape;
+  furnitureStyle: SeatingFurnitureStyle;
+  density: SeatingDensity;
   radiusFt: number;
+  overallWidthFt: number;
+  overallDepthFt: number;
   areaSquareFeet: number;
   materials: Array<{
     name: string;

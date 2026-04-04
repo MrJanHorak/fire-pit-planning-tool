@@ -45,5 +45,8 @@ export const DEFAULT_MASONRY_INPUT: MasonryInput = {
   accentCoursePosition: 2,
   accentCourseOrientation: 'header',
   seatingGroundType: 'gravel',
+  seatingAreaShape: 'circular',
+  seatingFurnitureStyle: 'adirondack',
+  seatingDensity: 'standard',
   seatingAreaRadiusFt: 10,
 };

@@ -2,9 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { MasonryEngine } from '../../engine/MasonryEngine';
 import type { MasonryInput } from '../../types';
 import {
+  buildSeatingReferencePlacements,
   buildCircularCapBrickQuad,
   buildCircularCapJointQuad,
   computeStage3DGeometry,
+  getSeatingGuideInsetFt,
+  getSeatingReferenceCount,
+  getSeatingSurfaceVisual,
+  getStageGroundRadiusForShapeFt,
+  getStageGroundRadiusFt,
   isHalfRoundCapUnit,
 } from '../Stage3D';
 
@@ -141,5 +147,116 @@ describe('Stage3D geometry', () => {
   it('detects half-round coping cap units by name', () => {
     expect(isHalfRoundCapUnit('Half-Round Coping')).toBe(true);
     expect(isHalfRoundCapUnit('Cap Block')).toBe(false);
+  });
+
+  it('maps seating ground types to distinct 3D surface visuals', () => {
+    const gravel = getSeatingSurfaceVisual('gravel');
+    const hardscape = getSeatingSurfaceVisual('hardscape');
+
+    expect(gravel.label).toBe('Compacted Gravel');
+    expect(gravel.pattern).toBe('speckle');
+    expect(hardscape.label).toBe('Hardscape');
+    expect(hardscape.pattern).toBe('slab');
+    expect(hardscape.baseColor).not.toBe(gravel.baseColor);
+  });
+
+  it('expands the rendered ground radius when seating area is present', () => {
+    expect(getStageGroundRadiusFt()).toBeCloseTo(3.4);
+    expect(getStageGroundRadiusFt(8)).toBeCloseTo(9.75);
+    expect(getStageGroundRadiusFt(12)).toBeCloseTo(13.75);
+    expect(getStageGroundRadiusForShapeFt(10, 'square')).toBeCloseTo(15.89, 2);
+  });
+
+  it('clamps seating reference chair count to a practical display range', () => {
+    expect(getSeatingReferenceCount(4)).toBe(6);
+    expect(getSeatingReferenceCount(10)).toBe(11);
+    expect(getSeatingReferenceCount(20)).toBe(12);
+    expect(getSeatingReferenceCount(10, 'adirondack', 'circular', 'cozy')).toBe(
+      14,
+    );
+    expect(
+      getSeatingReferenceCount(10, 'adirondack', 'circular', 'spacious'),
+    ).toBe(8);
+    expect(getSeatingReferenceCount(10, 'bench')).toBe(4);
+    expect(getSeatingReferenceCount(8, 'adirondack', 'square')).toBe(8);
+    expect(getSeatingReferenceCount(8, 'adirondack', 'square', 'cozy')).toBe(
+      10,
+    );
+    expect(
+      getSeatingReferenceCount(8, 'adirondack', 'square', 'spacious'),
+    ).toBe(6);
+    expect(getSeatingReferenceCount(10, 'adirondack', 'square')).toBe(8);
+  });
+
+  it('uses a scale-aware inset based on chair depth', () => {
+    expect(getSeatingGuideInsetFt()).toBeCloseTo(2.4);
+    expect(getSeatingGuideInsetFt('adirondack', 'cozy')).toBeCloseTo(3.2);
+    expect(getSeatingGuideInsetFt('adirondack', 'spacious')).toBeCloseTo(1.6);
+    expect(getSeatingGuideInsetFt('bench')).toBeCloseTo(1.775);
+  });
+
+  it('builds evenly spaced seating reference placements facing the firepit', () => {
+    const placements = buildSeatingReferencePlacements('circular', 10, 4);
+
+    expect(placements).toHaveLength(4);
+    expect(placements[0].x).toBeCloseTo(7.6);
+    expect(placements[0].z).toBeCloseTo(0);
+    expect(placements[1].x).toBeCloseTo(0, 6);
+    expect(placements[1].z).toBeCloseTo(7.6);
+    expect(placements[0].rotationY).toBeCloseTo(-Math.PI / 2);
+  });
+
+  it('builds square seating placements on sides and corners', () => {
+    const placements = buildSeatingReferencePlacements(
+      'square',
+      10,
+      8,
+      1.6,
+      'standard',
+    );
+
+    expect(placements).toHaveLength(8);
+    expect(placements[0]).toMatchObject({ x: 0, z: -8.4 });
+    expect(placements[1]).toMatchObject({ x: 8.4, z: 0 });
+    expect(placements[4].x).toBeCloseTo(6.552, 3);
+    expect(placements[4].z).toBeCloseTo(-6.552, 3);
+    expect(placements[0].rotationY).toBeCloseTo(0);
+    expect(placements[2].rotationY).toBeCloseTo(Math.PI);
+  });
+
+  it('biases square cozy seating toward corners to keep side lanes clearer', () => {
+    const placements = buildSeatingReferencePlacements(
+      'square',
+      10,
+      8,
+      3.2,
+      'cozy',
+    );
+
+    const side = placements[0];
+    const corner = placements[4];
+    expect(Math.abs(side.z)).toBeLessThan(Math.abs(corner.z));
+    expect(Math.abs(side.z)).toBeLessThan(Math.abs(corner.x));
+  });
+
+  it('removes corner benches for square cozy bench seating, keeping only 4 inner side benches', () => {
+    const placementsWithBench = buildSeatingReferencePlacements(
+      'square',
+      10,
+      6,
+      3.2,
+      'cozy',
+      'bench',
+    );
+
+    // Square cozy bench should always return exactly 4 side placements
+    expect(placementsWithBench).toHaveLength(4);
+
+    // Verify they are positioned on the four sides
+    placementsWithBench.forEach((placement) => {
+      const onXAxis = Math.abs(placement.x) > Math.abs(placement.z) * 0.9;
+      const onZAxis = Math.abs(placement.z) > Math.abs(placement.x) * 0.9;
+      expect(onXAxis || onZAxis).toBe(true);
+    });
   });
 });

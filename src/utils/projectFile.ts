@@ -202,6 +202,18 @@ export function normalizeMasonryInput(
       value.seatingGroundType,
       defaults.seatingGroundType ?? 'gravel',
     ) as MasonryInput['seatingGroundType'],
+    seatingAreaShape: coerceString(
+      value.seatingAreaShape,
+      defaults.seatingAreaShape ?? 'circular',
+    ) as MasonryInput['seatingAreaShape'],
+    seatingFurnitureStyle: coerceString(
+      value.seatingFurnitureStyle,
+      defaults.seatingFurnitureStyle ?? 'adirondack',
+    ) as MasonryInput['seatingFurnitureStyle'],
+    seatingDensity: coerceString(
+      value.seatingDensity,
+      defaults.seatingDensity ?? 'standard',
+    ) as MasonryInput['seatingDensity'],
     seatingAreaRadiusFt: coerceNumber(
       value.seatingAreaRadiusFt,
       defaults.seatingAreaRadiusFt ?? 10,
