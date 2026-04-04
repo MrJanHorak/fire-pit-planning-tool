@@ -31,6 +31,10 @@ const ANALYTICS_CONSENT_STORAGE_KEY =
 const ANALYTICS_CONSENT_VERSION_STORAGE_KEY =
   'firepit-parametric-masonry-designer-analytics-consent-version';
 const ANALYTICS_CONSENT_VERSION = '2026-03-23';
+const DETAILS_LOGISTICS_KEY =
+  'firepit-parametric-masonry-designer-details-logistics';
+const DETAILS_REFERENCES_KEY =
+  'firepit-parametric-masonry-designer-details-references';
 
 const Stage3D = lazy(() => import('./components/Stage3D'));
 const ConstructionMode = lazy(() => import('./components/ConstructionMode'));
@@ -170,6 +174,16 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const hasInitializedAutosave = useRef(false);
   const hasConfiguredAnalytics = useRef(false);
+  const [logisticsOpen, setLogisticsOpen] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const stored = window.localStorage.getItem(DETAILS_LOGISTICS_KEY);
+    return stored === null ? false : stored === 'true';
+  });
+  const [referencesOpen, setReferencesOpen] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const stored = window.localStorage.getItem(DETAILS_REFERENCES_KEY);
+    return stored === null ? false : stored === 'true';
+  });
   const [analyticsConsent, setAnalyticsConsent] = useState<AnalyticsConsent>(
     () => {
       if (typeof window === 'undefined') {
@@ -1013,50 +1027,6 @@ export default function App() {
           </div>
 
           <section className='min-w-0 space-y-4'>
-            <div className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg'>
-              <div className='flex flex-wrap items-center justify-between gap-2'>
-                <p className='text-xs font-semibold uppercase tracking-[0.15em] text-amber-900/75'>
-                  What To Do Next
-                </p>
-                <span
-                  className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
-                    hasBlockingWarnings
-                      ? 'border-red-800/25 bg-red-100 text-red-900'
-                      : 'border-emerald-800/25 bg-emerald-100 text-emerald-900'
-                  }`}
-                >
-                  {hasBlockingWarnings
-                    ? 'Address safety items first'
-                    : 'Ready to plan build'}
-                </span>
-              </div>
-              <ul className='mt-3 space-y-2'>
-                {nextSteps.map((step) => (
-                  <li
-                    key={step.key}
-                    className='flex items-start gap-2 rounded-lg border border-amber-900/15 bg-white/70 px-3 py-2 text-sm text-amber-950/90'
-                  >
-                    <span
-                      className={`mt-0.5 inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold ${
-                        step.status === 'done'
-                          ? 'bg-emerald-600 text-emerald-50'
-                          : step.status === 'todo'
-                            ? 'bg-amber-200 text-amber-900'
-                            : 'bg-sky-200 text-sky-900'
-                      }`}
-                    >
-                      {step.status === 'done'
-                        ? 'OK'
-                        : step.status === 'todo'
-                          ? '!'
-                          : 'i'}
-                    </span>
-                    <span>{step.label}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
             <div className='card-rise grid gap-3 rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg sm:grid-cols-3'>
               <div>
                 <p className='text-xs uppercase tracking-wide text-amber-950/75'>
@@ -1111,104 +1081,100 @@ export default function App() {
               </div>
             </div>
 
-            <div className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg'>
-              <div className='flex flex-wrap items-center justify-between gap-2'>
-                <p className='text-xs uppercase tracking-wide text-amber-950/75'>
-                  Build Method
-                </p>
-                <span className='rounded-full border border-amber-900/20 bg-white px-3 py-1 text-xs font-semibold text-amber-950'>
-                  {output.courseStrategy.strategy}
-                </span>
-              </div>
+            <details
+              className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg'
+              open={logisticsOpen}
+              onToggle={(e) => {
+                const next = e.currentTarget.open;
+                setLogisticsOpen(next);
+                window.localStorage.setItem(
+                  DETAILS_LOGISTICS_KEY,
+                  String(next),
+                );
+              }}
+            >
+              <summary className='group cursor-pointer list-none'>
+                <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg px-2 py-1 transition-colors group-hover:bg-amber-100/50'>
+                  <div className='flex items-center gap-2'>
+                    <svg
+                      className='h-4 w-4 text-amber-900/60 transition-transform group-open:rotate-90'
+                      fill='none'
+                      stroke='currentColor'
+                      viewBox='0 0 24 24'
+                    >
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M9 5l7 7-7 7'
+                      />
+                    </svg>
+                    <div>
+                      <p className='text-xs font-semibold uppercase tracking-wide text-amber-950'>
+                        Project Stats
+                      </p>
+                      <p className='text-xs text-amber-900/60'>
+                        {output.logistics.purchasedUnits} units •{' '}
+                        {Math.round(output.logistics.estimatedBrickWeightLb)} lb
+                      </p>
+                    </div>
+                  </div>
+                  <span className='rounded-full border border-amber-900/20 bg-white px-3 py-1 text-xs font-semibold text-amber-950'>
+                    Click for more
+                  </span>
+                </div>
+              </summary>
 
-              <div className='mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4'>
-                <span className='rounded-xl border border-amber-900/20 bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-950'>
-                  <span className='mr-2 inline-block h-2.5 w-2.5 rounded-full bg-[#7d3512] align-middle' />
-                  Standard course units
-                </span>
-                {output.courseStrategy.strategy === 'shim-spacer' && (
-                  <>
-                    <span className='rounded-xl border border-indigo-900/20 bg-indigo-100 px-3 py-2 text-xs font-semibold text-indigo-950'>
-                      <span className='mr-2 inline-block h-2.5 w-2.5 rounded-full bg-[#6f58b5] align-middle' />
-                      Shim Spacer Course
-                    </span>
-                    <span className='rounded-xl border border-indigo-900/20 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-950'>
-                      <span className='mr-2 inline-block h-2.5 w-2.5 rounded-full bg-[#6f58b5] align-middle' />
-                      Shim Units: {output.courseStrategy.shimUnitCount}
-                    </span>
-                  </>
-                )}
-                {output.courseStrategy.strategy === 'vented-accent' && (
-                  <>
-                    <span className='rounded-xl border border-amber-900/20 bg-amber-200 px-3 py-2 text-xs font-semibold text-amber-950'>
-                      <span className='mr-2 inline-block h-2.5 w-2.5 rounded-full bg-[#8a5a13] align-middle' />
-                      Vented Accent Course
-                    </span>
-                    <span className='rounded-xl border border-amber-900/20 bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-950'>
-                      <span className='mr-2 inline-block h-2.5 w-2.5 rounded-full bg-[#8a5a13] align-middle' />
-                      Accent Indexes:{' '}
-                      {output.courseStrategy.accentCourseIndexes
-                        .map((index) => `C${index + 1}`)
-                        .join(', ') || 'None'}
-                    </span>
-                  </>
-                )}
-                <span className='rounded-xl border border-red-900/20 bg-red-100 px-3 py-2 text-xs font-semibold text-red-950'>
-                  <span className='mr-2 inline-block h-2.5 w-2.5 rounded-full bg-[#c13a1f] align-middle' />
-                  Vent opening marker
-                </span>
+              <div className='mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5'>
+                <div>
+                  <p className='text-xs uppercase tracking-wide text-amber-950/75'>
+                    Purchased Units
+                  </p>
+                  <p className='text-xl font-bold'>
+                    {output.logistics.purchasedUnits}
+                  </p>
+                  <p className='text-xs text-amber-900/70'>
+                    Includes {output.logistics.wasteFactorPct}% waste
+                  </p>
+                </div>
+                <div>
+                  <p className='text-xs uppercase tracking-wide text-amber-950/75'>
+                    Brick Weight
+                  </p>
+                  <p className='text-xl font-bold'>
+                    {Math.round(output.logistics.estimatedBrickWeightLb)} lb
+                  </p>
+                </div>
+                <div>
+                  <p className='text-xs uppercase tracking-wide text-amber-950/75'>
+                    Stone Weight
+                  </p>
+                  <p className='text-xl font-bold'>
+                    {Math.round(output.logistics.estimatedStoneWeightLb)} lb
+                  </p>
+                </div>
+                <div>
+                  <p className='text-xs uppercase tracking-wide text-amber-950/75'>
+                    Mortar Volume
+                  </p>
+                  <p className='text-xl font-bold'>
+                    {output.logistics.estimatedMortarVolumeCubicFeet.toFixed(1)}{' '}
+                    ft3
+                  </p>
+                </div>
+                <div>
+                  <p className='text-xs uppercase tracking-wide text-amber-950/75'>
+                    Cap Weight
+                  </p>
+                  <p className='text-xl font-bold'>
+                    {Math.round(output.logistics.estimatedCapWeightLb)} lb
+                  </p>
+                  <p className='text-xs text-amber-900/70'>
+                    Purchased caps: {output.logistics.purchasedCapUnits}
+                  </p>
+                </div>
               </div>
-            </div>
-
-            <div className='card-rise grid gap-3 rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg sm:grid-cols-2 lg:grid-cols-5'>
-              <div>
-                <p className='text-xs uppercase tracking-wide text-amber-950/75'>
-                  Purchased Units
-                </p>
-                <p className='text-xl font-bold'>
-                  {output.logistics.purchasedUnits}
-                </p>
-                <p className='text-xs text-amber-900/70'>
-                  Includes {output.logistics.wasteFactorPct}% waste
-                </p>
-              </div>
-              <div>
-                <p className='text-xs uppercase tracking-wide text-amber-950/75'>
-                  Brick Weight
-                </p>
-                <p className='text-xl font-bold'>
-                  {Math.round(output.logistics.estimatedBrickWeightLb)} lb
-                </p>
-              </div>
-              <div>
-                <p className='text-xs uppercase tracking-wide text-amber-950/75'>
-                  Stone Weight
-                </p>
-                <p className='text-xl font-bold'>
-                  {Math.round(output.logistics.estimatedStoneWeightLb)} lb
-                </p>
-              </div>
-              <div>
-                <p className='text-xs uppercase tracking-wide text-amber-950/75'>
-                  Mortar Volume
-                </p>
-                <p className='text-xl font-bold'>
-                  {output.logistics.estimatedMortarVolumeCubicFeet.toFixed(1)}{' '}
-                  ft3
-                </p>
-              </div>
-              <div>
-                <p className='text-xs uppercase tracking-wide text-amber-950/75'>
-                  Cap Weight
-                </p>
-                <p className='text-xl font-bold'>
-                  {Math.round(output.logistics.estimatedCapWeightLb)} lb
-                </p>
-                <p className='text-xs text-amber-900/70'>
-                  Purchased caps: {output.logistics.purchasedCapUnits}
-                </p>
-              </div>
-            </div>
+            </details>
 
             <div className='flex gap-2'>
               <button
@@ -1243,14 +1209,84 @@ export default function App() {
               )}
             </Suspense>
 
-            <SafetyClearanceDiagram input={input} output={output} />
+            <div className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg'>
+              <div className='flex flex-wrap items-center justify-between gap-2'>
+                <p className='text-xs font-semibold uppercase tracking-[0.15em] text-amber-900/75'>
+                  What To Do Next
+                </p>
+                <span
+                  className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                    hasBlockingWarnings
+                      ? 'border-red-800/25 bg-red-100 text-red-900'
+                      : 'border-emerald-800/25 bg-emerald-100 text-emerald-900'
+                  }`}
+                >
+                  {hasBlockingWarnings
+                    ? 'Address safety items first'
+                    : 'Ready to plan build'}
+                </span>
+              </div>
+              <ul className='mt-3 space-y-2'>
+                {nextSteps.map((step) => (
+                  <li
+                    key={step.key}
+                    className='flex items-start gap-2 rounded-lg border border-amber-900/15 bg-white/70 px-3 py-2 text-sm text-amber-950/90'
+                  >
+                    <span
+                      className={`mt-0.5 inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold ${
+                        step.status === 'done'
+                          ? 'bg-emerald-600 text-emerald-50'
+                          : step.status === 'todo'
+                            ? 'bg-amber-200 text-amber-900'
+                            : 'bg-sky-200 text-sky-900'
+                      }`}
+                    >
+                      {step.status === 'done'
+                        ? 'OK'
+                        : step.status === 'todo'
+                          ? '!'
+                          : 'i'}
+                    </span>
+                    <span>{step.label}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-            <ProjectInfoCard
-              input={input}
-              output={output}
-              foundationAdvisory={foundationAdvisory}
-              noCutGuidance={noCutGuidance}
-            />
+            <details
+              className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg'
+              open={referencesOpen}
+              onToggle={(e) => {
+                const next = e.currentTarget.open;
+                setReferencesOpen(next);
+                window.localStorage.setItem(
+                  DETAILS_REFERENCES_KEY,
+                  String(next),
+                );
+              }}
+            >
+              <summary className='cursor-pointer list-none'>
+                <div className='flex flex-wrap items-center justify-between gap-2'>
+                  <p className='text-xs uppercase tracking-wide text-amber-950/75'>
+                    Detailed References
+                  </p>
+                  <span className='rounded-full border border-amber-900/20 bg-white px-3 py-1 text-xs font-semibold text-amber-950'>
+                    Safety diagram and full report
+                  </span>
+                </div>
+              </summary>
+
+              <div className='mt-3 space-y-4'>
+                <SafetyClearanceDiagram input={input} output={output} />
+
+                <ProjectInfoCard
+                  input={input}
+                  output={output}
+                  foundationAdvisory={foundationAdvisory}
+                  noCutGuidance={noCutGuidance}
+                />
+              </div>
+            </details>
           </section>
         </div>
       ) : (

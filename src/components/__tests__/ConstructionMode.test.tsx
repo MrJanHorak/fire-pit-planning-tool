@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { MasonryEngine } from '../../engine/MasonryEngine';
 import type { MasonryInput } from '../../types';
 import ConstructionMode from '../ConstructionMode';
@@ -29,12 +29,23 @@ const baseInput: MasonryInput = {
 };
 
 describe('ConstructionMode', () => {
+  beforeEach(() => {
+    // Reset persisted tab state so each test starts on the default 'layout' tab.
+    window.localStorage.removeItem(
+      'firepit-parametric-masonry-designer-construction-tab',
+    );
+  });
+
   it('renders site guidance with foundation review state and liner venting note', () => {
     const output = new MasonryEngine().calculateDesign(baseInput);
 
     render(<ConstructionMode input={baseInput} output={output} />);
 
-    expect(screen.getByText('Site Guidance')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: 'Site Guidance' }));
+
+    expect(
+      screen.getByRole('heading', { name: 'Site Guidance' }),
+    ).toBeInTheDocument();
     expect(screen.getByText('high foundation review')).toBeInTheDocument();
     expect(screen.getByText('Review scale')).toBeInTheDocument();
     expect(
