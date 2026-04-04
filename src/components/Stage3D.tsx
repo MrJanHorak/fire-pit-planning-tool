@@ -16,6 +16,8 @@ interface Stage3DProps {
   output: MasonryOutput;
 }
 
+type MortarMode = 'solid' | 'ghost' | 'off';
+
 export interface Stage3DGeometry {
   planShape: MasonryOutput['planShape'];
   wallRadiusFt: number;
@@ -159,12 +161,14 @@ function CircularCapJointFiller({
   polygonPoints,
   heightFt,
   color,
+  opacity,
   wireframe,
   showEdges,
 }: {
   polygonPoints: Point2D[];
   heightFt: number;
   color: string;
+  opacity?: number;
   wireframe: boolean;
   showEdges: boolean;
 }) {
@@ -197,6 +201,8 @@ function CircularCapJointFiller({
       <meshStandardMaterial
         color={color}
         roughness={0.93}
+        transparent={opacity !== undefined && opacity < 1}
+        opacity={opacity ?? 1}
         wireframe={wireframe}
       />
       {showEdges && <Edges color='#4a3a28' lineWidth={1} scale={1.003} />}
@@ -657,6 +663,7 @@ export default function Stage3D({ output }: Stage3DProps) {
   const [wireframe, setWireframe] = useState(false);
   const [showBrickOutlines, setShowBrickOutlines] = useState(true);
   const [showFlame, setShowFlame] = useState(false);
+  const [mortarMode, setMortarMode] = useState<MortarMode>('solid');
   const [webglBlocked, setWebglBlocked] = useState(false);
   const orbitRef = useRef<OrbitHandle>(null);
 
@@ -809,6 +816,8 @@ export default function Stage3D({ output }: Stage3DProps) {
   const capCutStatusText = capRequiresTaperCut
     ? 'Capstone taper cuts required'
     : 'Capstone taper cuts not required';
+  const showMortar = mortarMode !== 'off';
+  const mortarOpacity = mortarMode === 'ghost' ? 0.25 : 0.96;
   const innerVoidRadiusFt =
     output.linerSpec.enabled && geometry.linerInnerRadiusFt > 0
       ? geometry.linerInnerRadiusFt
@@ -873,6 +882,25 @@ export default function Stage3D({ output }: Stage3DProps) {
   return (
     <div className='card-rise relative h-[460px] rounded-2xl border border-amber-900/20 bg-amber-100/70 p-2 shadow-lg sm:h-[500px]'>
       <div className='absolute right-2 top-2 z-10 flex flex-col items-end gap-2 sm:right-4 sm:top-4'>
+
+         <div className='rounded-xl bg-amber-50/95 px-3 py-2 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
+          <p className='mb-1 text-[10px] uppercase tracking-wide text-amber-900/70'>
+            Mortar
+          </p>
+          <div className='flex gap-1'>
+            {(['solid', 'ghost', 'off'] as MortarMode[]).map((mode) => (
+              <button
+                key={mode}
+                className={`rounded-full px-2 py-1 ${mortarMode === mode ? 'bg-amber-900 text-amber-50' : 'bg-amber-200/80 text-amber-950'}`}
+                onClick={() => setMortarMode(mode)}
+                aria-label={`Set mortar mode to ${mode}`}
+              >
+                {mode.charAt(0).toUpperCase() + mode.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className='flex items-center gap-2 rounded-full bg-amber-50/95 px-3 py-1.5 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
           <span>Wireframe</span>
           <button
@@ -954,7 +982,7 @@ export default function Stage3D({ output }: Stage3DProps) {
         </p>
         <p className='leading-5'>
           <span className='mr-1 inline-block h-2 w-2 rounded-full bg-[#c6b39a]' />
-          Mortar
+          Mortar ({mortarMode === 'off' ? 'hidden' : mortarMode})
         </p>
         <p className='leading-5'>
           <span className='mr-1 inline-block h-2 w-2 rounded-full bg-[#241a12]' />
@@ -1057,8 +1085,8 @@ export default function Stage3D({ output }: Stage3DProps) {
               </mesh>
             )}
 
-            {output.planShape === 'circular' ? (
-              <>
+            {showMortar && output.planShape === 'circular' ? (
+              <group key={`wall-mortar-${mortarMode}`}>
                 <mesh position={[0, wallHeightFt / 2, 0]}>
                   <cylinderGeometry
                     args={[
@@ -1073,6 +1101,9 @@ export default function Stage3D({ output }: Stage3DProps) {
                   <meshStandardMaterial
                     color='#c6b39a'
                     roughness={0.93}
+                    transparent={mortarMode === 'ghost'}
+                    opacity={mortarOpacity}
+                    depthWrite={mortarMode !== 'ghost'}
                     wireframe={wireframe}
                   />
                 </mesh>
@@ -1091,12 +1122,16 @@ export default function Stage3D({ output }: Stage3DProps) {
                     color='#c6b39a'
                     roughness={0.93}
                     side={BackSide}
+                    transparent={mortarMode === 'ghost'}
+                    opacity={mortarOpacity}
+                    depthWrite={mortarMode !== 'ghost'}
                     wireframe={wireframe}
                   />
                 </mesh>
-              </>
-            ) : (
+              </group>
+            ) : showMortar ? (
               <RectangularRing
+                key={`wall-mortar-rect-${mortarMode}`}
                 widthFt={geometry.wallSpanWidthFt}
                 depthFt={geometry.wallSpanDepthFt}
                 thicknessFt={brickWidthFt}
@@ -1104,16 +1139,17 @@ export default function Stage3D({ output }: Stage3DProps) {
                 y={wallHeightFt / 2}
                 color='#c6b39a'
                 wireframe={wireframe}
-                opacity={0.96}
+                opacity={mortarOpacity}
               />
-            )}
+            ) : null}
 
-            {output.planShape === 'circular' &&
+            {showMortar &&
+              output.planShape === 'circular' &&
               output.courses.map(
                 (course) =>
                   course.courseIndex > 0 && (
                     <mesh
-                      key={`bed-${course.courseIndex}`}
+                      key={`bed-${course.courseIndex}-${mortarMode}`}
                       rotation={[-Math.PI / 2, 0, 0]}
                       position={[
                         0,
@@ -1131,6 +1167,9 @@ export default function Stage3D({ output }: Stage3DProps) {
                       <meshStandardMaterial
                         color='#c6b39a'
                         roughness={0.93}
+                        transparent={mortarMode === 'ghost'}
+                        opacity={mortarOpacity}
+                        depthWrite={mortarMode !== 'ghost'}
                         wireframe={wireframe}
                       />
                     </mesh>
@@ -1401,7 +1440,8 @@ export default function Stage3D({ output }: Stage3DProps) {
               );
             })()}
 
-            {capJointLengthFt > 0.02 &&
+            {showMortar &&
+              capJointLengthFt > 0.02 &&
               (() => {
                 let capstoneOffsetIn = 0;
                 if (output.planShape !== 'circular') {
@@ -1463,7 +1503,7 @@ export default function Stage3D({ output }: Stage3DProps) {
 
                     return (
                       <mesh
-                        key={`cap-joint-${capIdx}`}
+                        key={`cap-joint-${capIdx}-${mortarMode}`}
                         position={[jointPlacement.x, jointY, jointPlacement.z]}
                         rotation={[0, jointPlacement.rotationY, 0]}
                       >
@@ -1474,6 +1514,7 @@ export default function Stage3D({ output }: Stage3DProps) {
                             polygonPoints={jointQuad.polygonPoints}
                             heightFt={capJointHeightFt}
                             color='#c6b39a'
+                            opacity={mortarOpacity}
                             wireframe={wireframe}
                             showEdges={showBrickOutlines}
                           />
@@ -1489,6 +1530,9 @@ export default function Stage3D({ output }: Stage3DProps) {
                             <meshStandardMaterial
                               color='#c6b39a'
                               roughness={0.93}
+                              transparent={mortarMode === 'ghost'}
+                              opacity={mortarOpacity}
+                              depthWrite={mortarMode !== 'ghost'}
                               wireframe={wireframe}
                             />
                           </>
@@ -1499,43 +1543,52 @@ export default function Stage3D({ output }: Stage3DProps) {
                 );
               })()}
 
-            {output.planShape !== 'circular' && capCornerJointSizeFt > 0.02 && (
-              <>
-                {[
-                  [geometry.capSpanWidthFt / 2, geometry.capSpanDepthFt / 2],
-                  [geometry.capSpanWidthFt / 2, -geometry.capSpanDepthFt / 2],
-                  [-geometry.capSpanWidthFt / 2, geometry.capSpanDepthFt / 2],
-                  [-geometry.capSpanWidthFt / 2, -geometry.capSpanDepthFt / 2],
-                ].map(([x, z], index) => (
-                  <mesh
-                    key={`cap-corner-joint-${index}`}
-                    position={[
-                      x as number,
-                      geometry.capRiseFt +
-                        capBrickHeightFt / 2 +
-                        mortarJointFt / 2,
-                      z as number,
-                    ]}
-                  >
-                    <boxGeometry
-                      args={[
-                        capCornerJointSizeFt,
-                        capJointHeightFt,
-                        capCornerJointSizeFt,
+            {showMortar &&
+              output.planShape !== 'circular' &&
+              capCornerJointSizeFt > 0.02 && (
+                <>
+                  {[
+                    [geometry.capSpanWidthFt / 2, geometry.capSpanDepthFt / 2],
+                    [geometry.capSpanWidthFt / 2, -geometry.capSpanDepthFt / 2],
+                    [-geometry.capSpanWidthFt / 2, geometry.capSpanDepthFt / 2],
+                    [
+                      -geometry.capSpanWidthFt / 2,
+                      -geometry.capSpanDepthFt / 2,
+                    ],
+                  ].map(([x, z], index) => (
+                    <mesh
+                      key={`cap-corner-joint-${index}-${mortarMode}`}
+                      position={[
+                        x as number,
+                        geometry.capRiseFt +
+                          capBrickHeightFt / 2 +
+                          mortarJointFt / 2,
+                        z as number,
                       ]}
-                    />
-                    <meshStandardMaterial
-                      color='#c6b39a'
-                      roughness={0.93}
-                      wireframe={wireframe}
-                    />
-                  </mesh>
-                ))}
-              </>
-            )}
+                    >
+                      <boxGeometry
+                        args={[
+                          capCornerJointSizeFt,
+                          capJointHeightFt,
+                          capCornerJointSizeFt,
+                        ]}
+                      />
+                      <meshStandardMaterial
+                        color='#c6b39a'
+                        roughness={0.93}
+                        transparent={mortarMode === 'ghost'}
+                        opacity={mortarOpacity}
+                        depthWrite={mortarMode !== 'ghost'}
+                        wireframe={wireframe}
+                      />
+                    </mesh>
+                  ))}
+                </>
+              )}
 
-            {output.planShape === 'circular' ? (
+            {showMortar && output.planShape === 'circular' ? (
               <mesh
+                key={`cap-bed-${mortarMode}`}
                 rotation={[-Math.PI / 2, 0, 0]}
                 position={[0, capMortarBedY, 0]}
               >
@@ -1549,11 +1602,15 @@ export default function Stage3D({ output }: Stage3DProps) {
                 <meshStandardMaterial
                   color='#c6b39a'
                   roughness={0.93}
+                  transparent={mortarMode === 'ghost'}
+                  opacity={mortarOpacity}
+                  depthWrite={mortarMode !== 'ghost'}
                   wireframe={wireframe}
                 />
               </mesh>
-            ) : (
+            ) : showMortar ? (
               <RectangularRing
+                key={`cap-bed-rect-${mortarMode}`}
                 widthFt={geometry.capSpanWidthFt}
                 depthFt={geometry.capSpanDepthFt}
                 thicknessFt={capBrickWidthFt}
@@ -1561,9 +1618,9 @@ export default function Stage3D({ output }: Stage3DProps) {
                 y={capMortarBedY}
                 color='#c6b39a'
                 wireframe={wireframe}
-                opacity={0.94}
+                opacity={mortarOpacity}
               />
-            )}
+            ) : null}
 
             {output.linerSpec.enabled &&
               output.planShape === 'circular' &&
