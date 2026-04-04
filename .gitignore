@@ -25,3 +25,7 @@ Thumbs.db
 
 # TypeScript incremental builds
 *.tsbuildinfo
+
+# Generated from tsc project references for vite config
+vite.config.js
+vite.config.d.ts

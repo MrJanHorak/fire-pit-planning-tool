@@ -171,73 +171,71 @@ Status key:
 ### Implemented
 
 - Circular firepit geometry using the centerline formula.
+- Rectangular firepit geometry with shape-aware spans and quantity calculations.
 - Actual modular brick dimensions as the default baseline.
 - Configurable mortar joint.
 - Running bond with 50% alternating course offset.
 - Fuel-specific vent placement for propane, natural gas, and wood.
-- Minimum 18 sq in vent-area floor.
+- Minimum 18 sq in vent-area floor plus gas vent-area range warnings (18 to 36 sq in guidance).
+- Opposing-side/cross-vent validation for gas layouts.
+- Gas-line entry planning with auto-adjustment away from vent openings.
 - Foundation footprint diameter and 8 in angular stone volume.
 - Safety warning when combustible structure clearance is below 10 ft.
+- Thermal liner modeling with fire-brick and steel-ring options.
+- Liner expansion-gap modeling in calculations and output.
 - Layer-by-layer SVG construction output.
-- 3D geometry preview using React Three Fiber.
+- 3D geometry preview using React Three Fiber, driven by resolved wall and cap unit dimensions.
 - Logistics estimates for waste, brick weight, stone weight, cap units, and mortar volume.
-- Reference tests for 36 in circular count, vent placement, cap overhang growth, and 10 ft warning.
+- Tight-radius circular advisory (`tight-radius-half-bat-recommended`) and cut-plan half-bat guidance below 24 in inner diameter.
+- Mortar curing advisory (`mortar-curing-required`) when mortar joints are present.
+- Capstone preset support including matching, flat stone, rowlock, and additional cap profiles.
+- Construction packet details covering liner guidance, vent layout, gas-line routing checks, and 28-day curing guidance.
+- Reference tests for circular counts, rectangular plans, vent placement behavior, gas-line routing, cap logic, and safety warnings.
 
 ### Partial
 
-- Brick presets exist, but visualization and downstream outputs do not fully reflect the selected unit dimensions.
-- Header vs stretcher orientation affects engine math, but the 3D scene still uses hard-coded modular dimensions.
-- Wood venting exists, but the construction display uses generic highlighted bricks rather than calculated airflow spacing.
-- Gas venting has placement logic, but not explicit opposite-side cross-vent validation or hardware-specific area checks.
-- Capstone overhang is implemented, but cap style selection and drip-edge detailing are not.
-- Logistics estimates exist, but there is no total structure load summary or adhesive estimate.
+- Square planning exists via rectangular dimensions, but there is no dedicated square-specific mode or corner-bonding guidance set.
+- Wood venting is implemented, but airflow performance is still represented as design guidance rather than combustion simulation.
+- Capstone overhang and presets are implemented, but explicit drip-edge detailing rules remain advisory-focused rather than geometry-enforced.
+- Logistics estimates are broad and useful, but still do not include adhesive-specific quantity modeling.
 - Safety visualization covers horizontal clearance only; vertical clearance is not modeled.
 
 ### Missing
 
-- Refractory liner or steel fire ring modeling.
-- Double-wall construction and thermal expansion gap logic.
-- Square and rectangular footprint support.
-- Corner-overlap logic for non-circular plans.
-- Tight-radius checks, half-bat suggestions, or trapezoidal/wedge unit handling.
-- Cap styles such as soldier, rowlock, or flat stone options.
+- Double-wall cavity construction logic and cavity-specific thermal behavior.
+- Explicit corner-overlap pattern guidance for rectangular corner interlock details.
+- Dedicated soldier-course cap behavior.
 - Vertical exclusion-zone visualization.
-- Gas line entry planning in Construction Mode.
-- Cure-time guidance and build checklist details in the packet.
 - Persistence via local storage or URL state.
 - Manufacturer-specific material presets and exact per-unit weight models.
 
-## Missing in the Current Code Implementation
+## Open Gaps in the Current Code Implementation
 
-The most important implementation gaps, based on the newly added research, are below.
+The most important remaining gaps, based on current implementation and the research target state, are below.
 
 ### 1. Thermal Safety Model Is Still Too Shallow
 
-The code handles fuel-specific vent placement, but it does not model the hottest-risk construction items:
+The code now supports liner type selection and expansion-gap output, but advanced thermal assembly rules are still not modeled:
 
-- no refractory liner,
-- no fire ring option,
 - no double-wall cavity,
-- no thermal expansion gap.
+- no cavity heat-transfer assumptions or liner retention hardware modeling.
 
-This is the largest engineering omission for wood-burning scenarios.
+This remains one of the larger engineering gaps for higher-output wood-burning scenarios.
 
-### 2. The Engine Is Still Circular-Only
+### 2. Corner and Non-Circular Bonding Details Need More Depth
 
-The research now describes circular, square, and rectangular masonry logic, but the current engine and UI only support circular layouts.
+The engine supports both circular and rectangular footprints, but detailed corner-overlap and corner-cut planning for rectangular builds is still limited.
 
 ### 3. Visualization Accuracy Lags Behind the Engine
 
-The app exposes brick presets and header orientation in the form, but the 3D stage still renders using fixed modular brick dimensions. That means the rendered model can diverge from the calculated design.
+The 3D stage now consumes resolved unit dimensions from output. Remaining visualization gaps are mostly around richer construction intent overlays (for example, explicit corner interlock and vertical exclusion visualization).
 
 ### 4. Ventilation Output Is Directionally Correct but Not Construction-Grade
 
-The model places propane vents low and natural gas vents high, but it does not yet prove:
+The model now includes fuel-specific placement, gas vent-area range warnings, and gas-line entry checks. Remaining limits include:
 
-- opposing-side vent layout,
-- vent area in the 18 to 36 sq in research band,
 - hardware-specific compliance,
-- gas cavity routing or line-entry planning.
+- burner-manufacturer-specific cavity diagrams.
 
 ### 5. Safety Coverage Is Only Horizontal
 
@@ -245,20 +243,16 @@ The current warning system correctly enforces the 10 ft horizontal rule, but the
 
 ### 6. Construction Packet Is Not Yet a Full Build Packet
 
-The exported packet includes quantities, warnings, and a course SVG, but it does not yet include:
+The exported packet now includes quantities, warnings, course SVG output, liner guidance, gas-line checks, and curing guidance, but it still does not include:
 
-- curing guidance,
-- thermal liner notes,
-- expansion-zone instructions,
-- line-entry details,
 - cap style instructions,
 - stepwise checklist items.
 
 ## Recommended Next Implementation Order
 
-1. Add refractory liner and expansion-gap support to the data model and MasonryEngine.
-2. Make the 3D stage and construction packet consume the resolved unit dimensions so preset and orientation selections render accurately.
-3. Upgrade vent modeling to support opposite-side placement and explicit gas vent-area validation.
-4. Add vertical clearance and exclusion-zone output.
-5. Expand the engine to square and rectangular footprints.
-6. Add cap style variants and richer construction packet details.
+1. Add vertical clearance and exclusion-zone output to safety visualization and warnings.
+2. Add rectangular corner-overlap/interlock guidance with explicit corner detailing in packet output.
+3. Extend thermal modeling toward double-wall cavity rules and higher-fidelity liner assembly guidance.
+4. Add local persistence (local storage and/or URL-state share links).
+5. Expand manufacturer-specific material presets and per-unit weight fidelity.
+6. Add richer cap style instruction variants (including soldier-course specific guidance) in packet output.

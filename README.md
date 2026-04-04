@@ -127,7 +127,7 @@ $$
 - `src/engine/__tests__/MasonryEngine.test.ts`: verification tests.
 - `src/components/Stage3D.tsx`: @react-three/fiber 3D stage.
 - `src/components/ConstructionMode.tsx`: SVG layer-by-layer build map.
-- `CLAUDE.md`: project engineering constraints and coding patterns.
+- `firepit-research.md`: engineering baseline and expanded research notes.
 
 ## Run
 
