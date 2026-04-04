@@ -44,4 +44,6 @@ export const DEFAULT_MASONRY_INPUT: MasonryInput = {
   accentCycleLength: 3,
   accentCoursePosition: 2,
   accentCourseOrientation: 'header',
+  seatingGroundType: 'gravel',
+  seatingAreaRadiusFt: 10,
 };

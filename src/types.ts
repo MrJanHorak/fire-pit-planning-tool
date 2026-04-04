@@ -19,6 +19,12 @@ export type DrainageCondition =
   | 'moderate'
   | 'slow-draining'
   | 'poor-drainage';
+export type SeatingGroundType =
+  | 'gravel'
+  | 'mulch'
+  | 'decomposed-granite'
+  | 'permeable-paver'
+  | 'hardscape';
 
 export interface MasonryUnit {
   name: string;
@@ -71,6 +77,8 @@ export interface MasonryInput {
   accentCycleLength?: number;
   accentCoursePosition?: number;
   accentCourseOrientation?: UnitOrientation;
+  seatingGroundType?: SeatingGroundType;
+  seatingAreaRadiusFt?: number;
 }
 
 export interface SafetyWarning {
@@ -146,6 +154,19 @@ export interface FoundationSpec {
   stoneVolumeCubicYards: number;
 }
 
+export interface SeatingAreaMaterials {
+  groundType: SeatingGroundType;
+  radiusFt: number;
+  areaSquareFeet: number;
+  materials: Array<{
+    name: string;
+    quantity: number;
+    unit: string;
+    estimatedWeightLb?: number;
+  }>;
+  notes: string[];
+}
+
 export interface LogisticsSpec {
   wasteFactorPct: number;
   estimatedBrickWeightLb: number;
@@ -154,6 +175,7 @@ export interface LogisticsSpec {
   purchasedCapUnits: number;
   estimatedCapWeightLb: number;
   estimatedMortarVolumeCubicFeet: number;
+  seatingAreaMaterials?: SeatingAreaMaterials;
 }
 
 export interface CapstoneJointSpec {

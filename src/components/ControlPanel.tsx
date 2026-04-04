@@ -785,10 +785,64 @@ export default function ControlPanel({
           </select>
         </label>
 
+        <SectionHeading
+          title='4 Seating Area'
+          description='Plan the ground surface around your firepit and calculate material quantities.'
+        />
+
+        <label className='flex flex-col gap-1'>
+          <FieldLabel
+            label='Ground Type'
+            tip='Select the finish surface for your seating zone. The engine will calculate material quantities based on the radius you set.'
+          />
+          <select
+            className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label='Seating Ground Type'
+            title='Seating Ground Type'
+            value={input.seatingGroundType ?? 'gravel'}
+            onChange={(event) =>
+              setInput((prev) => ({
+                ...prev,
+                seatingGroundType: event.target
+                  .value as MasonryInput['seatingGroundType'],
+              }))
+            }
+          >
+            <option value='gravel'>Compacted Gravel</option>
+            <option value='mulch'>Mulch / Wood Chips</option>
+            <option value='decomposed-granite'>Decomposed Granite</option>
+            <option value='permeable-paver'>Permeable Paver + Grass</option>
+            <option value='hardscape'>Hardscape (Concrete/Stone)</option>
+          </select>
+        </label>
+
+        <label className='flex flex-col gap-1'>
+          <FieldLabel
+            label='Seating Area Radius (ft)'
+            tip='Distance from pit center to outer edge of the seating zone. Typical range is 8–15 ft for comfortable social gathering.'
+          />
+          <input
+            className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label='Seating Area Radius in feet'
+            title='Seating Area Radius in feet'
+            type='number'
+            min={5}
+            max={30}
+            step={0.5}
+            value={input.seatingAreaRadiusFt ?? 10}
+            onChange={(event) =>
+              setInput((prev) => ({
+                ...prev,
+                seatingAreaRadiusFt: Number(event.target.value),
+              }))
+            }
+          />
+        </label>
+
         <div className='sm:col-span-2 rounded-xl border border-amber-900/15 bg-white/65 px-3 py-2'>
           <div className='flex flex-wrap items-center justify-between gap-2'>
             <p className='text-xs font-medium text-amber-900/80'>
-              4 Advanced controls for vent routing and course tuning.
+              5 Advanced controls for vent routing and course tuning.
             </p>
             <button
               type='button'
@@ -803,7 +857,7 @@ export default function ControlPanel({
         {showAdvanced && (
           <>
             <SectionHeading
-              title='4 Advanced'
+              title='5 Advanced'
               description='Use practical presets for shim spacers or vent-heavy accent courses while keeping running bond behavior.'
             />
 

@@ -198,6 +198,14 @@ export function normalizeMasonryInput(
       value.accentCourseOrientation,
       defaults.accentCourseOrientation ?? 'header',
     ) as MasonryInput['accentCourseOrientation'],
+    seatingGroundType: coerceString(
+      value.seatingGroundType,
+      defaults.seatingGroundType ?? 'gravel',
+    ) as MasonryInput['seatingGroundType'],
+    seatingAreaRadiusFt: coerceNumber(
+      value.seatingAreaRadiusFt,
+      defaults.seatingAreaRadiusFt ?? 10,
+    ),
   };
 }
 

@@ -85,6 +85,17 @@ export const designBestPractices: ContentSection[] = [
     ],
   },
   {
+    title: 'Seating area ground preparation',
+    bullets: [
+      'Compacted Gravel: Most popular choice. Extend gravel zone at least 10 ft from pit outer wall, slope 2–3% outward for drainage, top-dress every 2–3 years.',
+      'Mulch: Natural look, comfortable underfoot, but decomposes in 2–3 years. Use landscape fabric underneath to prevent weeds and grass creep.',
+      'Decomposed Granite: Durable packed surface, minimal maintenance. Apply stabilizer binder for a more solid finish if desired.',
+      'Permeable Paver with Grass: Eco-friendly, drains well, supports turf. Requires careful sand leveling and 2–3 weeks for grass establishment.',
+      'Hardscape (Concrete/Stone): Most durable and low-maintenance option. Plan for 28-day curing and consider sealing for slip resistance and longevity.',
+      'Pair seating ground type with foundation risk level: high-risk sites benefit from permeable or hardscape surfaces that manage water runoff effectively.',
+    ],
+  },
+  {
     title: 'Workflow and revision control',
     bullets: [
       'Name your project early so exported JSON and snapshots stay easy to track during iterations.',

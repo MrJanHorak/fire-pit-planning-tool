@@ -253,6 +253,40 @@ export default function ProjectInfoCard({
           )}
         </div>
       </details>
+      {output.logistics.seatingAreaMaterials && (
+        <details className='mt-3 rounded-lg border border-amber-900/15 bg-white/70 p-3'>
+          <summary className='cursor-pointer font-medium'>
+            Seating area materials &amp; tips
+          </summary>
+          <div className='mt-2 text-sm text-amber-900/85'>
+            <p>
+              <strong>{output.logistics.seatingAreaMaterials.groundType}</strong> seating zone:{' '}
+              {output.logistics.seatingAreaMaterials.radiusFt} ft radius, ~
+              {Math.round(output.logistics.seatingAreaMaterials.areaSquareFeet)} sq ft
+            </p>
+            <table className='mt-2 w-full border-collapse text-xs'>
+              <tbody>
+                {output.logistics.seatingAreaMaterials.materials.map(
+                  (material, i) => (
+                    <tr key={i} className='border-b border-amber-900/10'>
+                      <td className='py-1 pr-2'>{material.name}</td>
+                      <td className='py-1 pr-2 font-semibold text-right'>
+                        {material.quantity.toFixed(material.unit === 'units' ? 0 : 1)}
+                      </td>
+                      <td className='py-1 text-amber-900/75'>{material.unit}</td>
+                    </tr>
+                  ),
+                )}
+              </tbody>
+            </table>
+            <ul className='mt-2 list-disc pl-4'>
+              {output.logistics.seatingAreaMaterials.notes.map((note, i) => (
+                <li key={i}>{note}</li>
+              ))}
+            </ul>
+          </div>
+        </details>
+      )}
       <div className='mt-4 flex flex-wrap gap-2'>
         <button
           type='button'

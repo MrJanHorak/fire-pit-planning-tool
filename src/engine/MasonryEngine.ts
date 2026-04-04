@@ -14,6 +14,7 @@ import type {
   VentSpec,
   WallCourseStrategy,
 } from '../types';
+import { calculateSeatingMaterials } from '../utils/seatingMaterials';
 
 const IN3_PER_FT3 = 1728;
 const IN3_PER_YD3 = 46656;
@@ -294,6 +295,7 @@ export class MasonryEngine {
         capstone.capUnitsPerCourseRounded,
         resolvedCap.unitWeightLb,
         foundation,
+        input,
       ),
       warnings,
     };
@@ -1158,6 +1160,7 @@ export class MasonryEngine {
     capUnits: number,
     capUnitWeightLb: number,
     foundation: FoundationSpec,
+    input: MasonryInput,
   ): LogisticsSpec {
     const purchasedUnits = Math.ceil(
       totalUnits * (1 + BRICK_WASTE_FACTOR_PCT / 100),
@@ -1168,7 +1171,7 @@ export class MasonryEngine {
     const stoneWithWasteFt3 =
       foundation.stoneVolumeCubicFeet * (1 + STONE_WASTE_FACTOR_PCT / 100);
 
-    return {
+    const logistics: LogisticsSpec = {
       wasteFactorPct: BRICK_WASTE_FACTOR_PCT,
       purchasedUnits,
       purchasedCapUnits,
@@ -1177,6 +1180,20 @@ export class MasonryEngine {
       estimatedStoneWeightLb: stoneWithWasteFt3 * STONE_WEIGHT_LB_PER_FT3,
       estimatedMortarVolumeCubicFeet: purchasedUnits * MORTAR_FT3_PER_BRICK,
     };
+
+    // Add seating area materials if configured
+    if (
+      input.seatingGroundType &&
+      input.seatingAreaRadiusFt &&
+      input.seatingAreaRadiusFt > 0
+    ) {
+      logistics.seatingAreaMaterials = calculateSeatingMaterials(
+        input.seatingGroundType,
+        input.seatingAreaRadiusFt,
+      );
+    }
+
+    return logistics;
   }
 
   private computeSafetyWarnings(
