@@ -1492,6 +1492,7 @@ export default function App() {
               {view === '3d' ? (
                 <Stage3D
                   output={output}
+                  seatingFurnitureCount={input.seatingFurnitureCount}
                   captureSignal={stakeholderRenderSignal}
                   onStakeholderRenderComplete={handleStakeholderRenderComplete}
                 />

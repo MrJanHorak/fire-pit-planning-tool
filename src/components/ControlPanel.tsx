@@ -2,6 +2,10 @@ import { useState, type Dispatch, type SetStateAction } from 'react';
 import HelpTip from './HelpTip';
 import { BRICK_PRESETS, CAPSTONE_PRESETS } from '../engine/MasonryEngine';
 import type { MasonryInput } from '../types';
+import {
+  clampSeatingFurnitureCount,
+  getMaxCircularSeatingCount,
+} from '../utils/seatingLayout';
 
 interface ControlPanelProps {
   input: MasonryInput;
@@ -61,6 +65,18 @@ export default function ControlPanel({
     input.capstonePresetKey === 'custom-radial';
   const usingCustomCapRadial = input.capstonePresetKey === 'custom-radial';
   const courseStrategy = input.wallCourseStrategy ?? 'uniform';
+  const seatingFurnitureStyle = input.seatingFurnitureStyle ?? 'adirondack';
+  const seatingDensity = input.seatingDensity ?? 'standard';
+  const seatingAreaRadiusFt = input.seatingAreaRadiusFt ?? 10;
+  const maxSeatingFurnitureCount = getMaxCircularSeatingCount(
+    seatingAreaRadiusFt,
+    seatingFurnitureStyle,
+    seatingDensity,
+  );
+  const resolvedSeatingFurnitureCount = clampSeatingFurnitureCount(
+    input.seatingFurnitureCount,
+    maxSeatingFurnitureCount,
+  );
 
   return (
     <section className='control-panel card-rise relative z-30 rounded-2xl border border-amber-900/20 bg-amber-50/70 p-5 shadow-lg backdrop-blur'>
@@ -848,18 +864,59 @@ export default function ControlPanel({
             className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
             aria-label='Seating Furniture Style'
             title='Seating Furniture Style'
-            value={input.seatingFurnitureStyle ?? 'adirondack'}
+            value={seatingFurnitureStyle}
             onChange={(event) =>
               setInput((prev) => ({
                 ...prev,
                 seatingFurnitureStyle: event.target
                   .value as MasonryInput['seatingFurnitureStyle'],
+                seatingFurnitureCount: clampSeatingFurnitureCount(
+                  prev.seatingFurnitureCount,
+                  getMaxCircularSeatingCount(
+                    prev.seatingAreaRadiusFt ?? 10,
+                    event.target.value as MasonryInput['seatingFurnitureStyle'],
+                    prev.seatingDensity ?? 'standard',
+                  ),
+                ),
               }))
             }
           >
             <option value='adirondack'>Adirondack Chairs</option>
             <option value='bench'>Bench Seating</option>
           </select>
+        </label>
+
+        <label className='flex flex-col gap-1'>
+          <FieldLabel
+            label='Furniture Count'
+            tip='Default is 4. Increase or decrease how many seating markers are shown around the pit; the maximum is capped by what fits around the selected seating diameter.'
+          />
+          <input
+            className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label='Seating furniture count'
+            title='Seating furniture count'
+            type='number'
+            min={1}
+            max={maxSeatingFurnitureCount}
+            step={1}
+            value={resolvedSeatingFurnitureCount}
+            onChange={(event) =>
+              setInput((prev) => ({
+                ...prev,
+                seatingFurnitureCount: clampSeatingFurnitureCount(
+                  Number(event.target.value),
+                  getMaxCircularSeatingCount(
+                    prev.seatingAreaRadiusFt ?? 10,
+                    prev.seatingFurnitureStyle ?? 'adirondack',
+                    prev.seatingDensity ?? 'standard',
+                  ),
+                ),
+              }))
+            }
+          />
+          <span className='text-xs text-amber-900/70'>
+            Max for current layout: {maxSeatingFurnitureCount}
+          </span>
         </label>
 
         <label className='flex flex-col gap-1'>
@@ -871,12 +928,20 @@ export default function ControlPanel({
             className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
             aria-label='Seating Density'
             title='Seating Density'
-            value={input.seatingDensity ?? 'standard'}
+            value={seatingDensity}
             onChange={(event) =>
               setInput((prev) => ({
                 ...prev,
                 seatingDensity: event.target
                   .value as MasonryInput['seatingDensity'],
+                seatingFurnitureCount: clampSeatingFurnitureCount(
+                  prev.seatingFurnitureCount,
+                  getMaxCircularSeatingCount(
+                    prev.seatingAreaRadiusFt ?? 10,
+                    prev.seatingFurnitureStyle ?? 'adirondack',
+                    event.target.value as MasonryInput['seatingDensity'],
+                  ),
+                ),
               }))
             }
           >
@@ -915,11 +980,19 @@ export default function ControlPanel({
             min={5}
             max={30}
             step={0.5}
-            value={input.seatingAreaRadiusFt ?? 10}
+            value={seatingAreaRadiusFt}
             onChange={(event) =>
               setInput((prev) => ({
                 ...prev,
                 seatingAreaRadiusFt: Number(event.target.value),
+                seatingFurnitureCount: clampSeatingFurnitureCount(
+                  prev.seatingFurnitureCount,
+                  getMaxCircularSeatingCount(
+                    Number(event.target.value),
+                    prev.seatingFurnitureStyle ?? 'adirondack',
+                    prev.seatingDensity ?? 'standard',
+                  ),
+                ),
               }))
             }
           />

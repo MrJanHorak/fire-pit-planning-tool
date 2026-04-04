@@ -84,6 +84,7 @@ export interface MasonryInput {
   seatingAreaShape?: SeatingAreaShape;
   seatingFurnitureStyle?: SeatingFurnitureStyle;
   seatingDensity?: SeatingDensity;
+  seatingFurnitureCount?: number;
   seatingAreaRadiusFt?: number;
 }
 

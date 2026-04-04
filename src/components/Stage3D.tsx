@@ -25,9 +25,15 @@ import type {
   SeatingFurnitureStyle,
   SeatingGroundType,
 } from '../types';
+import {
+  clampSeatingFurnitureCount,
+  getMaxCircularSeatingCount,
+  getSeatingGuideInsetFt,
+} from '../utils/seatingLayout';
 
 interface Stage3DProps {
   output: MasonryOutput;
+  seatingFurnitureCount?: number;
   captureSignal?: number | null;
   onStakeholderRenderComplete?: (result: {
     ok: boolean;
@@ -207,64 +213,7 @@ export function getStageGroundRadiusForShapeFt(
   return getStageGroundRadiusFt(seatingExtentFt);
 }
 
-export function getSeatingGuideInsetFt(
-  furnitureStyle: SeatingFurnitureStyle = 'adirondack',
-  density: SeatingDensity = 'standard',
-): number {
-  const depthFt =
-    furnitureStyle === 'bench'
-      ? SEATING_BENCH_DIMENSIONS_FT.depthFt
-      : SEATING_CHAIR_DIMENSIONS_FT.depthFt;
-
-  const baseAdditionalOffsetFt = furnitureStyle === 'bench' ? 0.85 : 1.15;
-
-  const densityOffsetFt =
-    density === 'cozy' ? 0.8 : density === 'spacious' ? -0.8 : 0;
-
-  return Math.max(0.35, depthFt / 2 + baseAdditionalOffsetFt + densityOffsetFt);
-}
-
-export function getSeatingReferenceCount(
-  seatingRadiusFt: number,
-  furnitureStyle: SeatingFurnitureStyle = 'adirondack',
-  shape: SeatingAreaShape = 'circular',
-  density: SeatingDensity = 'standard',
-): number {
-  if (furnitureStyle === 'bench') {
-    const baseBenchCount = seatingRadiusFt >= 11 ? 5 : 4;
-    if (density === 'cozy') {
-      return Math.min(6, baseBenchCount + 1);
-    }
-    if (density === 'spacious') {
-      return Math.max(3, baseBenchCount - 1);
-    }
-    return baseBenchCount;
-  }
-
-  if (shape === 'square') {
-    const baseSquareCount = seatingRadiusFt >= 8 ? 8 : 6;
-    if (density === 'cozy') {
-      return Math.min(12, baseSquareCount + 2);
-    }
-    if (density === 'spacious') {
-      return Math.max(4, baseSquareCount - 2);
-    }
-    return baseSquareCount;
-  }
-
-  // Typical Adirondack center spacing around firepits lands near 4.5-5.5 ft.
-  const baseCircularCount = Math.min(
-    12,
-    Math.max(6, Math.round(seatingRadiusFt * 1.05)),
-  );
-  if (density === 'cozy') {
-    return Math.min(14, baseCircularCount + 3);
-  }
-  if (density === 'spacious') {
-    return Math.max(4, baseCircularCount - 3);
-  }
-  return baseCircularCount;
-}
+export { getMaxCircularSeatingCount, getSeatingGuideInsetFt };
 
 export function buildSeatingReferencePlacements(
   shape: SeatingAreaShape,
@@ -1303,6 +1252,7 @@ function getRectangularSideLabel(
 
 export default function Stage3D({
   output,
+  seatingFurnitureCount,
   captureSignal,
   onStakeholderRenderComplete,
 }: Stage3DProps) {
@@ -1543,16 +1493,24 @@ export default function Stage3D({
   const seatingSurfaceVisual = seatingArea
     ? getSeatingSurfaceVisual(seatingArea.groundType)
     : undefined;
+  const maxSeatingReferenceCount = seatingArea
+    ? getMaxCircularSeatingCount(
+        seatingArea.radiusFt,
+        seatingFurnitureStyle,
+        seatingDensity,
+      )
+    : 0;
+  const resolvedSeatingReferenceCount = seatingArea
+    ? clampSeatingFurnitureCount(
+        seatingFurnitureCount,
+        maxSeatingReferenceCount,
+      )
+    : 0;
   const seatingReferencePlacements = seatingArea
     ? buildSeatingReferencePlacements(
         seatingShape,
         seatingArea.radiusFt,
-        getSeatingReferenceCount(
-          seatingArea.radiusFt,
-          seatingFurnitureStyle,
-          seatingShape,
-          seatingDensity,
-        ),
+        resolvedSeatingReferenceCount,
         getSeatingGuideInsetFt(seatingFurnitureStyle, seatingDensity),
         seatingDensity,
         seatingFurnitureStyle,

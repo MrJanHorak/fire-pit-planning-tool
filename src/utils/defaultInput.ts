@@ -48,5 +48,6 @@ export const DEFAULT_MASONRY_INPUT: MasonryInput = {
   seatingAreaShape: 'circular',
   seatingFurnitureStyle: 'adirondack',
   seatingDensity: 'standard',
+  seatingFurnitureCount: 4,
   seatingAreaRadiusFt: 10,
 };

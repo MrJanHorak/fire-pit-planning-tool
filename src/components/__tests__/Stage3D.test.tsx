@@ -6,8 +6,8 @@ import {
   buildCircularCapBrickQuad,
   buildCircularCapJointQuad,
   computeStage3DGeometry,
+  getMaxCircularSeatingCount,
   getSeatingGuideInsetFt,
-  getSeatingReferenceCount,
   getSeatingSurfaceVisual,
   getStageGroundRadiusForShapeFt,
   getStageGroundRadiusFt,
@@ -167,25 +167,13 @@ describe('Stage3D geometry', () => {
     expect(getStageGroundRadiusForShapeFt(10, 'square')).toBeCloseTo(15.89, 2);
   });
 
-  it('clamps seating reference chair count to a practical display range', () => {
-    expect(getSeatingReferenceCount(4)).toBe(6);
-    expect(getSeatingReferenceCount(10)).toBe(11);
-    expect(getSeatingReferenceCount(20)).toBe(12);
-    expect(getSeatingReferenceCount(10, 'adirondack', 'circular', 'cozy')).toBe(
-      14,
-    );
-    expect(
-      getSeatingReferenceCount(10, 'adirondack', 'circular', 'spacious'),
-    ).toBe(8);
-    expect(getSeatingReferenceCount(10, 'bench')).toBe(4);
-    expect(getSeatingReferenceCount(8, 'adirondack', 'square')).toBe(8);
-    expect(getSeatingReferenceCount(8, 'adirondack', 'square', 'cozy')).toBe(
-      10,
-    );
-    expect(
-      getSeatingReferenceCount(8, 'adirondack', 'square', 'spacious'),
-    ).toBe(6);
-    expect(getSeatingReferenceCount(10, 'adirondack', 'square')).toBe(8);
+  it('limits seating count to what fits around the seating circle', () => {
+    expect(getMaxCircularSeatingCount(10, 'adirondack', 'standard')).toBe(15);
+    expect(getMaxCircularSeatingCount(10, 'adirondack', 'cozy')).toBe(16);
+    expect(getMaxCircularSeatingCount(10, 'adirondack', 'spacious')).toBe(15);
+    expect(getMaxCircularSeatingCount(10, 'bench', 'standard')).toBe(8);
+    expect(getMaxCircularSeatingCount(10, 'bench', 'cozy')).toBe(8);
+    expect(getMaxCircularSeatingCount(10, 'bench', 'spacious')).toBe(8);
   });
 
   it('uses a scale-aware inset based on chair depth', () => {
