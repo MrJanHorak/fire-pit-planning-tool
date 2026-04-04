@@ -25,6 +25,24 @@ function formatShapeName(shape: MasonryInput['planShape']): string {
   return shape.charAt(0).toUpperCase() + shape.slice(1);
 }
 
+function formatSeatingGroundTypeName(
+  groundType: NonNullable<MasonryInput['seatingGroundType']>,
+): string {
+  if (groundType === 'decomposed-granite') {
+    return 'Decomposed granite';
+  }
+  if (groundType === 'permeable-paver') {
+    return 'Permeable paver + grass';
+  }
+  if (groundType === 'hardscape') {
+    return 'Hardscape';
+  }
+  if (groundType === 'mulch') {
+    return 'Mulch / wood chips';
+  }
+  return 'Compacted gravel';
+}
+
 function getCapstoneCutMetrics(output: MasonryOutput): {
   requiresCutting: boolean;
   recommendedTaperPerUnitIn: number;
@@ -120,6 +138,26 @@ function buildCutScheduleTable(output: MasonryOutput): string {
       </tr>
     </thead>
     <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function buildKeyValueTable(
+  rows: Array<[string, string]>,
+  keyHeader = 'Item',
+  valueHeader = 'Value',
+): string {
+  const body = rows
+    .map(([item, value]) => `<tr><td>${item}</td><td>${value}</td></tr>`)
+    .join('');
+
+  return `<table>
+    <thead>
+      <tr>
+        <th>${keyHeader}</th>
+        <th>${valueHeader}</th>
+      </tr>
+    </thead>
+    <tbody>${body}</tbody>
   </table>`;
 }
 
@@ -238,7 +276,7 @@ function buildDiyStepsHtml(input: MasonryInput, output: MasonryOutput): string {
           } and use wider joints. Return to standard coursing above each accent course.`
         : 'Course strategy note: Uniform running bond is used on all wall courses.';
 
-  const steps = [
+  const firePitSteps = [
     `Call for utility locates, verify the firepit location, and confirm at least 10 ft of clearance from combustible structures.`,
     `Mark the excavation using the foundation footprint of ${output.foundation.footprintWidthIn.toFixed(2)} in x ${output.foundation.footprintDepthIn.toFixed(2)} in. Mark the wall footprint and cap outline separately so layout stays centered.`,
     `Excavate for the base and install ${output.foundation.stoneDepthIn} in of compacted angular stone. Screed the surface level before starting the first masonry course.`,
@@ -257,7 +295,167 @@ function buildDiyStepsHtml(input: MasonryInput, output: MasonryOutput): string {
     `Before first burn, verify the vent path is unobstructed, the liner is seated correctly, the cap units are stable, and the safety clearance remains unchanged at the installed location.`,
   ];
 
-  return `<ol>${steps.map((step) => `<li>${step}</li>`).join('')}</ol>`;
+  const seating = output.logistics.seatingAreaMaterials;
+  const seatingSteps = seating
+    ? [
+        `Confirm seating area layout as a ${seating.shape} zone with ${seating.shape === 'square' ? `${seating.overallWidthFt.toFixed(1)} ft x ${seating.overallDepthFt.toFixed(1)} ft` : `${seating.radiusFt.toFixed(1)} ft radius`} centered on the firepit.`,
+        `Set perimeter control and grade for the seating finish. Keep the seating surface pitched away from the firepit for drainage and preserve the minimum 10 ft clearance around combustible elements.`,
+        `Install the selected seating surface system (${seating.groundType}) and verify final quantities against the seating material list in this packet before purchase.`,
+        `Complete final compaction or finish treatment for the seating surface, then verify clear circulation paths around the firepit.`,
+      ]
+    : [
+        'No seating area material plan is configured. Set Seating Ground Type and Seating Radius in Design Inputs to generate a seating build checklist and quantities.',
+      ];
+
+  return `<h3>Fire Pit Steps</h3><ol>${firePitSteps.map((step) => `<li>${step}</li>`).join('')}</ol><h3>Seating Area Steps</h3><ol>${seatingSteps.map((step) => `<li>${step}</li>`).join('')}</ol>`;
+}
+
+function buildCutMethodGuidanceHtml(output: MasonryOutput): string {
+  const capCut = getCapstoneCutMetrics(output);
+  const wallRows: Array<[string, string]> = [
+    ['Wall taper required', output.cutPlan.requiresCutting ? 'Yes' : 'No'],
+    [
+      'Wall taper per side',
+      output.cutPlan.requiresCutting
+        ? `${output.cutPlan.recommendedCutPerSideIn.toFixed(3)} in`
+        : '0.000 in',
+    ],
+    [
+      'Wall saw angle setting',
+      `${output.cutPlan.recommendedCutAngleDeg.toFixed(2)} deg off square`,
+    ],
+  ];
+  const capRows: Array<[string, string]> = [
+    ['Cap taper required', capCut.requiresCutting ? 'Yes' : 'No'],
+    [
+      'Cap taper per side',
+      capCut.requiresCutting
+        ? `${capCut.recommendedCutPerSideIn.toFixed(3)} in`
+        : '0.000 in',
+    ],
+    [
+      'Cap saw angle setting',
+      `${capCut.recommendedCutAngleDeg.toFixed(2)} deg off square`,
+    ],
+  ];
+
+  return `<h3>Wall And Cap Cut Settings</h3>
+    <div class="grid split-grid">
+      <div>
+        ${buildKeyValueTable(wallRows, 'Wall Cut Parameter', 'Setting')}
+      </div>
+      <div>
+        ${buildKeyValueTable(capRows, 'Cap Cut Parameter', 'Setting')}
+      </div>
+    </div>
+    <h3>Marking And Saw Setup</h3>
+    <ul>
+      <li>Manual marking workflow: Mark the centerline of the brick first, then mark equal cut lines on both side edges from the inner face using the listed per-side taper value. Keep both marks symmetric to preserve unit center alignment.</li>
+      <li>Saw workflow: Set fence or miter to the listed angle off square, perform one side cut, then flip and repeat for the opposite side so taper remains centered.</li>
+      <li>Quality check: Dry-fit three to five cut units before batch cutting. The inner edges should close without overlap, and outer joints should stay within your target mortar range.</li>
+      <li>Cap and wall settings are independent. Use wall values for wall bricks and cap values for capstones; do not interchange them.</li>
+    </ul>`;
+}
+
+function buildFirePitMaterialsTable(output: MasonryOutput): string {
+  const mainWallUnits = output.courses.reduce(
+    (sum, course) =>
+      sum +
+      Math.max(
+        0,
+        course.unitCount -
+          (course.specialCourse === 'shim-spacer'
+            ? (course.spacerCount ?? 0)
+            : 0),
+      ),
+    0,
+  );
+  const accentUnits = output.courses.reduce(
+    (sum, course) =>
+      sum + (course.specialCourse === 'vented-accent' ? course.unitCount : 0),
+    0,
+  );
+
+  const rows = [
+    ['Bricks per Course', `${output.unitsPerCourseRounded}`],
+    ['Total Bricks', `${output.totalUnits}`],
+    ['Main Wall Units', `${mainWallUnits}`],
+    ['Spacer Units', `${output.courseStrategy.shimUnitCount}`],
+    ['Accent Course Units', `${accentUnits}`],
+    [
+      `Bricks To Buy (${output.logistics.wasteFactorPct}% waste)`,
+      `${output.logistics.purchasedUnits}`,
+    ],
+    ['Cap Units per Course', `${output.capstone.capUnitsPerCourseRounded}`],
+    ['Cap Units To Buy', `${output.logistics.purchasedCapUnits}`],
+    [
+      'Cap Outside Diameter',
+      `${output.capstone.capOuterDiameterIn.toFixed(2)} in`,
+    ],
+    [
+      'Capstone Weight',
+      `${output.logistics.estimatedCapWeightLb.toFixed(1)} lb`,
+    ],
+    [
+      'Mortar Volume',
+      `${output.logistics.estimatedMortarVolumeCubicFeet.toFixed(2)} ft<sup>3</sup>`,
+    ],
+    [
+      'Foundation Stone (Compacted Angular, 3/4 in minus)',
+      `${output.foundation.stoneVolumeCubicYards.toFixed(3)} yd<sup>3</sup>`,
+    ],
+    [
+      'Base Footprint',
+      `${output.foundation.footprintWidthIn.toFixed(2)} in x ${output.foundation.footprintDepthIn.toFixed(2)} in`,
+    ],
+  ];
+
+  return buildKeyValueTable(rows, 'Fire Pit Material Item', 'Quantity');
+}
+
+function buildSeatingMaterialsSection(output: MasonryOutput): string {
+  const seating = output.logistics.seatingAreaMaterials;
+  if (!seating) {
+    return '<p>No seating area materials are configured. Add seating inputs to include quantities in this packet.</p>';
+  }
+
+  const rows = seating.materials
+    .map((material) => {
+      const quantityText =
+        material.unit === 'units' || material.unit === 'lbs'
+          ? material.quantity.toFixed(0)
+          : material.quantity.toFixed(1);
+      const estimatedWeightLb =
+        material.estimatedWeightLb ??
+        (material.unit === 'lbs' ? material.quantity : undefined);
+
+      return `<tr>
+        <td>${material.name}</td>
+        <td>${quantityText}</td>
+        <td>${material.unit}</td>
+        <td>${estimatedWeightLb !== undefined ? `${estimatedWeightLb.toFixed(0)} lb` : 'n/a'}</td>
+      </tr>`;
+    })
+    .join('');
+
+  return `<div class="grid">
+      <p>Ground Type: ${formatSeatingGroundTypeName(seating.groundType)}</p>
+      <p>Shape: ${seating.shape}</p>
+      <p>Area: ${seating.areaSquareFeet.toFixed(1)} sq ft</p>
+      <p>Layout: ${seating.shape === 'square' ? `${seating.overallWidthFt.toFixed(1)} ft x ${seating.overallDepthFt.toFixed(1)} ft` : `${seating.radiusFt.toFixed(1)} ft radius`}</p>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Seating Material</th>
+          <th>Quantity</th>
+          <th>Unit</th>
+          <th>Estimated Weight</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <ul>${seating.notes.map((note) => `<li>${note}</li>`).join('')}</ul>`;
 }
 
 export function buildCoursePlanSvg(output: MasonryOutput): string {
@@ -423,24 +621,84 @@ export function buildConstructionPacketHtml(
       : `<p>Gas Line Entry: ${output.ventSpec.gasLineEntryAngleDeg.toFixed(0)} deg at brick ${output.ventSpec.gasLineEntryBrickIndex} (${output.ventSpec.gasLineEntryClear ? 'clear of vents' : 'conflicts with vent layout'}${output.ventSpec.gasLineAutoAdjusted ? ', auto-adjusted' : ''}).</p>`;
   const taperCutSample = buildWallBrickTaperCutSvg(output);
   const capstonePlacementSample = buildCapstonePlacementSampleSvg(output);
-  const mainWallUnits = output.courses.reduce(
-    (sum, course) =>
-      sum +
-      Math.max(
-        0,
-        course.unitCount -
-          (course.specialCourse === 'shim-spacer'
-            ? (course.spacerCount ?? 0)
-            : 0),
-      ),
-    0,
-  );
-  const accentUnits = output.courses.reduce(
-    (sum, course) =>
-      sum + (course.specialCourse === 'vented-accent' ? course.unitCount : 0),
-    0,
-  );
-
+  const designSummaryRows: Array<[string, string]> = [
+    ['Fuel Type', formatFuelName(input.fuelType)],
+    ['Plan Shape', formatShapeName(input.planShape)],
+    [
+      'Brick Size',
+      `${output.resolvedUnit.name} ${output.resolvedUnit.lengthIn.toFixed(3)} in x ${output.resolvedUnit.widthIn.toFixed(3)} in x ${output.resolvedUnit.heightIn.toFixed(3)} in`,
+    ],
+    ['Joint Width', `${input.mortarJointIn.toFixed(3)} in`],
+    ['Wall Height', `${input.wallHeightIn.toFixed(2)} in`],
+    [
+      'Clearance To Structures',
+      `${input.proximityToStructuresFt.toFixed(2)} ft`,
+    ],
+    ['Capstone Overhang', `${input.capstoneOverhangIn.toFixed(2)} in`],
+    ['Cap Placement', input.capPlacementMode],
+    [
+      'Cap Size',
+      `${output.resolvedCapUnit.name} ${output.resolvedCapUnit.lengthIn.toFixed(3)} in x ${output.resolvedCapUnit.widthIn.toFixed(3)} in x ${output.resolvedCapUnit.heightIn.toFixed(3)} in`,
+    ],
+    ['Heat Protection', formatLinerName(output.linerSpec.type)],
+    ['Liner Expansion Gap', `${output.linerSpec.expansionGapIn.toFixed(3)} in`],
+  ];
+  const foundationRows: Array<[string, string]> = [
+    ['Foundation advisory', foundationAdvisory.heading],
+    ['Risk level', foundationAdvisory.risk],
+    ['Baseline base material', 'Compacted angular stone (3/4 in minus)'],
+    ['Soil type', input.soilType ?? 'unknown'],
+    ['Drainage', input.drainageCondition ?? 'unknown'],
+    ['Freeze-thaw climate', input.frostClimate ? 'Yes' : 'No'],
+    ['Baseline stone depth', `${output.foundation.stoneDepthIn.toFixed(2)} in`],
+  ];
+  const capRows: Array<[string, string]> = [
+    [
+      'Cap Joint At Layout Line',
+      `${output.capstone.joint.actualJointIn.toFixed(3)} in`,
+    ],
+    [
+      'Cap Spacing At Layout Line',
+      `${output.capstone.joint.actualModuleSpacingIn.toFixed(3)} in`,
+    ],
+    [
+      'Cap Joint At Fire Opening',
+      `${output.capstone.joint.innerJointIn.toFixed(3)} in`,
+    ],
+    [
+      'Cap Joint At Outside Edge',
+      `${output.capstone.joint.outerJointIn.toFixed(3)} in`,
+    ],
+  ];
+  const ventRows: Array<[string, string]> = [
+    ['Vent Pattern', output.ventSpec.layout],
+    ['Vent Zone', output.ventSpec.placement],
+    ['Vent Count', `${output.ventSpec.ventCount}`],
+    [
+      'Total Open Vent Area',
+      `${output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in`,
+    ],
+    ['Typical Gas Vent Range', `${ventRange} sq in`],
+    ['Vent Brick Positions', output.ventSpec.ventBrickIndexes.join(', ')],
+  ];
+  const cuttingRows: Array<[string, string]> = [
+    [
+      'Layout-line spacing per brick',
+      `${output.cutPlan.centerlineModuleSpacingIn.toFixed(3)} in`,
+    ],
+    ['Estimated inner joint', `${output.cutPlan.innerJointIn.toFixed(3)} in`],
+    ['Taper cuts needed', output.cutPlan.requiresCutting ? 'Yes' : 'No'],
+    [
+      'Suggested saw angle',
+      `${output.cutPlan.recommendedCutAngleDeg.toFixed(2)} deg`,
+    ],
+    [
+      'Suggested taper',
+      output.cutPlan.requiresCutting
+        ? `${output.cutPlan.recommendedTaperPerBrickIn.toFixed(3)} in per brick (${output.cutPlan.recommendedCutPerSideIn.toFixed(3)} in at each side of the inner face)`
+        : 'Not required at this diameter',
+    ],
+  ];
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -450,9 +708,11 @@ export function buildConstructionPacketHtml(
     <style>
       body { font-family: "Segoe UI", Arial, sans-serif; margin: 24px; color: #221707; }
       h1, h2 { margin: 0 0 10px; }
+      h3 { margin: 12px 0 8px; font-size: 14px; color: #3a2812; }
       .heading { margin-bottom: 14px; }
       .block { border: 1px solid #b9a17a; border-radius: 8px; padding: 12px; margin-bottom: 14px; }
       .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .split-grid { gap: 12px; align-items: start; }
       p { margin: 6px 0; }
       ul { margin: 8px 0 0 18px; }
       ol { margin: 8px 0 0 20px; padding: 0; }
@@ -477,63 +737,28 @@ export function buildConstructionPacketHtml(
 
     <section class="block avoid-break">
       <h2>Design Summary</h2>
-      <div class="grid">
-        <p>Fuel Type: ${formatFuelName(input.fuelType)}</p>
-        <p>Plan Shape: ${formatShapeName(input.planShape)}</p>
-        <p>Brick Size: ${output.resolvedUnit.name} ${output.resolvedUnit.lengthIn.toFixed(3)} in x ${output.resolvedUnit.widthIn.toFixed(3)} in x ${output.resolvedUnit.heightIn.toFixed(3)} in</p>
-        <p>Joint Width: ${input.mortarJointIn.toFixed(3)} in</p>
-        <p>Wall Height: ${input.wallHeightIn.toFixed(2)} in</p>
-        <p>Clearance To Structures: ${input.proximityToStructuresFt.toFixed(2)} ft</p>
-        <p>Capstone Overhang: ${input.capstoneOverhangIn.toFixed(2)} in</p>
-        <p>Cap Placement: ${input.capPlacementMode}</p>
-        <p>Cap Size: ${output.resolvedCapUnit.name} ${output.resolvedCapUnit.lengthIn.toFixed(3)} in x ${output.resolvedCapUnit.widthIn.toFixed(3)} in x ${output.resolvedCapUnit.heightIn.toFixed(3)} in</p>
-        <p>Heat Protection: ${formatLinerName(output.linerSpec.type)}</p>
-        <p>Liner Expansion Gap: ${output.linerSpec.expansionGapIn.toFixed(3)} in</p>
-      </div>
+      ${buildKeyValueTable(designSummaryRows, 'Design Item', 'Value')}
     </section>
 
     <section class="block avoid-break">
       <h2>Materials And Quantities</h2>
-      <div class="grid">
-        <p>Bricks per Course: ${output.unitsPerCourseRounded}</p>
-        <p>Total Bricks: ${output.totalUnits}</p>
-        <p>Main Wall Units: ${mainWallUnits}</p>
-        <p>Spacer Units: ${output.courseStrategy.shimUnitCount}</p>
-        <p>Accent Course Units: ${accentUnits}</p>
-        <p>Bricks To Buy (${output.logistics.wasteFactorPct}% waste): ${output.logistics.purchasedUnits}</p>
-        <p>Cap Units per Course: ${output.capstone.capUnitsPerCourseRounded}</p>
-        <p>Cap Units To Buy: ${output.logistics.purchasedCapUnits}</p>
-        <p>Cap Outside Diameter: ${output.capstone.capOuterDiameterIn.toFixed(2)} in</p>
-        <p>Capstone Weight: ${output.logistics.estimatedCapWeightLb.toFixed(1)} lb</p>
-        <p>Mortar Volume: ${output.logistics.estimatedMortarVolumeCubicFeet.toFixed(2)} ft3</p>
-        <p>Foundation Stone: ${output.foundation.stoneVolumeCubicYards.toFixed(3)} yd3</p>
-        <p>Base Footprint: ${output.foundation.footprintWidthIn.toFixed(2)} in x ${output.foundation.footprintDepthIn.toFixed(2)} in</p>
-      </div>
+      <h3>Fire Pit Materials</h3>
+      ${buildFirePitMaterialsTable(output)}
+      <h3>Seating Area Materials</h3>
+      ${buildSeatingMaterialsSection(output)}
     </section>
 
     <section class="block avoid-break">
       <h2>Foundation Review</h2>
       <p>Review scale: Low = baseline-friendly site, Moderate = verify field conditions, High = footing/drainage/frost review recommended before construction.</p>
       <p>This review level combines footprint size with soil, drainage, and freeze-thaw context. It does not override the locked base quantity calculation.</p>
-      <div class="grid">
-        <p>Foundation advisory: ${foundationAdvisory.heading}</p>
-        <p>Risk level: ${foundationAdvisory.risk}</p>
-        <p>Soil type: ${input.soilType ?? 'unknown'}</p>
-        <p>Drainage: ${input.drainageCondition ?? 'unknown'}</p>
-        <p>Freeze-thaw climate: ${input.frostClimate ? 'Yes' : 'No'}</p>
-        <p>Baseline stone depth: ${output.foundation.stoneDepthIn.toFixed(2)} in</p>
-      </div>
+      ${buildKeyValueTable(foundationRows, 'Foundation Check', 'Status')}
       <ul>${foundationAdvisory.checks.map((check) => `<li>${check}</li>`).join('')}</ul>
     </section>
 
     <section class="block avoid-break">
       <h2>Cap Layout</h2>
-      <div class="grid">
-        <p>Cap Joint At Layout Line: ${output.capstone.joint.actualJointIn.toFixed(3)} in</p>
-        <p>Cap Spacing At Layout Line: ${output.capstone.joint.actualModuleSpacingIn.toFixed(3)} in</p>
-        <p>Cap Joint At Fire Opening: ${output.capstone.joint.innerJointIn.toFixed(3)} in</p>
-        <p>Cap Joint At Outside Edge: ${output.capstone.joint.outerJointIn.toFixed(3)} in</p>
-      </div>
+      ${buildKeyValueTable(capRows, 'Cap Parameter', 'Value')}
       <p>${output.planShape === 'circular' ? (capCut.requiresCutting ? `Capstone inner-edge overlap detected. Taper each cap unit by about ${capCut.recommendedCutPerSideIn.toFixed(3)} in per side at ${capCut.recommendedCutAngleDeg.toFixed(2)} deg.` : 'Capstone joints are buildable without taper cuts at this current diameter.') : 'Cap joints are shown at their resolved installed width.'}</p>
       ${output.planShape === 'circular' ? `<p>Approximate pit inner diameter for no cap taper cuts at this cap count: ${capCut.minimumRecommendedPitInnerDiameterIn.toFixed(2)} in.</p>` : ''}
       <h3>Capstone Placement Detail</h3>
@@ -542,14 +767,7 @@ export function buildConstructionPacketHtml(
 
     <section class="block avoid-break">
       <h2>Venting And Heat Protection</h2>
-      <div class="grid">
-        <p>Vent Pattern: ${output.ventSpec.layout}</p>
-        <p>Vent Zone: ${output.ventSpec.placement}</p>
-        <p>Vent Count: ${output.ventSpec.ventCount}</p>
-        <p>Total Open Vent Area: ${output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in</p>
-        <p>Typical Gas Vent Range: ${ventRange} sq in</p>
-        <p>Vent Brick Positions: ${output.ventSpec.ventBrickIndexes.join(', ')}</p>
-      </div>
+      ${buildKeyValueTable(ventRows, 'Venting Parameter', 'Value')}
       ${gasLineEntry}
       <p>Heat Protection Note: ${output.linerSpec.description}</p>
       <p>Liner venting note: wall vent gaps provide the primary vent path in this model. Do not block the cavity or expansion gap, and verify any dedicated vent or drain requirements from the liner, burner, or ring manufacturer.</p>
@@ -559,11 +777,9 @@ export function buildConstructionPacketHtml(
     <section class="block avoid-break">
       <h2>Cutting Notes</h2>
       <p>This section covers wall brick taper cuts only. Capstones are documented in the Cap Layout section.</p>
-      <p>Layout-line spacing per brick: ${output.cutPlan.centerlineModuleSpacingIn.toFixed(3)} in</p>
-      <p>Estimated inner joint: ${output.cutPlan.innerJointIn.toFixed(3)} in</p>
-      <p>Taper cuts needed: ${output.cutPlan.requiresCutting ? 'Yes' : 'No'}</p>
-      <p>Suggested saw angle: ${output.cutPlan.recommendedCutAngleDeg.toFixed(2)} deg</p>
+      ${buildKeyValueTable(cuttingRows, 'Cutting Parameter', 'Value')}
       ${output.cutPlan.requiresCutting ? `<p>Suggested taper: ${output.cutPlan.recommendedTaperPerBrickIn.toFixed(3)} in per brick (${output.cutPlan.recommendedCutPerSideIn.toFixed(3)} in at each side of the inner face).</p><p>Approximate inner diameter with no taper cuts: ${output.cutPlan.minimumRecommendedInnerDiameterIn.toFixed(2)} in.</p>` : ''}
+      ${buildCutMethodGuidanceHtml(output)}
       <ul>${output.cutPlan.notes.map((note) => `<li>${note}</li>`).join('')}</ul>
       <h3>Wall Brick Cut Detail</h3>
       ${taperCutSample}

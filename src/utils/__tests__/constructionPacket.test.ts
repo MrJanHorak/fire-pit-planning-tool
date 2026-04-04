@@ -105,11 +105,42 @@ describe('construction packet export', () => {
     expect(html).toContain('Cap side cut A');
     expect(html).toContain('Foundation Review');
     expect(html).toContain('High foundation review priority');
-    expect(html).toContain('Freeze-thaw climate: Yes');
+    expect(html).toContain('Freeze-thaw climate');
+    expect(html).toContain('<td>Yes</td>');
     expect(html).toContain('Build Sequence');
+    expect(html).toContain('Fire Pit Steps');
+    expect(html).toContain('Seating Area Steps');
+    expect(html).toContain('Seating Area Materials');
     expect(html).toContain('Call for utility locates');
     expect(html).toContain('Foundation review status');
     expect(html).toContain('28-day curing period');
+  });
+
+  it('includes seating quantities when seating inputs are configured', () => {
+    const output = new MasonryEngine().calculateDesign({
+      ...input,
+      seatingGroundType: 'gravel',
+      seatingAreaShape: 'circular',
+      seatingFurnitureStyle: 'adirondack',
+      seatingDensity: 'standard',
+      seatingAreaRadiusFt: 10,
+    });
+    const html = buildConstructionPacketHtml(
+      {
+        ...input,
+        seatingGroundType: 'gravel',
+        seatingAreaShape: 'circular',
+        seatingFurnitureStyle: 'adirondack',
+        seatingDensity: 'standard',
+        seatingAreaRadiusFt: 10,
+      },
+      output,
+    );
+
+    expect(html).toContain('Seating Area Materials');
+    expect(html).toContain('Seating Material');
+    expect(html).toContain('Base Course (Crushed Stone 3/4")');
+    expect(html).toContain('Pea Gravel or Marble Chips (Finish)');
   });
 
   it('uses width and depth text for rectangular plans', () => {

@@ -220,6 +220,13 @@ export default function ProjectInfoCard({
             </div>
 
             <div className='flex justify-between'>
+              <dt className='text-xs text-amber-950/75'>Foundation base</dt>
+              <dd className='font-semibold'>
+                Compacted angular stone (3/4 in minus)
+              </dd>
+            </div>
+
+            <div className='flex justify-between'>
               <dt className='text-xs text-amber-950/75'>Capstone type</dt>
               <dd className='font-semibold'>
                 {output.resolvedCapUnit.name} ({input.capPlacementMode})

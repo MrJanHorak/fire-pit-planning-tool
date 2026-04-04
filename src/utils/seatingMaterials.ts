@@ -355,6 +355,7 @@ function calculatePermablePayerMaterials(
         name: 'Grass Seed (Overseed Rate)',
         quantity: grassSeedNeeded,
         unit: 'lbs',
+        estimatedWeightLb: grassSeedNeeded,
       },
     ],
     notes: [

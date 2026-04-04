@@ -42,6 +42,37 @@ export default function ConstructionMode({
   const coursePlanMarkup = buildCoursePlanSvg(output);
   const wallBrickCutMarkup = buildWallBrickTaperCutSvg(output);
   const capstonePlacementMarkup = buildCapstonePlacementSampleSvg(output);
+  const wallCutPerSideIn = output.cutPlan.recommendedCutPerSideIn;
+  const wallCutAngleDeg = output.cutPlan.recommendedCutAngleDeg;
+  const capCount = Math.max(1, output.capstone.capUnitsPerCourseRounded);
+  const capInnerRadiusIn = Math.max(
+    0.001,
+    output.capstone.capInnerDiameterIn / 2,
+  );
+  const capModuleSpacingIn =
+    (Math.PI * output.capstone.capCenterlineDiameterIn) / capCount;
+  const capChordIn =
+    capInnerRadiusIn > 0
+      ? 2 *
+        capInnerRadiusIn *
+        Math.sin(capModuleSpacingIn / (2 * capInnerRadiusIn))
+      : output.resolvedCapUnit.lengthIn;
+  const capChordDeficitIn = Math.max(
+    0,
+    output.resolvedCapUnit.lengthIn - capChordIn,
+  );
+  const capTaperPerUnitIn = Math.max(
+    0,
+    -output.capstone.joint.innerJointIn,
+    capChordDeficitIn,
+  );
+  const capCutPerSideIn = capTaperPerUnitIn / 2;
+  const capCutAngleDeg =
+    (Math.atan(
+      capCutPerSideIn / Math.max(0.001, output.capstone.capCourseWidthIn),
+    ) *
+      180) /
+    Math.PI;
   const foundationAdvisory = buildFoundationAdvisory(input, output);
   const strategySummaryText =
     output.courseStrategy.strategy === 'shim-spacer'
@@ -121,17 +152,28 @@ export default function ConstructionMode({
           { value: 'site' as const, label: 'Site Guidance' },
         ].map((tab) => {
           const selected = activeTab === tab.value;
+          if (selected) {
+            return (
+              <button
+                key={tab.value}
+                type='button'
+                role='tab'
+                aria-selected='true'
+                className='rounded-lg bg-amber-900 px-3 py-2 text-xs font-semibold text-amber-50 transition-colors'
+                onClick={() => handleTabChange(tab.value)}
+              >
+                {tab.label}
+              </button>
+            );
+          }
+
           return (
             <button
               key={tab.value}
               type='button'
               role='tab'
-              aria-selected={selected}
-              className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
-                selected
-                  ? 'bg-amber-900 text-amber-50'
-                  : 'bg-white text-amber-900 hover:bg-amber-100/80'
-              }`}
+              aria-selected='false'
+              className='rounded-lg bg-white px-3 py-2 text-xs font-semibold text-amber-900 transition-colors hover:bg-amber-100/80'
               onClick={() => handleTabChange(tab.value)}
             >
               {tab.label}
@@ -214,6 +256,37 @@ export default function ConstructionMode({
             Review these detail drawings before purchasing units and laying out
             final cuts.
           </p>
+
+          <div className='rounded-lg border border-amber-900/20 bg-white p-3'>
+            <h4 className='text-sm font-semibold text-amber-950'>
+              Cut Marking And Saw Setup
+            </h4>
+            <p className='mt-2 text-sm text-amber-950/85'>
+              Wall cuts:{' '}
+              {output.cutPlan.requiresCutting
+                ? `${wallCutPerSideIn.toFixed(3)} in per side at ${wallCutAngleDeg.toFixed(2)} deg off square.`
+                : `No taper cuts required; saw angle reference remains ${wallCutAngleDeg.toFixed(2)} deg.`}
+            </p>
+            <p className='mt-1 text-sm text-amber-950/85'>
+              Cap cuts:{' '}
+              {output.capstone.requiresTaperCutting
+                ? `${capCutPerSideIn.toFixed(3)} in per side at ${capCutAngleDeg.toFixed(2)} deg off square.`
+                : `No taper cuts required; cap angle reference is ${capCutAngleDeg.toFixed(2)} deg.`}
+            </p>
+            <ul className='mt-2 list-disc space-y-1 pl-5 text-sm text-amber-950/80'>
+              <li>
+                Manual marking: mark centerline first, then measure equal side
+                offsets from the inner edge using the per-side taper values.
+              </li>
+              <li>
+                Saw setup: set fence/miter to the listed angle off square, cut
+                one side, flip, and repeat on the opposite side.
+              </li>
+              <li>
+                Verify fit with 3 to 5 dry-fit units before batch cutting.
+              </li>
+            </ul>
+          </div>
 
           <div className='rounded-lg border border-amber-900/20 bg-white p-3'>
             <div className='mb-2 flex items-center justify-between gap-2'>
