@@ -8,15 +8,124 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { BackSide, Shape } from 'three';
-import type { Group } from 'three';
+import {
+  AdditiveBlending,
+  BackSide,
+  CanvasTexture,
+  RepeatWrapping,
+  SRGBColorSpace,
+  Shape,
+  TextureLoader,
+} from 'three';
+import type { Group, Mesh } from 'three';
 import type { MasonryOutput } from '../types';
 
 interface Stage3DProps {
   output: MasonryOutput;
+  captureSignal?: number;
+  onStakeholderRenderComplete?: (result: {
+    ok: boolean;
+    message: string;
+  }) => void;
 }
 
 type MortarMode = 'solid' | 'ghost' | 'off';
+type MaterialStyle = 'classic-red' | 'charcoal' | 'limestone';
+
+const STYLE_PALETTES: Record<
+  MaterialStyle,
+  {
+    label: string;
+    swatch: string;
+    wallEvenColor: string;
+    wallOddColor: string;
+    capColor: string;
+    capCrownColor: string;
+    mortarColor: string;
+    proceduralBrickFill: string;
+    proceduralCapFill: string;
+    proceduralMortarFill: string;
+  }
+> = {
+  'classic-red': {
+    label: 'Classic Red',
+    swatch: '#924018',
+    wallEvenColor: '#924018',
+    wallOddColor: '#7d3512',
+    capColor: '#ccb085',
+    capCrownColor: '#d5bb93',
+    mortarColor: '#c6b39a',
+    proceduralBrickFill: '#8c4622',
+    proceduralCapFill: '#c6a478',
+    proceduralMortarFill: '#b9afa2',
+  },
+  charcoal: {
+    label: 'Charcoal',
+    swatch: '#3e3b38',
+    wallEvenColor: '#3e3b38',
+    wallOddColor: '#2e2b28',
+    capColor: '#4d4a46',
+    capCrownColor: '#5c5854',
+    mortarColor: '#8c8580',
+    proceduralBrickFill: '#403d3a',
+    proceduralCapFill: '#525050',
+    proceduralMortarFill: '#908a84',
+  },
+  limestone: {
+    label: 'Limestone',
+    swatch: '#c8b898',
+    wallEvenColor: '#c8b898',
+    wallOddColor: '#b8a888',
+    capColor: '#e0d0b6',
+    capCrownColor: '#e8d8c4',
+    mortarColor: '#e0d8cc',
+    proceduralBrickFill: '#c4b494',
+    proceduralCapFill: '#dcd0b8',
+    proceduralMortarFill: '#ddd8d0',
+  },
+};
+
+function createProceduralTexture(
+  painter: (ctx: CanvasRenderingContext2D, size: number) => void,
+): CanvasTexture | undefined {
+  if (typeof document === 'undefined') {
+    return undefined;
+  }
+
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    return undefined;
+  }
+
+  painter(ctx, size);
+  const texture = new CanvasTexture(canvas);
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = RepeatWrapping;
+
+  return texture;
+}
+
+function paintNoise(
+  ctx: CanvasRenderingContext2D,
+  size: number,
+  alpha: number,
+  count: number,
+) {
+  for (let i = 0; i < count; i += 1) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    const radius = 0.5 + Math.random() * 2;
+    const shade = Math.floor(95 + Math.random() * 70);
+    ctx.fillStyle = `rgba(${shade},${shade},${shade},${alpha})`;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
 
 export interface Stage3DGeometry {
   planShape: MasonryOutput['planShape'];
@@ -413,61 +522,145 @@ function FlameCore({
   wallHeightFt: number;
 }) {
   const groupRef = useRef<Group>(null);
+  const outerRef = useRef<Mesh>(null);
+  const midRef = useRef<Mesh>(null);
+  const innerRef = useRef<Mesh>(null);
+  const tipRef = useRef<Mesh>(null);
+
+  const coneHeightFt = Math.min(wallHeightFt * 0.95, innerRadiusFt * 2.6);
+  const baseRadiusFt = innerRadiusFt * 0.58;
+  const tipBaseY = coneHeightFt * 0.75;
 
   useFrame((state) => {
-    if (!groupRef.current) {
-      return;
+    const t = state.clock.elapsedTime;
+
+    if (groupRef.current) {
+      groupRef.current.rotation.y = Math.sin(t * 1.1) * 0.07;
     }
 
-    const time = state.clock.elapsedTime;
-    groupRef.current.scale.x = 1 + Math.sin(time * 4.1) * 0.09;
-    groupRef.current.scale.z = 1 + Math.cos(time * 3.3) * 0.09;
+    if (outerRef.current) {
+      outerRef.current.scale.x = 1 + Math.sin(t * 2.3) * 0.14;
+      outerRef.current.scale.z = 1 + Math.cos(t * 1.9) * 0.12;
+      outerRef.current.scale.y = 1 + Math.sin(t * 1.6) * 0.07;
+    }
+
+    if (midRef.current) {
+      midRef.current.scale.x = 1 + Math.cos(t * 3.7) * 0.16;
+      midRef.current.scale.z = 1 + Math.sin(t * 4.1) * 0.15;
+      midRef.current.scale.y = 1 + Math.cos(t * 2.8) * 0.1;
+    }
+
+    if (innerRef.current) {
+      innerRef.current.scale.x = 1 + Math.sin(t * 5.5) * 0.13;
+      innerRef.current.scale.z = 1 + Math.cos(t * 6.1) * 0.13;
+    }
+
+    if (tipRef.current) {
+      tipRef.current.scale.y = 0.8 + Math.abs(Math.sin(t * 7.2)) * 0.45;
+      tipRef.current.position.y =
+        tipBaseY + Math.sin(t * 5.5) * coneHeightFt * 0.03;
+    }
   });
 
-  const coneHeightFt = Math.min(wallHeightFt * 0.9, innerRadiusFt * 2.4);
-  const coneRadiusFt = innerRadiusFt * 0.52;
-
   return (
-    <group ref={groupRef}>
-      <mesh position={[0, 0.04, 0]}>
-        <cylinderGeometry
-          args={[coneRadiusFt * 0.72, coneRadiusFt * 0.88, 0.07, 20]}
-        />
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    <group ref={groupRef as any}>
+      {/* Ember glow base */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
+        <circleGeometry args={[baseRadiusFt * 0.95, 32]} />
         <meshStandardMaterial
-          color='#ff6600'
-          emissive='#cc3300'
-          emissiveIntensity={2.4}
+          color='#ff5500'
+          emissive='#ff2200'
+          emissiveIntensity={5.0}
+          blending={AdditiveBlending}
+          transparent
+          opacity={0.92}
+          depthWrite={false}
         />
       </mesh>
-      <mesh position={[0, coneHeightFt * 0.42, 0]}>
-        <coneGeometry args={[coneRadiusFt, coneHeightFt, 14, 1, true]} />
+
+      {/* Outer flame shell — wide diffuse orange */}
+      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+      <mesh ref={outerRef as any} position={[0, coneHeightFt * 0.38, 0]}>
+        <coneGeometry args={[baseRadiusFt, coneHeightFt, 16, 1, true]} />
         <meshStandardMaterial
-          color='#ff4400'
-          emissive='#ff1100'
-          emissiveIntensity={2.8}
+          color='#ff3300'
+          emissive='#cc1100'
+          emissiveIntensity={2.4}
+          blending={AdditiveBlending}
           transparent
-          opacity={0.72}
+          opacity={0.48}
+          depthWrite={false}
           side={BackSide}
         />
       </mesh>
-      <mesh position={[0, coneHeightFt * 0.28, 0]}>
+
+      {/* Mid orange flame */}
+      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+      <mesh ref={midRef as any} position={[0, coneHeightFt * 0.34, 0]}>
         <coneGeometry
-          args={[coneRadiusFt * 0.44, coneHeightFt * 0.62, 10, 1, true]}
+          args={[baseRadiusFt * 0.68, coneHeightFt * 0.88, 12, 1, true]}
+        />
+        <meshStandardMaterial
+          color='#ff6600'
+          emissive='#ff4400'
+          emissiveIntensity={3.2}
+          blending={AdditiveBlending}
+          transparent
+          opacity={0.62}
+          depthWrite={false}
+          side={BackSide}
+        />
+      </mesh>
+
+      {/* Inner bright yellow-orange core */}
+      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+      <mesh ref={innerRef as any} position={[0, coneHeightFt * 0.28, 0]}>
+        <coneGeometry
+          args={[baseRadiusFt * 0.36, coneHeightFt * 0.72, 10, 1, true]}
         />
         <meshStandardMaterial
           color='#ffcc00'
           emissive='#ffcc00'
-          emissiveIntensity={3.5}
+          emissiveIntensity={5.0}
+          blending={AdditiveBlending}
           transparent
-          opacity={0.85}
+          opacity={0.72}
+          depthWrite={false}
           side={BackSide}
         />
       </mesh>
+
+      {/* White-hot dancing tip */}
+      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+      <mesh ref={tipRef as any} position={[0, tipBaseY, 0]}>
+        <coneGeometry
+          args={[baseRadiusFt * 0.12, coneHeightFt * 0.34, 8, 1, true]}
+        />
+        <meshStandardMaterial
+          color='#ffffff'
+          emissive='#ffee88'
+          emissiveIntensity={6.0}
+          blending={AdditiveBlending}
+          transparent
+          opacity={0.55}
+          depthWrite={false}
+          side={BackSide}
+        />
+      </mesh>
+
       <pointLight
-        position={[0, coneHeightFt * 0.3, 0]}
+        position={[0, coneHeightFt * 0.28, 0]}
         color='#ff6600'
+        intensity={2.2}
+        distance={4.8}
+        decay={2}
+      />
+      <pointLight
+        position={[0, coneHeightFt * 0.08, 0]}
+        color='#ff3300'
         intensity={1.4}
-        distance={3.8}
+        distance={2.8}
         decay={2}
       />
     </group>
@@ -659,19 +852,88 @@ function getRectangularSideLabel(
   return 'W';
 }
 
-export default function Stage3D({ output }: Stage3DProps) {
+export default function Stage3D({
+  output,
+  captureSignal,
+  onStakeholderRenderComplete,
+}: Stage3DProps) {
   const [wireframe, setWireframe] = useState(false);
   const [showBrickOutlines, setShowBrickOutlines] = useState(true);
   const [showFlame, setShowFlame] = useState(false);
   const [mortarMode, setMortarMode] = useState<MortarMode>('solid');
+  const [materialStyle, setMaterialStyle] =
+    useState<MaterialStyle>('classic-red');
   const [webglBlocked, setWebglBlocked] = useState(false);
   const orbitRef = useRef<OrbitHandle>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const lastCaptureSignalRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     if (!canCreateWebGLContext()) {
       setWebglBlocked(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (captureSignal === undefined) {
+      return;
+    }
+
+    if (lastCaptureSignalRef.current === captureSignal) {
+      return;
+    }
+
+    lastCaptureSignalRef.current = captureSignal;
+
+    if (webglBlocked) {
+      onStakeholderRenderComplete?.({
+        ok: false,
+        message: 'Stakeholder render unavailable while WebGL is blocked.',
+      });
+      return;
+    }
+
+    // Move to a premium hero angle before capturing
+    if (orbitRef.current) {
+      orbitRef.current.target.set(0, 0.85, 0);
+      orbitRef.current.object.position.set(3.4, 3.8, 4.6);
+      orbitRef.current.update();
+    }
+
+    // Wait several frames so shadows and textures fully settle at the new angle
+    let framesLeft = 6;
+    const waitAndCapture = () => {
+      framesLeft -= 1;
+      if (framesLeft > 0) {
+        requestAnimationFrame(waitAndCapture);
+        return;
+      }
+
+      const canvas = canvasRef.current;
+      if (!canvas) {
+        onStakeholderRenderComplete?.({
+          ok: false,
+          message: 'Stakeholder render failed: 3D canvas not ready.',
+        });
+        return;
+      }
+
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const fileName = `firepit-stakeholder-render-${stamp}.png`;
+      const link = document.createElement('a');
+      link.href = canvas.toDataURL('image/png');
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      onStakeholderRenderComplete?.({
+        ok: true,
+        message: `Downloaded stakeholder render: ${fileName}`,
+      });
+    };
+    requestAnimationFrame(waitAndCapture);
+  }, [captureSignal, onStakeholderRenderComplete, webglBlocked]);
 
   const geometry = useMemo(() => computeStage3DGeometry(output), [output]);
 
@@ -818,6 +1080,97 @@ export default function Stage3D({ output }: Stage3DProps) {
     : 'Capstone taper cuts not required';
   const showMortar = mortarMode !== 'off';
   const mortarOpacity = mortarMode === 'ghost' ? 0.25 : 0.96;
+  const palette = STYLE_PALETTES[materialStyle];
+  const isPhotoreal = true;
+  const effectiveWireframe = wireframe;
+  const effectiveShowBrickOutlines = showBrickOutlines;
+  const textureMaps = useMemo(() => {
+    const loader = new TextureLoader();
+    const brickDiffuseMap = loader.load('/textures/brick_diffuse.jpg');
+    const brickBumpMap = loader.load('/textures/brick_bump.jpg');
+    const brickRoughnessMap = loader.load('/textures/brick_roughness.jpg');
+    const groundDiffuseMap = loader.load('/textures/ground_dirt.jpg');
+
+    const colorMaps = [brickDiffuseMap, groundDiffuseMap];
+    colorMaps.forEach((texture) => {
+      if (!texture) {
+        return;
+      }
+      texture.wrapS = RepeatWrapping;
+      texture.wrapT = RepeatWrapping;
+      texture.colorSpace = SRGBColorSpace;
+    });
+
+    if (brickDiffuseMap) {
+      brickDiffuseMap.repeat.set(1.4, 0.95);
+    }
+
+    [brickBumpMap, brickRoughnessMap].forEach((texture) => {
+      if (!texture) {
+        return;
+      }
+      texture.wrapS = RepeatWrapping;
+      texture.wrapT = RepeatWrapping;
+      texture.repeat.set(1.4, 0.95);
+    });
+
+    if (groundDiffuseMap) {
+      groundDiffuseMap.repeat.set(2.2, 2.2);
+    }
+
+    return {
+      brickDiffuseMap,
+      brickBumpMap,
+      brickRoughnessMap,
+      groundDiffuseMap,
+    };
+  }, []);
+  const { brickDiffuseMap, brickBumpMap, brickRoughnessMap, groundDiffuseMap } =
+    textureMaps;
+
+  const brickAlbedoTexture = useMemo(() => {
+    const texture = createProceduralTexture((ctx, size) => {
+      ctx.fillStyle = palette.proceduralBrickFill;
+      ctx.fillRect(0, 0, size, size);
+      ctx.fillStyle = 'rgba(45, 18, 8, 0.24)';
+      for (let y = 18; y < size; y += 26) {
+        ctx.fillRect(0, y, size, 2);
+      }
+      paintNoise(ctx, size, 0.24, 2400);
+    });
+    if (texture) {
+      texture.colorSpace = SRGBColorSpace;
+      texture.repeat.set(1.6, 1.1);
+    }
+    return texture;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [materialStyle]);
+  const capAlbedoTexture = useMemo(() => {
+    const texture = createProceduralTexture((ctx, size) => {
+      ctx.fillStyle = palette.proceduralCapFill;
+      ctx.fillRect(0, 0, size, size);
+      paintNoise(ctx, size, 0.2, 1800);
+    });
+    if (texture) {
+      texture.colorSpace = SRGBColorSpace;
+      texture.repeat.set(1.4, 1.1);
+    }
+    return texture;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [materialStyle]);
+  const mortarTexture = useMemo(() => {
+    const texture = createProceduralTexture((ctx, size) => {
+      ctx.fillStyle = palette.proceduralMortarFill;
+      ctx.fillRect(0, 0, size, size);
+      paintNoise(ctx, size, 0.15, 2200);
+    });
+    if (texture) {
+      texture.colorSpace = SRGBColorSpace;
+      texture.repeat.set(1.2, 1.2);
+    }
+    return texture;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [materialStyle]);
   const innerVoidRadiusFt =
     output.linerSpec.enabled && geometry.linerInnerRadiusFt > 0
       ? geometry.linerInnerRadiusFt
@@ -845,7 +1198,9 @@ export default function Stage3D({ output }: Stage3DProps) {
       return '#5f4f96';
     }
 
-    return course.courseIndex % 2 === 0 ? '#924018' : '#7d3512';
+    return course.courseIndex % 2 === 0
+      ? palette.wallEvenColor
+      : palette.wallOddColor;
   };
 
   const getWallBrickColor = (
@@ -883,7 +1238,8 @@ export default function Stage3D({ output }: Stage3DProps) {
     <div className='card-rise relative h-[460px] rounded-2xl border border-amber-900/20 bg-amber-100/70 p-2 shadow-lg sm:h-[500px]'>
       <div className='absolute right-2 top-2 z-10 flex flex-col items-end gap-2 sm:right-4 sm:top-4'>
 
-         <div className='rounded-xl bg-amber-50/95 px-3 py-2 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
+
+        <div className='rounded-xl bg-amber-50/95 px-3 py-2 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
           <p className='mb-1 text-[10px] uppercase tracking-wide text-amber-900/70'>
             Mortar
           </p>
@@ -898,6 +1254,30 @@ export default function Stage3D({ output }: Stage3DProps) {
                 {mode.charAt(0).toUpperCase() + mode.slice(1)}
               </button>
             ))}
+          </div>
+        </div>
+
+                <div className='rounded-xl bg-amber-50/95 px-3 py-2 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
+          <p className='mb-1 text-[10px] uppercase tracking-wide text-amber-900/70'>
+            Style
+          </p>
+          <div className='flex gap-1.5'>
+            {(['classic-red', 'charcoal', 'limestone'] as MaterialStyle[]).map(
+              (s) => (
+                <button
+                  key={s}
+                  style={{ backgroundColor: STYLE_PALETTES[s].swatch }}
+                  className={`h-6 w-6 rounded-full border-2 transition-transform ${
+                    materialStyle === s
+                      ? 'scale-110 border-amber-900'
+                      : 'border-transparent opacity-70 hover:opacity-100'
+                  }`}
+                  onClick={() => setMaterialStyle(s)}
+                  aria-label={`Set style to ${STYLE_PALETTES[s].label}`}
+                  title={STYLE_PALETTES[s].label}
+                />
+              ),
+            )}
           </div>
         </div>
 
@@ -961,7 +1341,10 @@ export default function Stage3D({ output }: Stage3DProps) {
           3D Legend
         </p>
         <p className='leading-5'>
-          <span className='mr-1 inline-block h-2 w-2 rounded-full bg-[#7d3512]' />
+          <span
+            className='mr-1 inline-block h-2 w-2 rounded-full'
+            style={{ backgroundColor: palette.wallOddColor }}
+          />
           Wall Brick
         </p>
         {output.courseStrategy.strategy === 'shim-spacer' && (
@@ -977,11 +1360,17 @@ export default function Stage3D({ output }: Stage3DProps) {
           </p>
         )}
         <p className='leading-5'>
-          <span className='mr-1 inline-block h-2 w-2 rounded-full bg-[#ccb085]' />
+          <span
+            className='mr-1 inline-block h-2 w-2 rounded-full'
+            style={{ backgroundColor: palette.capColor }}
+          />
           Cap Brick
         </p>
         <p className='leading-5'>
-          <span className='mr-1 inline-block h-2 w-2 rounded-full bg-[#c6b39a]' />
+          <span
+            className='mr-1 inline-block h-2 w-2 rounded-full'
+            style={{ backgroundColor: palette.mortarColor }}
+          />
           Mortar ({mortarMode === 'off' ? 'hidden' : mortarMode})
         </p>
         <p className='leading-5'>
@@ -1034,11 +1423,27 @@ export default function Stage3D({ output }: Stage3DProps) {
               antialias: false,
               powerPreference: 'low-power',
               failIfMajorPerformanceCaveat: false,
+              preserveDrawingBuffer: true,
             }}
+            onCreated={({ gl }) => {
+              canvasRef.current = gl.domElement;
+            }}
+            shadows={isPhotoreal}
           >
-            <ambientLight intensity={0.65} />
-            <hemisphereLight args={['#fff4dd', '#8e7a5b', 0.48]} />
-            <directionalLight position={[3.5, 5.5, 3]} intensity={1.1} />
+            <ambientLight intensity={isPhotoreal ? 0.38 : 0.65} />
+            <hemisphereLight
+              args={['#fff4dd', '#8e7a5b', isPhotoreal ? 0.32 : 0.48]}
+            />
+            <directionalLight
+              position={[3.5, 5.5, 3]}
+              intensity={isPhotoreal ? 1.55 : 1.1}
+              castShadow={isPhotoreal}
+              shadow-mapSize-width={1024}
+              shadow-mapSize-height={1024}
+            />
+            {isPhotoreal && (
+              <directionalLight position={[-2.2, 2.4, -3]} intensity={0.34} />
+            )}
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             <OrbitControls
               ref={orbitRef as any}
@@ -1052,8 +1457,10 @@ export default function Stage3D({ output }: Stage3DProps) {
               <circleGeometry args={[3.4, 96]} />
               <meshStandardMaterial
                 color='#dbc8a6'
-                roughness={0.9}
-                wireframe={wireframe}
+                map={isPhotoreal ? groundDiffuseMap : undefined}
+                roughness={isPhotoreal ? 0.84 : 0.9}
+                metalness={isPhotoreal ? 0.02 : 0}
+                wireframe={effectiveWireframe}
               />
             </mesh>
 
@@ -1064,8 +1471,9 @@ export default function Stage3D({ output }: Stage3DProps) {
                 />
                 <meshStandardMaterial
                   color='#b3a284'
-                  roughness={1}
-                  wireframe={wireframe}
+                  map={isPhotoreal ? groundDiffuseMap : undefined}
+                  roughness={isPhotoreal ? 0.92 : 1}
+                  wireframe={effectiveWireframe}
                 />
               </mesh>
             ) : (
@@ -1079,8 +1487,9 @@ export default function Stage3D({ output }: Stage3DProps) {
                 />
                 <meshStandardMaterial
                   color='#b3a284'
-                  roughness={1}
-                  wireframe={wireframe}
+                  map={isPhotoreal ? groundDiffuseMap : undefined}
+                  roughness={isPhotoreal ? 0.92 : 1}
+                  wireframe={effectiveWireframe}
                 />
               </mesh>
             )}
@@ -1099,12 +1508,13 @@ export default function Stage3D({ output }: Stage3DProps) {
                     ]}
                   />
                   <meshStandardMaterial
-                    color='#c6b39a'
-                    roughness={0.93}
+                    color={palette.mortarColor}
+                    map={isPhotoreal ? mortarTexture : undefined}
+                    roughness={isPhotoreal ? 0.88 : 0.93}
                     transparent={mortarMode === 'ghost'}
                     opacity={mortarOpacity}
                     depthWrite={mortarMode !== 'ghost'}
-                    wireframe={wireframe}
+                    wireframe={effectiveWireframe}
                   />
                 </mesh>
                 <mesh position={[0, wallHeightFt / 2, 0]}>
@@ -1119,13 +1529,14 @@ export default function Stage3D({ output }: Stage3DProps) {
                     ]}
                   />
                   <meshStandardMaterial
-                    color='#c6b39a'
-                    roughness={0.93}
+                    color={palette.mortarColor}
+                    map={isPhotoreal ? mortarTexture : undefined}
+                    roughness={isPhotoreal ? 0.88 : 0.93}
                     side={BackSide}
                     transparent={mortarMode === 'ghost'}
                     opacity={mortarOpacity}
                     depthWrite={mortarMode !== 'ghost'}
-                    wireframe={wireframe}
+                    wireframe={effectiveWireframe}
                   />
                 </mesh>
               </group>
@@ -1137,8 +1548,8 @@ export default function Stage3D({ output }: Stage3DProps) {
                 thicknessFt={brickWidthFt}
                 heightFt={wallHeightFt}
                 y={wallHeightFt / 2}
-                color='#c6b39a'
-                wireframe={wireframe}
+                color={palette.mortarColor}
+                wireframe={effectiveWireframe}
                 opacity={mortarOpacity}
               />
             ) : null}
@@ -1165,12 +1576,13 @@ export default function Stage3D({ output }: Stage3DProps) {
                         ]}
                       />
                       <meshStandardMaterial
-                        color='#c6b39a'
-                        roughness={0.93}
+                        color={palette.mortarColor}
+                        map={isPhotoreal ? mortarTexture : undefined}
+                        roughness={isPhotoreal ? 0.88 : 0.93}
                         transparent={mortarMode === 'ghost'}
                         opacity={mortarOpacity}
                         depthWrite={mortarMode !== 'ghost'}
-                        wireframe={wireframe}
+                        wireframe={effectiveWireframe}
                       />
                     </mesh>
                   ),
@@ -1234,9 +1646,9 @@ export default function Stage3D({ output }: Stage3DProps) {
                         <meshStandardMaterial
                           color='#241a12'
                           roughness={1}
-                          wireframe={wireframe}
+                          wireframe={effectiveWireframe}
                         />
-                        {showBrickOutlines && (
+                        {effectiveShowBrickOutlines && (
                           <Edges color='#14100a' lineWidth={1} scale={1.003} />
                         )}
                       </mesh>
@@ -1275,8 +1687,8 @@ export default function Stage3D({ output }: Stage3DProps) {
                           polygonPoints={wallBrickQuad.polygonPoints}
                           heightFt={renderedHeightFt}
                           color={perBrickColor}
-                          wireframe={wireframe}
-                          showEdges={showBrickOutlines}
+                          wireframe={effectiveWireframe}
+                          showEdges={effectiveShowBrickOutlines}
                         />
                       ) : (
                         <>
@@ -1289,10 +1701,21 @@ export default function Stage3D({ output }: Stage3DProps) {
                           />
                           <meshStandardMaterial
                             color={perBrickColor}
-                            roughness={0.82}
-                            wireframe={wireframe}
+                            map={
+                              isPhotoreal
+                                ? (brickDiffuseMap ?? brickAlbedoTexture)
+                                : undefined
+                            }
+                            bumpMap={isPhotoreal ? brickBumpMap : undefined}
+                            bumpScale={isPhotoreal ? 0.05 : 1}
+                            roughnessMap={
+                              isPhotoreal ? brickRoughnessMap : undefined
+                            }
+                            roughness={isPhotoreal ? 0.76 : 0.82}
+                            metalness={isPhotoreal ? 0.03 : 0}
+                            wireframe={effectiveWireframe}
                           />
-                          {showBrickOutlines && (
+                          {effectiveShowBrickOutlines && (
                             <Edges
                               color='#2a1a10'
                               lineWidth={1}
@@ -1354,9 +1777,9 @@ export default function Stage3D({ output }: Stage3DProps) {
                         <CircularCapJointFiller
                           polygonPoints={brickQuad.polygonPoints}
                           heightFt={visCapBrickHeightFt}
-                          color='#ccb085'
-                          wireframe={wireframe}
-                          showEdges={showBrickOutlines}
+                          color={palette.capColor}
+                          wireframe={effectiveWireframe}
+                          showEdges={effectiveShowBrickOutlines}
                         />
                       ) : isHalfRoundCap ? (
                         <>
@@ -1376,11 +1799,13 @@ export default function Stage3D({ output }: Stage3DProps) {
                               ]}
                             />
                             <meshStandardMaterial
-                              color='#ccb085'
-                              roughness={0.65}
-                              wireframe={wireframe}
+                              color={palette.capColor}
+                              map={isPhotoreal ? capAlbedoTexture : undefined}
+                              roughness={isPhotoreal ? 0.6 : 0.65}
+                              metalness={isPhotoreal ? 0.03 : 0}
+                              wireframe={effectiveWireframe}
                             />
-                            {showBrickOutlines && (
+                            {effectiveShowBrickOutlines && (
                               <Edges
                                 color='#3b2d1f'
                                 lineWidth={1}
@@ -1405,9 +1830,11 @@ export default function Stage3D({ output }: Stage3DProps) {
                               ]}
                             />
                             <meshStandardMaterial
-                              color='#d5bb93'
-                              roughness={0.58}
-                              wireframe={wireframe}
+                              color={palette.capCrownColor}
+                              map={isPhotoreal ? capAlbedoTexture : undefined}
+                              roughness={isPhotoreal ? 0.54 : 0.58}
+                              metalness={isPhotoreal ? 0.03 : 0}
+                              wireframe={effectiveWireframe}
                             />
                           </mesh>
                         </>
@@ -1421,11 +1848,13 @@ export default function Stage3D({ output }: Stage3DProps) {
                             ]}
                           />
                           <meshStandardMaterial
-                            color='#ccb085'
-                            roughness={0.65}
-                            wireframe={wireframe}
+                            color={palette.capColor}
+                            map={isPhotoreal ? capAlbedoTexture : undefined}
+                            roughness={isPhotoreal ? 0.6 : 0.65}
+                            metalness={isPhotoreal ? 0.03 : 0}
+                            wireframe={effectiveWireframe}
                           />
-                          {showBrickOutlines && (
+                          {effectiveShowBrickOutlines && (
                             <Edges
                               color='#3b2d1f'
                               lineWidth={1}
@@ -1513,10 +1942,10 @@ export default function Stage3D({ output }: Stage3DProps) {
                           <CircularCapJointFiller
                             polygonPoints={jointQuad.polygonPoints}
                             heightFt={capJointHeightFt}
-                            color='#c6b39a'
+                            color={palette.mortarColor}
                             opacity={mortarOpacity}
-                            wireframe={wireframe}
-                            showEdges={showBrickOutlines}
+                            wireframe={effectiveWireframe}
+                            showEdges={effectiveShowBrickOutlines}
                           />
                         ) : (
                           <>
@@ -1528,12 +1957,13 @@ export default function Stage3D({ output }: Stage3DProps) {
                               ]}
                             />
                             <meshStandardMaterial
-                              color='#c6b39a'
-                              roughness={0.93}
+                              color={palette.mortarColor}
+                              map={isPhotoreal ? mortarTexture : undefined}
+                              roughness={isPhotoreal ? 0.88 : 0.93}
                               transparent={mortarMode === 'ghost'}
                               opacity={mortarOpacity}
                               depthWrite={mortarMode !== 'ghost'}
-                              wireframe={wireframe}
+                              wireframe={effectiveWireframe}
                             />
                           </>
                         )}
@@ -1574,12 +2004,13 @@ export default function Stage3D({ output }: Stage3DProps) {
                         ]}
                       />
                       <meshStandardMaterial
-                        color='#c6b39a'
-                        roughness={0.93}
+                        color={palette.mortarColor}
+                        map={isPhotoreal ? mortarTexture : undefined}
+                        roughness={isPhotoreal ? 0.88 : 0.93}
                         transparent={mortarMode === 'ghost'}
                         opacity={mortarOpacity}
                         depthWrite={mortarMode !== 'ghost'}
-                        wireframe={wireframe}
+                        wireframe={effectiveWireframe}
                       />
                     </mesh>
                   ))}
@@ -1600,12 +2031,13 @@ export default function Stage3D({ output }: Stage3DProps) {
                   ]}
                 />
                 <meshStandardMaterial
-                  color='#c6b39a'
-                  roughness={0.93}
+                  color={palette.mortarColor}
+                  map={isPhotoreal ? mortarTexture : undefined}
+                  roughness={isPhotoreal ? 0.88 : 0.93}
                   transparent={mortarMode === 'ghost'}
                   opacity={mortarOpacity}
                   depthWrite={mortarMode !== 'ghost'}
-                  wireframe={wireframe}
+                  wireframe={effectiveWireframe}
                 />
               </mesh>
             ) : showMortar ? (
@@ -1616,8 +2048,8 @@ export default function Stage3D({ output }: Stage3DProps) {
                 thicknessFt={capBrickWidthFt}
                 heightFt={capMortarBedHeightFt}
                 y={capMortarBedY}
-                color='#c6b39a'
-                wireframe={wireframe}
+                color={palette.mortarColor}
+                wireframe={effectiveWireframe}
                 opacity={mortarOpacity}
               />
             ) : null}
@@ -1639,7 +2071,7 @@ export default function Stage3D({ output }: Stage3DProps) {
                       roughness={0.9}
                       transparent
                       opacity={0.6}
-                      wireframe={wireframe}
+                      wireframe={effectiveWireframe}
                     />
                   </mesh>
                   <mesh position={[0, linerMidY, 0]}>
@@ -1655,8 +2087,16 @@ export default function Stage3D({ output }: Stage3DProps) {
                     />
                     <meshStandardMaterial
                       color='#8e3b2f'
-                      roughness={0.82}
-                      wireframe={wireframe}
+                      map={
+                        isPhotoreal
+                          ? (brickDiffuseMap ?? brickAlbedoTexture)
+                          : undefined
+                      }
+                      bumpMap={isPhotoreal ? brickBumpMap : undefined}
+                      bumpScale={isPhotoreal ? 0.04 : 1}
+                      roughnessMap={isPhotoreal ? brickRoughnessMap : undefined}
+                      roughness={isPhotoreal ? 0.74 : 0.82}
+                      wireframe={effectiveWireframe}
                     />
                   </mesh>
                   <mesh position={[0, linerMidY, 0]}>
@@ -1672,9 +2112,17 @@ export default function Stage3D({ output }: Stage3DProps) {
                     />
                     <meshStandardMaterial
                       color='#8e3b2f'
-                      roughness={0.82}
+                      map={
+                        isPhotoreal
+                          ? (brickDiffuseMap ?? brickAlbedoTexture)
+                          : undefined
+                      }
+                      bumpMap={isPhotoreal ? brickBumpMap : undefined}
+                      bumpScale={isPhotoreal ? 0.04 : 1}
+                      roughnessMap={isPhotoreal ? brickRoughnessMap : undefined}
+                      roughness={isPhotoreal ? 0.74 : 0.82}
                       side={BackSide}
-                      wireframe={wireframe}
+                      wireframe={effectiveWireframe}
                     />
                   </mesh>
                 </>
@@ -1698,7 +2146,7 @@ export default function Stage3D({ output }: Stage3DProps) {
                     color='#7b7f86'
                     metalness={0.75}
                     roughness={0.28}
-                    wireframe={wireframe}
+                    wireframe={effectiveWireframe}
                   />
                 </mesh>
               )}
@@ -1713,7 +2161,7 @@ export default function Stage3D({ output }: Stage3DProps) {
                 color={
                   output.linerSpec.type === 'steel-ring' ? '#7b7f86' : '#8e3b2f'
                 }
-                wireframe={wireframe}
+                wireframe={effectiveWireframe}
               />
             )}
 
@@ -1722,8 +2170,9 @@ export default function Stage3D({ output }: Stage3DProps) {
                 <circleGeometry args={[innerVoidRadiusFt, 72]} />
                 <meshStandardMaterial
                   color='#3d3126'
-                  roughness={0.95}
-                  wireframe={wireframe}
+                  map={isPhotoreal ? mortarTexture : undefined}
+                  roughness={isPhotoreal ? 0.9 : 0.95}
+                  wireframe={effectiveWireframe}
                 />
               </mesh>
             ) : (
@@ -1741,8 +2190,9 @@ export default function Stage3D({ output }: Stage3DProps) {
                 />
                 <meshStandardMaterial
                   color='#3d3126'
-                  roughness={0.95}
-                  wireframe={wireframe}
+                  map={isPhotoreal ? mortarTexture : undefined}
+                  roughness={isPhotoreal ? 0.9 : 0.95}
+                  wireframe={effectiveWireframe}
                 />
               </mesh>
             )}
@@ -1759,9 +2209,9 @@ export default function Stage3D({ output }: Stage3DProps) {
                   color={
                     output.ventSpec.gasLineEntryClear ? '#2b6f9b' : '#a01d1d'
                   }
-                  metalness={0.7}
-                  roughness={0.35}
-                  wireframe={wireframe}
+                  metalness={isPhotoreal ? 0.82 : 0.7}
+                  roughness={isPhotoreal ? 0.24 : 0.35}
+                  wireframe={effectiveWireframe}
                 />
               </mesh>
             )}
@@ -1775,9 +2225,9 @@ export default function Stage3D({ output }: Stage3DProps) {
 
             <ContactShadows
               position={[0, -0.019, 0]}
-              opacity={0.5}
+              opacity={isPhotoreal ? 0.7 : 0.5}
               scale={7}
-              blur={2.8}
+              blur={isPhotoreal ? 1.6 : 2.8}
               far={2.5}
             />
           </Canvas>

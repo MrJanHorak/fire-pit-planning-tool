@@ -300,6 +300,7 @@ export default function App() {
   const [quickPresetGroup, setQuickPresetGroup] =
     useState<QuickPresetGroupKey>('round-popular');
   const [view, setView] = useState<ViewMode>('3d');
+  const [stakeholderRenderSignal, setStakeholderRenderSignal] = useState(0);
   const [siteView, setSiteView] = useState<SiteView>('designer');
   const [projectNotice, setProjectNotice] = useState<string | null>(null);
   const [projectStatus, setProjectStatus] = useState<ProjectStatus | null>(
@@ -745,6 +746,24 @@ export default function App() {
       label: 'Started new project',
       timestamp: new Date().toISOString(),
     });
+  };
+
+  const handleStakeholderRenderComplete = (result: {
+    ok: boolean;
+    message: string;
+  }) => {
+    setProjectNotice(result.message);
+    if (result.ok) {
+      setProjectStatus({
+        label: 'Exported stakeholder render',
+        timestamp: new Date().toISOString(),
+      });
+    }
+  };
+
+  const handleStakeholderRender = () => {
+    setView('3d');
+    setStakeholderRenderSignal((value) => value + 1);
   };
 
   const handleClearBrowserData = () => {
@@ -1448,10 +1467,17 @@ export default function App() {
               >
                 Build Plan
               </button>
+              <button
+                className='rounded-full bg-amber-900 px-4 py-2 text-sm font-semibold text-amber-50'
+                onClick={handleStakeholderRender}
+              >
+                Save Image
+              </button>
             </div>
             <p className='text-xs text-amber-900/75'>
               3D Preview: drag to rotate and scroll to zoom. Build Plan: use
-              this for print-ready layout and cut references.
+              this for print-ready layout and cut references. Stakeholder
+              Render: export a polished still image to share.
             </p>
 
             <Suspense
@@ -1462,7 +1488,11 @@ export default function App() {
               }
             >
               {view === '3d' ? (
-                <Stage3D output={output} />
+                <Stage3D
+                  output={output}
+                  captureSignal={stakeholderRenderSignal}
+                  onStakeholderRenderComplete={handleStakeholderRenderComplete}
+                />
               ) : (
                 <ConstructionMode input={input} output={output} />
               )}
