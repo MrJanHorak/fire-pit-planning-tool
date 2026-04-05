@@ -2,6 +2,27 @@
 
 React 19 application for engineering-accurate masonry firepit design with real-time calculations, safety warnings, and visual construction outputs.
 
+## What This Site Is
+
+Parametric Masonry Designer is a planning tool for designing a custom backyard firepit before buying materials or starting construction. It combines practical masonry rules, safety checks, and visual previews so you can move from "idea" to a build-ready plan with confidence.
+
+You can use it to:
+
+- Size a firepit by inner diameter and wall height.
+- See realistic material counts and waste-adjusted purchase estimates.
+- Review safety clearances and fuel-specific venting guidance.
+- Visualize the build in both 3D and construction-oriented views.
+
+## Why I Built It
+
+This project started as a personal backyard upgrade idea. I wanted to build a firepit, but I also wanted to avoid guesswork around dimensions, brick counts, vent area, and base prep.
+
+Instead of using rough napkin math, I built a tool that turns engineering formulas into a practical planning workflow. The result is a project that is both technically interesting and useful in the real world.
+
+## Screenshot
+
+![Parametric Masonry Designer screenshot](./public/screenshot-firepit-planner.png)
+
 ## Phase 1: Engineering Math
 
 ### 1. Masonry Unit Dimensions and Jointing
