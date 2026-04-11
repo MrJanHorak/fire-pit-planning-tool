@@ -432,4 +432,100 @@ describe('MasonryEngine', () => {
       true,
     );
   });
+
+  it('uses heavier logistics weight for natural stone presets than modular brick', () => {
+    const engine = new MasonryEngine();
+    const modular = engine.calculateDesign({
+      ...baseInput,
+      brickPresetKey: 'modular',
+    });
+    const rock = engine.calculateDesign({
+      ...baseInput,
+      brickPresetKey: 'rockLedgestone',
+    });
+
+    expect(rock.logistics.estimatedBrickWeightLb).toBeGreaterThan(
+      modular.logistics.estimatedBrickWeightLb,
+    );
+  });
+
+  it('adds natural stone geology warning when rock presets are selected', () => {
+    const engine = new MasonryEngine();
+    const output = engine.calculateDesign({
+      ...baseInput,
+      brickPresetKey: 'rockFieldstone',
+      fuelType: 'propane',
+    });
+
+    expect(
+      output.warnings.some(
+        (w) => w.code === 'natural-stone-geology-check-required',
+      ),
+    ).toBe(true);
+  });
+
+  it('adds natural stone heat-shield warning for wood fire without fire-brick liner', () => {
+    const engine = new MasonryEngine();
+    const output = engine.calculateDesign({
+      ...baseInput,
+      brickPresetKey: 'rockMosaic',
+      fuelType: 'wood',
+      linerType: 'steel-ring',
+    });
+
+    expect(
+      output.warnings.some(
+        (w) => w.code === 'natural-stone-heat-shield-recommended',
+      ),
+    ).toBe(true);
+  });
+
+  it('builds natural stone face-foot and tonnage estimates for rock presets', () => {
+    const engine = new MasonryEngine();
+    const output = engine.calculateDesign({
+      ...baseInput,
+      brickPresetKey: 'rockLedgestone',
+      wallHeightIn: 18,
+    });
+
+    const estimate = output.logistics.naturalStoneEstimate;
+    expect(estimate).toBeDefined();
+    expect(estimate?.faceAreaSquareFeet).toBeGreaterThan(0);
+    expect(estimate?.tonsAt8InDepthWithWaste15Pct).toBeGreaterThan(
+      estimate?.tonsAt8InDepthWithWaste10Pct ?? 0,
+    );
+    expect(estimate?.tonsAt8InDepth).toBeGreaterThan(
+      estimate?.tonsAt4InDepth ?? 0,
+    );
+  });
+
+  it('flags unsafe natural stone types for direct-heat risk', () => {
+    const engine = new MasonryEngine();
+    const output = engine.calculateDesign({
+      ...baseInput,
+      brickPresetKey: 'rockFieldstone',
+      naturalStoneType: 'river-rock',
+    });
+
+    expect(
+      output.warnings.some((w) => w.code === 'natural-stone-unsafe-type'),
+    ).toBe(true);
+  });
+
+  it('flags mortared natural stone for wet or freeze-thaw conditions', () => {
+    const engine = new MasonryEngine();
+    const output = engine.calculateDesign({
+      ...baseInput,
+      brickPresetKey: 'rockMosaic',
+      stoneBuildMethod: 'mortared',
+      drainageCondition: 'poor-drainage',
+      frostClimate: true,
+    });
+
+    expect(
+      output.warnings.some(
+        (w) => w.code === 'natural-stone-mortared-drainage-review',
+      ),
+    ).toBe(true);
+  });
 });

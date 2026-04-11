@@ -1250,6 +1250,26 @@ function getRectangularSideLabel(
   return 'W';
 }
 
+function seededUnitVariation(seed: number): number {
+  const value = Math.sin(seed * 12.9898) * 43758.5453;
+  return value - Math.floor(value);
+}
+
+type RockVisualStyle = 'ledgestone' | 'fieldstone' | 'mosaic';
+
+function getRockArchetypeIndex(
+  style: RockVisualStyle,
+  courseIndex: number,
+  unitIndex: number,
+  patternLength: number,
+): number {
+  const styleOffset =
+    style === 'ledgestone' ? 17 : style === 'mosaic' ? 43 : 29;
+  const hash =
+    (courseIndex * 31 + unitIndex * 17 + styleOffset) % patternLength;
+  return Math.abs(hash);
+}
+
 export default function Stage3D({
   output,
   seatingFurnitureCount,
@@ -1263,6 +1283,8 @@ export default function Stage3D({
   const [mortarMode, setMortarMode] = useState<MortarMode>('solid');
   const [materialStyle, setMaterialStyle] =
     useState<MaterialStyle>('classic-red');
+  const [stoneTightness, setStoneTightness] = useState(68);
+  const [archetypePatternLength, setArchetypePatternLength] = useState(5);
   const [webglBlocked, setWebglBlocked] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
   const [showControls, setShowControls] = useState(false);
@@ -1480,8 +1502,53 @@ export default function Stage3D({
   const capCutStatusText = capRequiresTaperCut
     ? 'Capstone taper cuts required'
     : 'Capstone taper cuts not required';
+  const isRockWallVisual = /natural stone/i.test(output.resolvedUnit.name);
+  const rockVisualStyle: RockVisualStyle = output.resolvedUnit.name
+    .toLowerCase()
+    .includes('ledgestone')
+    ? 'ledgestone'
+    : output.resolvedUnit.name.toLowerCase().includes('mosaic')
+      ? 'mosaic'
+      : 'fieldstone';
+  const wallLegendLabel = isRockWallVisual ? 'Wall Rock' : 'Wall Brick';
+  const capLegendLabel = isHalfRoundCap ? 'Cap Unit (Half-Round)' : 'Cap Unit';
+  const rockPalette =
+    materialStyle === 'charcoal'
+      ? ['#6b6460', '#5f5956', '#7a726c', '#8b8177']
+      : materialStyle === 'limestone'
+        ? ['#d1c4ad', '#c7b99f', '#ded2bf', '#bcae94']
+        : ['#9d7a5a', '#8f6a4a', '#aa8665', '#7d5e45'];
+  const tightness = Math.min(100, Math.max(0, stoneTightness)) / 100;
+  const rockSolidMortarOpacityByStyle: Record<typeof rockVisualStyle, number> =
+    {
+      ledgestone: 0.5,
+      fieldstone: 0.58,
+      mosaic: 0.64,
+    };
   const showMortar = mortarMode !== 'off';
-  const mortarOpacity = mortarMode === 'ghost' ? 0.25 : 0.96;
+  const mortarOpacity =
+    mortarMode === 'ghost'
+      ? 0.25
+      : isRockWallVisual
+        ? Math.max(
+            0.38,
+            rockSolidMortarOpacityByStyle[rockVisualStyle] - tightness * 0.08,
+          )
+        : 0.96;
+  const mortarDepthWrite = mortarMode !== 'ghost' && !isRockWallVisual;
+
+  // For rock walls, reduce mortar radial extent so stones poke out naturally
+  const mortarOuterRadiusOffset = isRockWallVisual
+    ? visBrickWidthFt * 0.35 // ~35% of stone width, leaving 65% to poke out
+    : brickWidthFt / 2;
+  const mortarInnerRadiusOffset = isRockWallVisual
+    ? visBrickWidthFt * 0.35
+    : brickWidthFt / 2;
+  // Bed joints taller in rock mode to fill vertical gaps better
+  const bedJointHeightFt = isRockWallVisual
+    ? mortarJointFt * 1.8
+    : mortarJointFt;
+
   const palette = STYLE_PALETTES[materialStyle];
   const isPhotoreal = true;
   const effectiveWireframe = wireframe;
@@ -1751,6 +1818,56 @@ export default function Stage3D({
               </div>
             </div>
 
+            {isRockWallVisual && (
+              <>
+                <div className='mt-2 rounded-xl bg-amber-50/95 px-3 py-2 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
+                  <div className='mb-1 flex items-center justify-between'>
+                    <p className='text-[10px] uppercase tracking-wide text-amber-900/70'>
+                      Stone Tightness
+                    </p>
+                    <span className='text-[10px] text-amber-900/80'>
+                      {Math.round(stoneTightness)}%
+                    </span>
+                  </div>
+                  <input
+                    type='range'
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={stoneTightness}
+                    onChange={(event) =>
+                      setStoneTightness(Number(event.target.value))
+                    }
+                    className='w-full accent-amber-900'
+                    aria-label='Stone tightness'
+                    title='Stone tightness'
+                  />
+                </div>
+                <div className='mt-2 rounded-xl bg-amber-50/95 px-3 py-2 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
+                  <div className='mb-2 flex items-center justify-between'>
+                    <p className='text-[10px] uppercase tracking-wide text-amber-900/70'>
+                      Arch Pattern Length
+                    </p>
+                    <span className='text-[10px] text-amber-900/80'>
+                      {archetypePatternLength}
+                    </span>
+                  </div>
+                  <div className='flex gap-1'>
+                    {[3, 5, 7].map((length) => (
+                      <button
+                        key={length}
+                        onClick={() => setArchetypePatternLength(length)}
+                        className={`flex-1 rounded-md px-2 py-1 text-[10px] font-semibold transition-colors ${archetypePatternLength === length ? 'bg-amber-900 text-amber-50' : 'bg-amber-200/60 text-amber-900 hover:bg-amber-300/60'}`}
+                        title={`Use ${length} repeating shape variants`}
+                      >
+                        {length}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
             <div className='mt-2 flex items-center gap-2 rounded-full bg-amber-50/95 px-3 py-1.5 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
               <span>Wireframe</span>
               <button
@@ -1887,7 +2004,7 @@ export default function Stage3D({
                 className='mr-1 inline-block h-2 w-2 rounded-full'
                 style={{ backgroundColor: palette.wallOddColor }}
               />
-              Wall Brick
+              {wallLegendLabel}
             </p>
             {output.courseStrategy.strategy === 'shim-spacer' && (
               <p className='leading-5'>
@@ -1906,7 +2023,7 @@ export default function Stage3D({
                 className='mr-1 inline-block h-2 w-2 rounded-full'
                 style={{ backgroundColor: palette.capColor }}
               />
-              Cap Brick
+              {capLegendLabel}
             </p>
             <p className='leading-5'>
               <span
@@ -2278,8 +2395,8 @@ export default function Stage3D({
                 <mesh position={[0, wallHeightFt / 2, 0]}>
                   <cylinderGeometry
                     args={[
-                      geometry.wallRadiusFt + brickWidthFt / 2,
-                      geometry.wallRadiusFt + brickWidthFt / 2,
+                      geometry.wallRadiusFt + mortarOuterRadiusOffset,
+                      geometry.wallRadiusFt + mortarOuterRadiusOffset,
                       wallHeightFt,
                       128,
                       1,
@@ -2292,15 +2409,15 @@ export default function Stage3D({
                     roughness={isPhotoreal ? 0.88 : 0.93}
                     transparent={mortarMode === 'ghost'}
                     opacity={mortarOpacity}
-                    depthWrite={mortarMode !== 'ghost'}
+                    depthWrite={mortarDepthWrite}
                     wireframe={effectiveWireframe}
                   />
                 </mesh>
                 <mesh position={[0, wallHeightFt / 2, 0]}>
                   <cylinderGeometry
                     args={[
-                      geometry.wallRadiusFt - brickWidthFt / 2,
-                      geometry.wallRadiusFt - brickWidthFt / 2,
+                      geometry.wallRadiusFt - mortarInnerRadiusOffset,
+                      geometry.wallRadiusFt - mortarInnerRadiusOffset,
                       wallHeightFt,
                       128,
                       1,
@@ -2314,7 +2431,7 @@ export default function Stage3D({
                     side={BackSide}
                     transparent={mortarMode === 'ghost'}
                     opacity={mortarOpacity}
-                    depthWrite={mortarMode !== 'ghost'}
+                    depthWrite={mortarDepthWrite}
                     wireframe={effectiveWireframe}
                   />
                 </mesh>
@@ -2343,14 +2460,15 @@ export default function Stage3D({
                       rotation={[-Math.PI / 2, 0, 0]}
                       position={[
                         0,
-                        course.courseIndex * geometry.courseRiseFt,
+                        course.courseIndex * geometry.courseRiseFt +
+                          (isRockWallVisual ? bedJointHeightFt * 0.5 : 0),
                         0,
                       ]}
                     >
                       <ringGeometry
                         args={[
-                          geometry.wallRadiusFt - brickWidthFt / 2,
-                          geometry.wallRadiusFt + brickWidthFt / 2,
+                          geometry.wallRadiusFt - mortarInnerRadiusOffset,
+                          geometry.wallRadiusFt + mortarOuterRadiusOffset,
                           128,
                         ]}
                       />
@@ -2360,7 +2478,7 @@ export default function Stage3D({
                         roughness={isPhotoreal ? 0.88 : 0.93}
                         transparent={mortarMode === 'ghost'}
                         opacity={mortarOpacity}
-                        depthWrite={mortarMode !== 'ghost'}
+                        depthWrite={mortarDepthWrite}
                         wireframe={effectiveWireframe}
                       />
                     </mesh>
@@ -2461,7 +2579,168 @@ export default function Stage3D({
                       position={[placement.x, y, placement.z]}
                       rotation={[0, placement.rotationY, 0]}
                     >
-                      {wallRequiresTaperCut && wallBrickQuad && !isSpacer ? (
+                      {isRockWallVisual && !isSpacer ? (
+                        (() => {
+                          const seedBase = course.courseIndex * 1000 + brickIdx;
+                          const styleScales =
+                            rockVisualStyle === 'ledgestone'
+                              ? {
+                                  lengthMin: 1.0,
+                                  lengthRange: 0.26,
+                                  heightMin: 0.72,
+                                  heightRange: 0.22,
+                                  widthMin: 0.98,
+                                  widthRange: 0.24,
+                                  jitterY: 0.16,
+                                  jitterX: 0.08,
+                                  jitterZ: 0.08,
+                                }
+                              : rockVisualStyle === 'mosaic'
+                                ? {
+                                    lengthMin: 0.9,
+                                    lengthRange: 0.34,
+                                    heightMin: 0.84,
+                                    heightRange: 0.28,
+                                    widthMin: 0.9,
+                                    widthRange: 0.34,
+                                    jitterY: 0.22,
+                                    jitterX: 0.14,
+                                    jitterZ: 0.14,
+                                  }
+                                : {
+                                    lengthMin: 0.94,
+                                    lengthRange: 0.32,
+                                    heightMin: 0.88,
+                                    heightRange: 0.26,
+                                    widthMin: 0.94,
+                                    widthRange: 0.32,
+                                    jitterY: 0.2,
+                                    jitterX: 0.12,
+                                    jitterZ: 0.12,
+                                  };
+                          const tightnessLengthBoost = 0.11 * tightness;
+                          const tightnessWidthBoost = 0.14 * tightness;
+                          const tightnessHeightBoost = 0.08 * tightness;
+                          const jitterScale = 1 - tightness * 0.55;
+                          const lengthScale =
+                            styleScales.lengthMin +
+                            tightnessLengthBoost +
+                            seededUnitVariation(seedBase + 11) *
+                              styleScales.lengthRange;
+                          const heightScale =
+                            styleScales.heightMin +
+                            tightnessHeightBoost +
+                            seededUnitVariation(seedBase + 23) *
+                              styleScales.heightRange;
+                          const widthScale =
+                            styleScales.widthMin +
+                            tightnessWidthBoost +
+                            seededUnitVariation(seedBase + 37) *
+                              styleScales.widthRange;
+                          const rotationJitterY =
+                            (seededUnitVariation(seedBase + 53) - 0.5) *
+                            styleScales.jitterY *
+                            jitterScale;
+                          const rotationJitterX =
+                            (seededUnitVariation(seedBase + 71) - 0.5) *
+                            styleScales.jitterX *
+                            jitterScale;
+                          const rotationJitterZ =
+                            (seededUnitVariation(seedBase + 89) - 0.5) *
+                            styleScales.jitterZ *
+                            jitterScale;
+                          const colorIndex = Math.floor(
+                            seededUnitVariation(seedBase + 101) *
+                              rockPalette.length,
+                          );
+                          const rockColor =
+                            rockPalette[colorIndex] ?? '#8f6a4a';
+                          const archetypeIndex = getRockArchetypeIndex(
+                            rockVisualStyle,
+                            course.courseIndex,
+                            brickIdx,
+                            archetypePatternLength,
+                          );
+                          const archetypeScales =
+                            rockVisualStyle === 'ledgestone'
+                              ? [
+                                  [1.15, 0.8, 1.04],
+                                  [1.07, 0.86, 1.02],
+                                  [1.12, 0.74, 0.98],
+                                  [1.0, 0.9, 1.06],
+                                  [1.18, 0.78, 1.0],
+                                ]
+                              : rockVisualStyle === 'mosaic'
+                                ? [
+                                    [0.96, 1.06, 1.0],
+                                    [1.02, 0.94, 0.96],
+                                    [0.92, 1.1, 1.08],
+                                    [1.08, 0.9, 1.02],
+                                    [1.0, 1.02, 0.92],
+                                  ]
+                                : [
+                                    [1.0, 1.0, 1.0],
+                                    [1.08, 0.96, 1.04],
+                                    [0.94, 1.08, 0.98],
+                                    [1.04, 0.92, 1.1],
+                                    [0.98, 1.04, 0.94],
+                                  ];
+                          const [archLength, archHeight, archWidth] =
+                            archetypeScales[archetypeIndex] ?? [1, 1, 1];
+
+                          return (
+                            <mesh
+                              rotation={[
+                                rotationJitterX,
+                                rotationJitterY,
+                                rotationJitterZ,
+                              ]}
+                              scale={[
+                                renderedLengthFt * lengthScale * archLength,
+                                renderedHeightFt * heightScale * archHeight,
+                                renderedWidthFt * widthScale * archWidth,
+                              ]}
+                            >
+                              {rockVisualStyle === 'ledgestone' ? (
+                                archetypeIndex % 2 === 0 ? (
+                                  <boxGeometry args={[1, 1, 1]} />
+                                ) : (
+                                  <dodecahedronGeometry args={[0.56, 0]} />
+                                )
+                              ) : rockVisualStyle === 'mosaic' ? (
+                                archetypeIndex % 3 === 0 ? (
+                                  <octahedronGeometry args={[0.62, 0]} />
+                                ) : archetypeIndex % 3 === 1 ? (
+                                  <tetrahedronGeometry args={[0.68, 0]} />
+                                ) : (
+                                  <icosahedronGeometry args={[0.56, 0]} />
+                                )
+                              ) : archetypeIndex % 4 === 0 ? (
+                                <dodecahedronGeometry args={[0.5, 0]} />
+                              ) : archetypeIndex % 4 === 1 ? (
+                                <icosahedronGeometry args={[0.54, 0]} />
+                              ) : archetypeIndex % 4 === 2 ? (
+                                <octahedronGeometry args={[0.6, 0]} />
+                              ) : (
+                                <sphereGeometry args={[0.52, 9, 8]} />
+                              )}
+                              <meshStandardMaterial
+                                color={rockColor}
+                                roughness={0.92}
+                                metalness={0.01}
+                                wireframe={effectiveWireframe}
+                              />
+                              {effectiveShowBrickOutlines && (
+                                <Edges
+                                  color='#2d241c'
+                                  lineWidth={1}
+                                  scale={1.01}
+                                />
+                              )}
+                            </mesh>
+                          );
+                        })()
+                      ) : wallRequiresTaperCut && wallBrickQuad && !isSpacer ? (
                         <CircularCapJointFiller
                           polygonPoints={wallBrickQuad.polygonPoints}
                           heightFt={renderedHeightFt}
@@ -2741,7 +3020,7 @@ export default function Stage3D({
                               roughness={isPhotoreal ? 0.88 : 0.93}
                               transparent={mortarMode === 'ghost'}
                               opacity={mortarOpacity}
-                              depthWrite={mortarMode !== 'ghost'}
+                              depthWrite={mortarDepthWrite}
                               wireframe={effectiveWireframe}
                             />
                           </>
@@ -2788,7 +3067,7 @@ export default function Stage3D({
                         roughness={isPhotoreal ? 0.88 : 0.93}
                         transparent={mortarMode === 'ghost'}
                         opacity={mortarOpacity}
-                        depthWrite={mortarMode !== 'ghost'}
+                        depthWrite={mortarDepthWrite}
                         wireframe={effectiveWireframe}
                       />
                     </mesh>
@@ -2815,7 +3094,7 @@ export default function Stage3D({
                   roughness={isPhotoreal ? 0.88 : 0.93}
                   transparent={mortarMode === 'ghost'}
                   opacity={mortarOpacity}
-                  depthWrite={mortarMode !== 'ghost'}
+                  depthWrite={mortarDepthWrite}
                   wireframe={effectiveWireframe}
                 />
               </mesh>
@@ -2910,24 +3189,45 @@ export default function Stage3D({
             {output.linerSpec.enabled &&
               output.planShape === 'circular' &&
               output.linerSpec.type === 'steel-ring' && (
-                <mesh position={[0, linerMidY, 0]}>
-                  <cylinderGeometry
-                    args={[
-                      geometry.linerOuterRadiusFt,
-                      geometry.linerOuterRadiusFt,
-                      linerHeightFt,
-                      96,
-                      1,
-                      true,
-                    ]}
-                  />
-                  <meshStandardMaterial
-                    color='#7b7f86'
-                    metalness={0.75}
-                    roughness={0.28}
-                    wireframe={effectiveWireframe}
-                  />
-                </mesh>
+                <>
+                  <mesh position={[0, linerMidY, 0]}>
+                    <cylinderGeometry
+                      args={[
+                        geometry.linerOuterRadiusFt,
+                        geometry.linerOuterRadiusFt,
+                        linerHeightFt,
+                        96,
+                        1,
+                        true,
+                      ]}
+                    />
+                    <meshStandardMaterial
+                      color='#7b7f86'
+                      metalness={0.75}
+                      roughness={0.28}
+                      wireframe={effectiveWireframe}
+                    />
+                  </mesh>
+                  <mesh position={[0, linerMidY, 0]}>
+                    <cylinderGeometry
+                      args={[
+                        geometry.linerInnerRadiusFt,
+                        geometry.linerInnerRadiusFt,
+                        linerHeightFt,
+                        96,
+                        1,
+                        true,
+                      ]}
+                    />
+                    <meshStandardMaterial
+                      color='#7b7f86'
+                      metalness={0.75}
+                      roughness={0.28}
+                      side={BackSide}
+                      wireframe={effectiveWireframe}
+                    />
+                  </mesh>
+                </>
               )}
 
             {output.linerSpec.enabled && output.planShape !== 'circular' && (

@@ -59,6 +59,12 @@ export default function ControlPanel({
   const usingCustomBrick =
     input.brickPresetKey === 'custom' ||
     input.brickPresetKey === 'custom-radial';
+  const usingRockPreset = (input.brickPresetKey ?? '').startsWith('rock');
+  const unsafeStoneTypeSelected =
+    input.naturalStoneType === 'river-rock' ||
+    input.naturalStoneType === 'sandstone' ||
+    input.naturalStoneType === 'limestone' ||
+    input.naturalStoneType === 'shale';
   const usingCustomBrickRadial = input.brickPresetKey === 'custom-radial';
   const usingCustomCap =
     input.capstonePresetKey === 'custom' ||
@@ -135,8 +141,8 @@ export default function ControlPanel({
 
         <label className='flex flex-col gap-1 sm:col-span-2'>
           <FieldLabel
-            label='Brick Type'
-            tip='Use actual unit dimensions, not nominal sizes. Switch to a custom or radial option only when you know the exact unit you plan to buy.'
+            label='Wall Unit Type'
+            tip='Use actual unit dimensions, not nominal sizes. Natural stone presets are average dimensions for planning only and should be paired with liner and geology checks.'
           />
           <select
             className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
@@ -259,6 +265,68 @@ export default function ControlPanel({
                   }
                 />
               </label>
+            </div>
+          )}
+
+          {usingRockPreset && (
+            <div className='mt-2 grid gap-2 rounded-md border border-amber-700/20 bg-white/70 p-3 sm:grid-cols-2'>
+              <label className='flex flex-col gap-1'>
+                <span className='text-xs font-medium text-amber-900'>
+                  Stone Type
+                </span>
+                <select
+                  className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                  aria-label='Natural stone type'
+                  title='Natural stone type'
+                  value={input.naturalStoneType ?? 'unspecified'}
+                  onChange={(event) =>
+                    setInput((prev) => ({
+                      ...prev,
+                      naturalStoneType: event.target
+                        .value as MasonryInput['naturalStoneType'],
+                    }))
+                  }
+                >
+                  <option value='unspecified'>Unspecified</option>
+                  <option value='granite'>Granite</option>
+                  <option value='basalt'>Basalt</option>
+                  <option value='marble'>Marble</option>
+                  <option value='river-rock'>River Rock</option>
+                  <option value='sandstone'>Sandstone</option>
+                  <option value='limestone'>Limestone</option>
+                  <option value='shale'>Shale</option>
+                </select>
+              </label>
+
+              <label className='flex flex-col gap-1'>
+                <span className='text-xs font-medium text-amber-900'>
+                  Build Method
+                </span>
+                <select
+                  className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                  aria-label='Natural stone build method'
+                  title='Natural stone build method'
+                  value={input.stoneBuildMethod ?? 'dry-stack'}
+                  onChange={(event) =>
+                    setInput((prev) => ({
+                      ...prev,
+                      stoneBuildMethod: event.target
+                        .value as MasonryInput['stoneBuildMethod'],
+                    }))
+                  }
+                >
+                  <option value='dry-stack'>Dry Stack</option>
+                  <option value='mortared'>Mortared</option>
+                </select>
+              </label>
+
+              {unsafeStoneTypeSelected && (
+                <p className='sm:col-span-2 rounded-md border border-red-700/30 bg-red-50 px-2 py-1.5 text-xs font-medium text-red-900'>
+                  Selected stone type is unsafe for direct-heat fire-facing
+                  zones. Prefer granite, basalt, or marble and keep a dedicated
+                  heat shield.
+                </p>
+              )}
             </div>
           )}
         </label>

@@ -61,7 +61,7 @@ describe('construction packet export', () => {
     const html = buildConstructionPacketHtml(packetInput, output);
 
     expect(html).toContain('Fire Pit Build Packet');
-    expect(html).toContain('Bricks To Buy');
+    expect(html).toContain('Wall Units To Buy');
     expect(html).toContain('Main Wall Units');
     expect(html).toContain('Spacer Units');
     expect(html).toContain('Accent Course Units');
@@ -141,6 +141,21 @@ describe('construction packet export', () => {
     expect(html).toContain('Seating Material');
     expect(html).toContain('Base Course (Crushed Stone 3/4")');
     expect(html).toContain('Pea Gravel or Marble Chips (Finish)');
+  });
+
+  it('includes natural stone planning rows when rock wall presets are selected', () => {
+    const rockInput = {
+      ...input,
+      brickPresetKey: 'rockLedgestone',
+      wallHeightIn: 18,
+    };
+    const output = new MasonryEngine().calculateDesign(rockInput);
+    const html = buildConstructionPacketHtml(rockInput, output);
+
+    expect(html).toContain('Natural Stone Face Area');
+    expect(html).toContain('8 in Wall Stone (10-15% waste)');
+    expect(html).toContain('4 in Building Stone (10-15% waste)');
+    expect(html).toContain('Typical Stone Wall Weight');
   });
 
   it('uses width and depth text for rectangular plans', () => {

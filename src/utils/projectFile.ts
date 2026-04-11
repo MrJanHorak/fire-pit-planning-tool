@@ -218,6 +218,14 @@ export function normalizeMasonryInput(
       value.seatingAreaRadiusFt,
       defaults.seatingAreaRadiusFt ?? 10,
     ),
+    naturalStoneType: coerceString(
+      value.naturalStoneType,
+      defaults.naturalStoneType ?? 'unspecified',
+    ) as MasonryInput['naturalStoneType'],
+    stoneBuildMethod: coerceString(
+      value.stoneBuildMethod,
+      defaults.stoneBuildMethod ?? 'dry-stack',
+    ) as MasonryInput['stoneBuildMethod'],
   };
 }
 

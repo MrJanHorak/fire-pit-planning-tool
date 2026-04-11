@@ -28,6 +28,16 @@ export type SeatingGroundType =
 export type SeatingAreaShape = 'circular' | 'square';
 export type SeatingFurnitureStyle = 'adirondack' | 'bench';
 export type SeatingDensity = 'cozy' | 'standard' | 'spacious';
+export type NaturalStoneType =
+  | 'unspecified'
+  | 'granite'
+  | 'basalt'
+  | 'marble'
+  | 'river-rock'
+  | 'sandstone'
+  | 'limestone'
+  | 'shale';
+export type StoneBuildMethod = 'dry-stack' | 'mortared';
 
 export interface MasonryUnit {
   name: string;
@@ -86,12 +96,18 @@ export interface MasonryInput {
   seatingDensity?: SeatingDensity;
   seatingFurnitureCount?: number;
   seatingAreaRadiusFt?: number;
+  naturalStoneType?: NaturalStoneType;
+  stoneBuildMethod?: StoneBuildMethod;
 }
 
 export interface SafetyWarning {
   code:
     | 'clearance-too-low'
     | 'wood-liner-recommended'
+    | 'natural-stone-geology-check-required'
+    | 'natural-stone-heat-shield-recommended'
+    | 'natural-stone-unsafe-type'
+    | 'natural-stone-mortared-drainage-review'
     | 'tight-radius-cut-required'
     | 'tight-radius-half-bat-recommended'
     | 'mortar-curing-required'
@@ -179,6 +195,19 @@ export interface SeatingAreaMaterials {
   notes: string[];
 }
 
+export interface NaturalStoneEstimate {
+  faceAreaSquareFeet: number;
+  outerPerimeterFeet: number;
+  tonsAt8InDepth: number;
+  tonsAt4InDepth: number;
+  tonsAt8InDepthWithWaste10Pct: number;
+  tonsAt8InDepthWithWaste15Pct: number;
+  tonsAt4InDepthWithWaste10Pct: number;
+  tonsAt4InDepthWithWaste15Pct: number;
+  typicalWallWeightLbMin: number;
+  typicalWallWeightLbMax: number;
+}
+
 export interface LogisticsSpec {
   wasteFactorPct: number;
   estimatedBrickWeightLb: number;
@@ -188,6 +217,7 @@ export interface LogisticsSpec {
   estimatedCapWeightLb: number;
   estimatedMortarVolumeCubicFeet: number;
   seatingAreaMaterials?: SeatingAreaMaterials;
+  naturalStoneEstimate?: NaturalStoneEstimate;
 }
 
 export interface CapstoneJointSpec {

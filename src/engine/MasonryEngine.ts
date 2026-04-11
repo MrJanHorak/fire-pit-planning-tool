@@ -24,6 +24,21 @@ const BRICK_WASTE_FACTOR_PCT = 15;
 const CAP_WASTE_FACTOR_PCT = 10;
 const STONE_WASTE_FACTOR_PCT = 10;
 const MORTAR_FT3_PER_BRICK = 0.0175;
+const WALL_UNIT_DENSITY_BRICK_LB_PER_IN3 = 0.07;
+const WALL_UNIT_DENSITY_STONE_LB_PER_IN3 = 0.09;
+
+const ROCK_WALL_UNIT_PRESET_KEYS = new Set([
+  'rockLedgestone',
+  'rockFieldstone',
+  'rockMosaic',
+]);
+
+const WALL_UNIT_WEIGHT_OVERRIDES_LB: Record<string, number> = {
+  modular: MODULAR_BRICK_WEIGHT_LB,
+  rockLedgestone: 32,
+  rockFieldstone: 45,
+  rockMosaic: 28,
+};
 
 interface CapstonePreset {
   unit: MasonryUnit;
@@ -38,6 +53,19 @@ interface PlanMetrics {
   centerlineDepthIn: number;
   outerWidthIn: number;
   outerDepthIn: number;
+}
+
+interface NaturalStoneEstimateMetrics {
+  faceAreaSquareFeet: number;
+  outerPerimeterFeet: number;
+  tonsAt8InDepth: number;
+  tonsAt4InDepth: number;
+  tonsAt8InDepthWithWaste10Pct: number;
+  tonsAt8InDepthWithWaste15Pct: number;
+  tonsAt4InDepthWithWaste10Pct: number;
+  tonsAt4InDepthWithWaste15Pct: number;
+  typicalWallWeightLbMin: number;
+  typicalWallWeightLbMax: number;
 }
 
 interface CourseSizing {
@@ -122,6 +150,24 @@ export const BRICK_PRESETS: Record<string, MasonryUnit> = {
     widthIn: 4.5,
     heightIn: 2.5,
     lengthIn: 8.75,
+  },
+  rockLedgestone: {
+    name: 'Natural Stone - Ledgestone (Avg)',
+    widthIn: 8,
+    heightIn: 4,
+    lengthIn: 12,
+  },
+  rockFieldstone: {
+    name: 'Natural Stone - Fieldstone (Avg)',
+    widthIn: 10,
+    heightIn: 5,
+    lengthIn: 14,
+  },
+  rockMosaic: {
+    name: 'Natural Stone - Mosaic (Avg)',
+    widthIn: 6,
+    heightIn: 4,
+    lengthIn: 9,
   },
 };
 
@@ -292,6 +338,8 @@ export class MasonryEngine {
       capstone,
       logistics: this.calculateLogistics(
         totalUnits,
+        oriented,
+        planMetrics,
         capstone.capUnitsPerCourseRounded,
         resolvedCap.unitWeightLb,
         foundation,
@@ -309,11 +357,68 @@ export class MasonryEngine {
   }
 
   private calculateUnitWeightLb(unit: MasonryUnit): number {
-    const densityLbPerIn3 = 0.07;
+    const densityLbPerIn3 = WALL_UNIT_DENSITY_BRICK_LB_PER_IN3;
     return Math.max(
       1,
       unit.widthIn * unit.heightIn * unit.lengthIn * densityLbPerIn3,
     );
+  }
+
+  private isRockWallPreset(input: MasonryInput): boolean {
+    const presetKey = input.brickPresetKey ?? '';
+    return ROCK_WALL_UNIT_PRESET_KEYS.has(presetKey);
+  }
+
+  private calculateWallUnitWeightLb(
+    input: MasonryInput,
+    wallUnit: MasonryUnit,
+  ): number {
+    const presetKey = input.brickPresetKey;
+    if (presetKey && presetKey in WALL_UNIT_WEIGHT_OVERRIDES_LB) {
+      return WALL_UNIT_WEIGHT_OVERRIDES_LB[presetKey];
+    }
+
+    const densityLbPerIn3 = this.isRockWallPreset(input)
+      ? WALL_UNIT_DENSITY_STONE_LB_PER_IN3
+      : WALL_UNIT_DENSITY_BRICK_LB_PER_IN3;
+
+    return Math.max(
+      1,
+      wallUnit.widthIn *
+        wallUnit.heightIn *
+        wallUnit.lengthIn *
+        densityLbPerIn3,
+    );
+  }
+
+  private calculateNaturalStoneEstimate(
+    input: MasonryInput,
+    planMetrics: PlanMetrics,
+  ): NaturalStoneEstimateMetrics {
+    const outerPerimeterIn =
+      planMetrics.planShape === 'circular'
+        ? Math.PI * planMetrics.outerWidthIn
+        : this.calculateRectangularPerimeter(
+            planMetrics.outerWidthIn,
+            planMetrics.outerDepthIn,
+          );
+    const outerPerimeterFeet = outerPerimeterIn / 12;
+    const faceAreaSquareFeet = outerPerimeterFeet * (input.wallHeightIn / 12);
+    const tonsAt8InDepth = faceAreaSquareFeet / 20;
+    const tonsAt4InDepth = faceAreaSquareFeet / 40;
+
+    return {
+      faceAreaSquareFeet,
+      outerPerimeterFeet,
+      tonsAt8InDepth,
+      tonsAt4InDepth,
+      tonsAt8InDepthWithWaste10Pct: tonsAt8InDepth * 1.1,
+      tonsAt8InDepthWithWaste15Pct: tonsAt8InDepth * 1.15,
+      tonsAt4InDepthWithWaste10Pct: tonsAt4InDepth * 1.1,
+      tonsAt4InDepthWithWaste15Pct: tonsAt4InDepth * 1.15,
+      typicalWallWeightLbMin: faceAreaSquareFeet * 35,
+      typicalWallWeightLbMax: faceAreaSquareFeet * 50,
+    };
   }
 
   private resolveRequestedWallUnit(input: MasonryInput): MasonryUnit {
@@ -1157,6 +1262,8 @@ export class MasonryEngine {
 
   private calculateLogistics(
     totalUnits: number,
+    wallUnit: MasonryUnit,
+    planMetrics: PlanMetrics,
     capUnits: number,
     capUnitWeightLb: number,
     foundation: FoundationSpec,
@@ -1170,16 +1277,24 @@ export class MasonryEngine {
     );
     const stoneWithWasteFt3 =
       foundation.stoneVolumeCubicFeet * (1 + STONE_WASTE_FACTOR_PCT / 100);
+    const wallUnitWeightLb = this.calculateWallUnitWeightLb(input, wallUnit);
 
     const logistics: LogisticsSpec = {
       wasteFactorPct: BRICK_WASTE_FACTOR_PCT,
       purchasedUnits,
       purchasedCapUnits,
-      estimatedBrickWeightLb: purchasedUnits * MODULAR_BRICK_WEIGHT_LB,
+      estimatedBrickWeightLb: purchasedUnits * wallUnitWeightLb,
       estimatedCapWeightLb: purchasedCapUnits * capUnitWeightLb,
       estimatedStoneWeightLb: stoneWithWasteFt3 * STONE_WEIGHT_LB_PER_FT3,
       estimatedMortarVolumeCubicFeet: purchasedUnits * MORTAR_FT3_PER_BRICK,
     };
+
+    if (this.isRockWallPreset(input)) {
+      logistics.naturalStoneEstimate = this.calculateNaturalStoneEstimate(
+        input,
+        planMetrics,
+      );
+    }
 
     // Add seating area materials if configured
     if (
@@ -1223,6 +1338,48 @@ export class MasonryEngine {
         message:
           'Wood-burning configurations should include a refractory liner or steel fire ring.',
       });
+    }
+
+    if (this.isRockWallPreset(input)) {
+      warnings.push({
+        code: 'natural-stone-geology-check-required',
+        message:
+          'Natural stone selected: verify geology before build. Use dense, non-porous stones (granite, basalt, marble) and avoid river rocks or porous sedimentary stones in direct-heat zones.',
+      });
+
+      if (
+        input.naturalStoneType === 'river-rock' ||
+        input.naturalStoneType === 'sandstone' ||
+        input.naturalStoneType === 'limestone' ||
+        input.naturalStoneType === 'shale'
+      ) {
+        warnings.push({
+          code: 'natural-stone-unsafe-type',
+          message:
+            'Selected natural stone type is high risk in direct heat. Avoid river rock and porous sedimentary stones for the fire-facing shell or inner zone.',
+        });
+      }
+
+      if (
+        input.stoneBuildMethod === 'mortared' &&
+        (input.drainageCondition === 'slow-draining' ||
+          input.drainageCondition === 'poor-drainage' ||
+          input.frostClimate)
+      ) {
+        warnings.push({
+          code: 'natural-stone-mortared-drainage-review',
+          message:
+            'Mortared natural stone in wet or freeze-thaw conditions needs rigid footing and drainage detailing to reduce joint cracking risk.',
+        });
+      }
+
+      if (input.fuelType === 'wood' && input.linerType !== 'fire-brick') {
+        warnings.push({
+          code: 'natural-stone-heat-shield-recommended',
+          message:
+            'Natural stone shell with wood fuel should include a dedicated heat shield. Prefer a fire-brick liner or steel ring to reduce cracking and heat-spall risk.',
+        });
+      }
     }
 
     if (cutPlan.requiresCutting) {

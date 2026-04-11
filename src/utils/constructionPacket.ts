@@ -377,13 +377,13 @@ function buildFirePitMaterialsTable(output: MasonryOutput): string {
   );
 
   const rows: Array<[string, string]> = [
-    ['Bricks per Course', `${output.unitsPerCourseRounded}`],
-    ['Total Bricks', `${output.totalUnits}`],
+    ['Wall Units per Course', `${output.unitsPerCourseRounded}`],
+    ['Total Wall Units', `${output.totalUnits}`],
     ['Main Wall Units', `${mainWallUnits}`],
     ['Spacer Units', `${output.courseStrategy.shimUnitCount}`],
     ['Accent Course Units', `${accentUnits}`],
     [
-      `Bricks To Buy (${output.logistics.wasteFactorPct}% waste)`,
+      `Wall Units To Buy (${output.logistics.wasteFactorPct}% waste)`,
       `${output.logistics.purchasedUnits}`,
     ],
     ['Cap Units per Course', `${output.capstone.capUnitsPerCourseRounded}`],
@@ -409,6 +409,32 @@ function buildFirePitMaterialsTable(output: MasonryOutput): string {
       `${output.foundation.footprintWidthIn.toFixed(2)} in x ${output.foundation.footprintDepthIn.toFixed(2)} in`,
     ],
   ];
+
+  if (output.logistics.naturalStoneEstimate) {
+    const estimate = output.logistics.naturalStoneEstimate;
+    rows.push(
+      [
+        'Natural Stone Face Area',
+        `${estimate.faceAreaSquareFeet.toFixed(2)} sq ft`,
+      ],
+      [
+        'Natural Stone Outer Perimeter',
+        `${estimate.outerPerimeterFeet.toFixed(2)} ft`,
+      ],
+      [
+        '8 in Wall Stone (10-15% waste)',
+        `${estimate.tonsAt8InDepthWithWaste10Pct.toFixed(2)} to ${estimate.tonsAt8InDepthWithWaste15Pct.toFixed(2)} tons`,
+      ],
+      [
+        '4 in Building Stone (10-15% waste)',
+        `${estimate.tonsAt4InDepthWithWaste10Pct.toFixed(2)} to ${estimate.tonsAt4InDepthWithWaste15Pct.toFixed(2)} tons`,
+      ],
+      [
+        'Typical Stone Wall Weight',
+        `${estimate.typicalWallWeightLbMin.toFixed(0)} to ${estimate.typicalWallWeightLbMax.toFixed(0)} lb`,
+      ],
+    );
+  }
 
   return buildKeyValueTable(rows, 'Fire Pit Material Item', 'Quantity');
 }
@@ -618,14 +644,14 @@ export function buildConstructionPacketHtml(
   const gasLineEntry =
     output.ventSpec.gasLineEntryAngleDeg === undefined
       ? '<p>Gas Line Entry: not used for a wood-burning layout.</p>'
-      : `<p>Gas Line Entry: ${output.ventSpec.gasLineEntryAngleDeg.toFixed(0)} deg at brick ${output.ventSpec.gasLineEntryBrickIndex} (${output.ventSpec.gasLineEntryClear ? 'clear of vents' : 'conflicts with vent layout'}${output.ventSpec.gasLineAutoAdjusted ? ', auto-adjusted' : ''}).</p>`;
+      : `<p>Gas Line Entry: ${output.ventSpec.gasLineEntryAngleDeg.toFixed(0)} deg at unit ${output.ventSpec.gasLineEntryBrickIndex} (${output.ventSpec.gasLineEntryClear ? 'clear of vents' : 'conflicts with vent layout'}${output.ventSpec.gasLineAutoAdjusted ? ', auto-adjusted' : ''}).</p>`;
   const taperCutSample = buildWallBrickTaperCutSvg(output);
   const capstonePlacementSample = buildCapstonePlacementSampleSvg(output);
   const designSummaryRows: Array<[string, string]> = [
     ['Fuel Type', formatFuelName(input.fuelType)],
     ['Plan Shape', formatShapeName(input.planShape)],
     [
-      'Brick Size',
+      'Wall Unit Size',
       `${output.resolvedUnit.name} ${output.resolvedUnit.lengthIn.toFixed(3)} in x ${output.resolvedUnit.widthIn.toFixed(3)} in x ${output.resolvedUnit.heightIn.toFixed(3)} in`,
     ],
     ['Joint Width', `${input.mortarJointIn.toFixed(3)} in`],
@@ -643,6 +669,18 @@ export function buildConstructionPacketHtml(
     ['Heat Protection', formatLinerName(output.linerSpec.type)],
     ['Liner Expansion Gap', `${output.linerSpec.expansionGapIn.toFixed(3)} in`],
   ];
+  if (output.logistics.naturalStoneEstimate) {
+    designSummaryRows.push(
+      [
+        'Natural Stone Type',
+        (input.naturalStoneType ?? 'unspecified').replace(/-/g, ' '),
+      ],
+      [
+        'Stone Build Method',
+        (input.stoneBuildMethod ?? 'dry-stack').replace(/-/g, ' '),
+      ],
+    );
+  }
   const foundationRows: Array<[string, string]> = [
     ['Foundation advisory', foundationAdvisory.heading],
     ['Risk level', foundationAdvisory.risk],
@@ -679,11 +717,11 @@ export function buildConstructionPacketHtml(
       `${output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in`,
     ],
     ['Typical Gas Vent Range', `${ventRange} sq in`],
-    ['Vent Brick Positions', output.ventSpec.ventBrickIndexes.join(', ')],
+    ['Vent Unit Positions', output.ventSpec.ventBrickIndexes.join(', ')],
   ];
   const cuttingRows: Array<[string, string]> = [
     [
-      'Layout-line spacing per brick',
+      'Layout-line spacing per unit',
       `${output.cutPlan.centerlineModuleSpacingIn.toFixed(3)} in`,
     ],
     ['Estimated inner joint', `${output.cutPlan.innerJointIn.toFixed(3)} in`],

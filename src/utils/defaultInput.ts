@@ -50,4 +50,6 @@ export const DEFAULT_MASONRY_INPUT: MasonryInput = {
   seatingDensity: 'standard',
   seatingFurnitureCount: 4,
   seatingAreaRadiusFt: 10,
+  naturalStoneType: 'unspecified',
+  stoneBuildMethod: 'dry-stack',
 };

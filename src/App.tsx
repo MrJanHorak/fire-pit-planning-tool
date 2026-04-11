@@ -825,6 +825,7 @@ export default function App() {
 
   const blockingWarningCodes = new Set([
     'clearance-too-low',
+    'natural-stone-unsafe-type',
     'gas-vent-area-out-of-range',
     'gas-vent-layout-invalid',
     'gas-line-near-vent',
@@ -1310,7 +1311,7 @@ export default function App() {
             <div className='card-rise grid gap-3 rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg sm:grid-cols-3'>
               <div>
                 <p className='text-xs uppercase tracking-wide text-amber-950/75'>
-                  Bricks Per Layer
+                  Units Per Layer
                 </p>
                 <p className='text-2xl font-bold'>
                   {output.unitsPerCourseRounded}
@@ -1419,7 +1420,7 @@ export default function App() {
                 </div>
                 <div>
                   <p className='text-xs uppercase tracking-wide text-amber-950/75'>
-                    Brick Weight
+                    Wall Unit Weight
                   </p>
                   <p className='text-xl font-bold'>
                     {Math.round(output.logistics.estimatedBrickWeightLb)} lb
@@ -1454,6 +1455,47 @@ export default function App() {
                   </p>
                 </div>
               </div>
+
+              {output.logistics.naturalStoneEstimate && (
+                <div className='mt-4 rounded-xl border border-amber-900/20 bg-white/75 p-3'>
+                  <p className='text-xs font-semibold uppercase tracking-wide text-amber-950'>
+                    Natural Stone Planning Mode
+                  </p>
+                  <p className='mt-1 text-sm text-amber-900/80'>
+                    Face area:{' '}
+                    {output.logistics.naturalStoneEstimate.faceAreaSquareFeet.toFixed(
+                      1,
+                    )}{' '}
+                    sq ft • Outer perimeter:{' '}
+                    {output.logistics.naturalStoneEstimate.outerPerimeterFeet.toFixed(
+                      1,
+                    )}{' '}
+                    ft
+                  </p>
+                  <p className='mt-1 text-sm text-amber-900/80'>
+                    8 in wall stone:{' '}
+                    {output.logistics.naturalStoneEstimate.tonsAt8InDepthWithWaste10Pct.toFixed(
+                      2,
+                    )}{' '}
+                    to{' '}
+                    {output.logistics.naturalStoneEstimate.tonsAt8InDepthWithWaste15Pct.toFixed(
+                      2,
+                    )}{' '}
+                    tons (with 10-15% waste)
+                  </p>
+                  <p className='mt-1 text-sm text-amber-900/80'>
+                    4 in building stone:{' '}
+                    {output.logistics.naturalStoneEstimate.tonsAt4InDepthWithWaste10Pct.toFixed(
+                      2,
+                    )}{' '}
+                    to{' '}
+                    {output.logistics.naturalStoneEstimate.tonsAt4InDepthWithWaste15Pct.toFixed(
+                      2,
+                    )}{' '}
+                    tons (with 10-15% waste)
+                  </p>
+                </div>
+              )}
             </details>
 
             <div className='flex gap-2'>
