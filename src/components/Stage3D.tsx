@@ -2407,7 +2407,7 @@ export default function Stage3D({
                     color={palette.mortarColor}
                     map={isPhotoreal ? mortarTexture : undefined}
                     roughness={isPhotoreal ? 0.88 : 0.93}
-                    transparent={mortarMode === 'ghost'}
+                    transparent
                     opacity={mortarOpacity}
                     depthWrite={mortarDepthWrite}
                     wireframe={effectiveWireframe}
@@ -2429,7 +2429,7 @@ export default function Stage3D({
                     map={isPhotoreal ? mortarTexture : undefined}
                     roughness={isPhotoreal ? 0.88 : 0.93}
                     side={BackSide}
-                    transparent={mortarMode === 'ghost'}
+                    transparent
                     opacity={mortarOpacity}
                     depthWrite={mortarDepthWrite}
                     wireframe={effectiveWireframe}
@@ -2476,7 +2476,7 @@ export default function Stage3D({
                         color={palette.mortarColor}
                         map={isPhotoreal ? mortarTexture : undefined}
                         roughness={isPhotoreal ? 0.88 : 0.93}
-                        transparent={mortarMode === 'ghost'}
+                        transparent
                         opacity={mortarOpacity}
                         depthWrite={mortarDepthWrite}
                         wireframe={effectiveWireframe}
@@ -3018,7 +3018,7 @@ export default function Stage3D({
                               color={palette.mortarColor}
                               map={isPhotoreal ? mortarTexture : undefined}
                               roughness={isPhotoreal ? 0.88 : 0.93}
-                              transparent={mortarMode === 'ghost'}
+                              transparent
                               opacity={mortarOpacity}
                               depthWrite={mortarDepthWrite}
                               wireframe={effectiveWireframe}
@@ -3065,7 +3065,7 @@ export default function Stage3D({
                         color={palette.mortarColor}
                         map={isPhotoreal ? mortarTexture : undefined}
                         roughness={isPhotoreal ? 0.88 : 0.93}
-                        transparent={mortarMode === 'ghost'}
+                        transparent
                         opacity={mortarOpacity}
                         depthWrite={mortarDepthWrite}
                         wireframe={effectiveWireframe}
@@ -3092,7 +3092,7 @@ export default function Stage3D({
                   color={palette.mortarColor}
                   map={isPhotoreal ? mortarTexture : undefined}
                   roughness={isPhotoreal ? 0.88 : 0.93}
-                  transparent={mortarMode === 'ghost'}
+                  transparent
                   opacity={mortarOpacity}
                   depthWrite={mortarDepthWrite}
                   wireframe={effectiveWireframe}
