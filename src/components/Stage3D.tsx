@@ -57,6 +57,7 @@ type StageLodLevel = 'high' | 'medium' | 'low';
 
 type MortarMode = 'solid' | 'ghost' | 'off';
 type MaterialStyle = 'classic-red' | 'charcoal' | 'limestone';
+type CutawayMode = 'off' | 'quarter' | 'half';
 
 const STYLE_PALETTES: Record<
   MaterialStyle,
@@ -1304,6 +1305,7 @@ export default function Stage3D({
   const [showControls, setShowControls] = useState(false);
   const [enableAdvancedEffects, setEnableAdvancedEffects] = useState(true);
   const [activeCameraPreset, setActiveCameraPreset] = useState<string | null>(null);
+  const [cutawayMode, setCutawayMode] = useState<CutawayMode>('off');
   const [stageLodLevel, setStageLodLevel] = useState<StageLodLevel>('high');
   const [webglBlockReason, setWebglBlockReason] = useState<string | null>(null);
   const [hoveredBrickId, setHoveredBrickId] = useState<string | null>(null);
@@ -1618,6 +1620,23 @@ export default function Stage3D({
   const cameraDistanceFt = Math.max(5.2, stageGroundRadiusFt * 1.35);
   const topCameraHeightFt = Math.max(6, stageGroundRadiusFt * 1.55);
   const orbitMaxDistanceFt = Math.max(9, stageGroundRadiusFt * 2.6);
+  const cutawayThetaStartRad =
+    cutawayMode === 'half' ? Math.PI / 2 : cutawayMode === 'quarter' ? Math.PI / 2 : 0;
+  const cutawayThetaLengthRad =
+    cutawayMode === 'half'
+      ? Math.PI
+      : cutawayMode === 'quarter'
+        ? Math.PI * 1.5
+        : Math.PI * 2;
+  const shouldRenderInCutaway = (x: number, z: number) => {
+    if (cutawayMode === 'off') {
+      return true;
+    }
+    if (cutawayMode === 'half') {
+      return x <= 0;
+    }
+    return !(x > 0 && z > 0);
+  };
   const getLodLevelForDistance = (distanceFt: number): StageLodLevel => {
     if (distanceFt <= stageGroundRadiusFt * 1.55) {
       return 'high';
@@ -1870,8 +1889,13 @@ export default function Stage3D({
     }
   }, [isLodHigh]);
 
+  useEffect(() => {
+    setHoveredBrickId(null);
+    setSelectedBrick(null);
+  }, [cutawayMode]);
+
   return (
-    <div className='card-rise relative h-[460px] rounded-2xl border border-amber-900/20 bg-amber-100/70 p-2 shadow-lg sm:h-[500px]'>
+    <div className='card-rise relative h-[620px] rounded-2xl border border-amber-900/20 bg-amber-100/70 p-2 shadow-lg sm:h-[680px]'>
       <div className='absolute right-2 top-2 z-10 flex flex-col items-end gap-2 sm:right-4 sm:top-4'>
         {/* Hoverable wrapper - always has presence for hover detection */}
         <div
@@ -1881,10 +1905,10 @@ export default function Stage3D({
         >
           {/* Main controls panel - expands on hover */}
           <div
-            className='overflow-hidden transition-all duration-300 ease-out'
+            className='overflow-y-auto overflow-x-hidden transition-all duration-300 ease-out'
             style={{
               maxWidth: showControls ? '300px' : '0px',
-              maxHeight: showControls ? '520px' : '0px',
+              maxHeight: showControls ? '640px' : '0px',
               opacity: showControls ? 1 : 0,
             }}
           >
@@ -2047,6 +2071,31 @@ export default function Stage3D({
                 </button>
               </div>
             )}
+
+            <div className='mt-2 rounded-xl bg-amber-50/95 px-3 py-2 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
+              <p className='mb-1 text-[10px] uppercase tracking-wide text-amber-900/70'>
+                Cutaway
+              </p>
+              <div className='flex gap-1'>
+                {(['off', 'quarter', 'half'] as CutawayMode[]).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setCutawayMode(mode)}
+                    className={`rounded-md px-2 py-1 text-[10px] font-semibold transition-colors ${
+                      cutawayMode === mode
+                        ? 'bg-amber-900 text-amber-50'
+                        : 'bg-amber-200/60 text-amber-900 hover:bg-amber-300/60'
+                    }`}
+                  >
+                    {mode === 'off'
+                      ? 'Off'
+                      : mode === 'quarter'
+                        ? 'Quarter'
+                        : 'Half'}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <div className='mt-2 flex gap-1.5'>
               <button
@@ -2578,7 +2627,12 @@ export default function Stage3D({
             {output.planShape === 'circular' ? (
               <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.001, 0]}>
                 <circleGeometry
-                  args={[output.foundation.footprintDiameterIn / 2 / 12, 96]}
+                  args={[
+                    output.foundation.footprintDiameterIn / 2 / 12,
+                    96,
+                    cutawayThetaStartRad,
+                    cutawayThetaLengthRad,
+                  ]}
                 />
                 <meshStandardMaterial
                   color='#b3a284'
@@ -2616,6 +2670,8 @@ export default function Stage3D({
                       128,
                       1,
                       true,
+                      cutawayThetaStartRad,
+                      cutawayThetaLengthRad,
                     ]}
                   />
                   <meshStandardMaterial
@@ -2637,6 +2693,8 @@ export default function Stage3D({
                       128,
                       1,
                       true,
+                      cutawayThetaStartRad,
+                      cutawayThetaLengthRad,
                     ]}
                   />
                   <meshStandardMaterial
@@ -2685,6 +2743,9 @@ export default function Stage3D({
                           geometry.wallRadiusFt - mortarInnerRadiusOffset,
                           geometry.wallRadiusFt + mortarOuterRadiusOffset,
                           128,
+                          1,
+                          cutawayThetaStartRad,
+                          cutawayThetaLengthRad,
                         ]}
                       />
                       <meshStandardMaterial
@@ -2720,6 +2781,9 @@ export default function Stage3D({
                     geometry.wallSpanDepthFt,
                     geometry.wallRadiusFt,
                   );
+                  if (!shouldRenderInCutaway(placement.x, placement.z)) {
+                    return null;
+                  }
                   const y =
                     (isSpacer ? shimHeightFt : brickHeightFt) / 2 +
                     course.courseIndex * geometry.courseRiseFt +
@@ -3057,6 +3121,9 @@ export default function Stage3D({
                     geometry.capSpanDepthFt,
                     geometry.capRadiusFt,
                   );
+                  if (!shouldRenderInCutaway(placement.x, placement.z)) {
+                    return null;
+                  }
                   const y =
                     geometry.capRiseFt +
                     capBrickHeightFt / 2 +
@@ -3194,6 +3261,14 @@ export default function Stage3D({
                       geometry.capSpanDepthFt,
                       geometry.capRadiusFt,
                     );
+                    if (
+                      !shouldRenderInCutaway(
+                        jointPlacement.x,
+                        jointPlacement.z,
+                      )
+                    ) {
+                      return null;
+                    }
                     const leftPlacement = getPlacement(
                       output,
                       capIdx,
@@ -3291,6 +3366,7 @@ export default function Stage3D({
                       -geometry.capSpanDepthFt / 2,
                     ],
                   ].map(([x, z], index) => (
+                    shouldRenderInCutaway(x as number, z as number) ? (
                     <mesh
                       key={`cap-corner-joint-${index}-${mortarMode}`}
                       position={[
@@ -3318,6 +3394,7 @@ export default function Stage3D({
                         wireframe={effectiveWireframe}
                       />
                     </mesh>
+                    ) : null
                   ))}
                 </>
               )}
@@ -3345,6 +3422,8 @@ export default function Stage3D({
                               64,
                               1,
                               true,
+                              cutawayThetaStartRad,
+                              cutawayThetaLengthRad,
                             ]}
                           />
                           <meshStandardMaterial
@@ -3378,6 +3457,8 @@ export default function Stage3D({
                         64,
                         1,
                         true,
+                        cutawayThetaStartRad,
+                        cutawayThetaLengthRad,
                       ]}
                     />
                     <meshStandardMaterial
@@ -3415,6 +3496,8 @@ export default function Stage3D({
                         64,
                         1,
                         true,
+                        cutawayThetaStartRad,
+                        cutawayThetaLengthRad,
                       ]}
                     />
                     <meshStandardMaterial
@@ -3449,6 +3532,9 @@ export default function Stage3D({
                     renderedCapInnerRadiusFt,
                     renderedCapOuterRadiusFt,
                     128,
+                    1,
+                    cutawayThetaStartRad,
+                    cutawayThetaLengthRad,
                   ]}
                 />
                 <meshStandardMaterial
@@ -3485,6 +3571,9 @@ export default function Stage3D({
                         geometry.linerOuterRadiusFt,
                         geometry.wallRadiusFt - brickWidthFt / 2,
                         96,
+                        1,
+                        cutawayThetaStartRad,
+                        cutawayThetaLengthRad,
                       ]}
                     />
                     <meshStandardMaterial
@@ -3504,6 +3593,8 @@ export default function Stage3D({
                         96,
                         1,
                         true,
+                        cutawayThetaStartRad,
+                        cutawayThetaLengthRad,
                       ]}
                     />
                     <meshStandardMaterial
@@ -3529,6 +3620,8 @@ export default function Stage3D({
                         96,
                         1,
                         true,
+                        cutawayThetaStartRad,
+                        cutawayThetaLengthRad,
                       ]}
                     />
                     <meshStandardMaterial
@@ -3562,6 +3655,8 @@ export default function Stage3D({
                         96,
                         1,
                         true,
+                        cutawayThetaStartRad,
+                        cutawayThetaLengthRad,
                       ]}
                     />
                     <meshStandardMaterial
@@ -3580,6 +3675,8 @@ export default function Stage3D({
                         96,
                         1,
                         true,
+                        cutawayThetaStartRad,
+                        cutawayThetaLengthRad,
                       ]}
                     />
                     <meshStandardMaterial
@@ -3609,7 +3706,14 @@ export default function Stage3D({
 
             {output.planShape === 'circular' ? (
               <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
-                <circleGeometry args={[innerVoidRadiusFt, 72]} />
+                <circleGeometry
+                  args={[
+                    innerVoidRadiusFt,
+                    72,
+                    cutawayThetaStartRad,
+                    cutawayThetaLengthRad,
+                  ]}
+                />
                 <meshStandardMaterial
                   color='#3d3126'
                   map={isPhotoreal ? mortarTexture : undefined}
@@ -3639,7 +3743,8 @@ export default function Stage3D({
               </mesh>
             )}
 
-            {gasPlacement && (
+            {gasPlacement &&
+              shouldRenderInCutaway(gasPlacement.x, gasPlacement.z) && (
               <mesh
                 position={[gasPlacement.x, 0.12, gasPlacement.z]}
                 rotation={[0, gasPlacement.rotationY, 0]}
