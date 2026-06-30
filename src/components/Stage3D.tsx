@@ -1,5 +1,5 @@
 import { Canvas, useFrame, type ThreeEvent } from '@react-three/fiber';
-import { ContactShadows, Edges, Html, OrbitControls } from '@react-three/drei';
+import { ContactShadows, Edges, Html, Line, OrbitControls } from '@react-three/drei';
 import {
   Component,
   useEffect,
@@ -1285,6 +1285,156 @@ function getRockArchetypeIndex(
   return Math.abs(hash);
 }
 
+/** Format a feet value as feet-and-inches string, e.g. 3.5 → "3' 6\"" */
+function fmtFt(ft: number): string {
+  const totalIn = Math.round(ft * 12);
+  const f = Math.floor(totalIn / 12);
+  const i = totalIn % 12;
+  if (f === 0) return `${i}"`;
+  if (i === 0) return `${f}'`;
+  return `${f}' ${i}"`;
+}
+
+/** Single annotated dimension line with a label pill rendered via Html. */
+function DimensionLine({
+  start,
+  end,
+  label,
+}: {
+  start: [number, number, number];
+  end: [number, number, number];
+  label: string;
+}) {
+  const mid: [number, number, number] = [
+    (start[0] + end[0]) / 2,
+    (start[1] + end[1]) / 2,
+    (start[2] + end[2]) / 2,
+  ];
+  return (
+    <>
+      <Line points={[start, end]} color='#1d4ed8' lineWidth={1.2} />
+      {/* tick marks */}
+      <Line
+        points={[
+          [start[0], start[1] - 0.06, start[2]],
+          [start[0], start[1] + 0.06, start[2]],
+        ]}
+        color='#1d4ed8'
+        lineWidth={1.2}
+      />
+      <Line
+        points={[
+          [end[0], end[1] - 0.06, end[2]],
+          [end[0], end[1] + 0.06, end[2]],
+        ]}
+        color='#1d4ed8'
+        lineWidth={1.2}
+      />
+      <Html position={mid} center style={{ pointerEvents: 'none' }}>
+        <div
+          style={{
+            background: 'rgba(255,255,255,0.93)',
+            color: '#1e3a8a',
+            fontSize: '10px',
+            fontWeight: 700,
+            padding: '2px 6px',
+            borderRadius: '4px',
+            whiteSpace: 'nowrap',
+            border: '1px solid #93c5fd',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
+          }}
+        >
+          {label}
+        </div>
+      </Html>
+    </>
+  );
+}
+
+/** All dimension annotation lines rendered inside the 3-D scene. */
+function DimensionAnnotationsScene({
+  innerRadius,
+  capOuterRadius,
+  wallHeight,
+  totalHeight,
+  planShape,
+  spanWidthFt,
+  spanDepthFt,
+}: {
+  innerRadius: number;
+  capOuterRadius: number;
+  wallHeight: number;
+  totalHeight: number;
+  planShape: string;
+  spanWidthFt: number;
+  spanDepthFt: number;
+}) {
+  if (planShape === 'circular') {
+    const sideX = capOuterRadius + 0.55;
+    return (
+      <>
+        {/* Inner diameter at floor level */}
+        <DimensionLine
+          start={[-innerRadius, 0.04, 0]}
+          end={[innerRadius, 0.04, 0]}
+          label={`ID: ${fmtFt(innerRadius * 2)}`}
+        />
+        {/* Outer (cap) diameter above cap */}
+        <DimensionLine
+          start={[-capOuterRadius, totalHeight + 0.18, 0]}
+          end={[capOuterRadius, totalHeight + 0.18, 0]}
+          label={`OD: ${fmtFt(capOuterRadius * 2)}`}
+        />
+        {/* Wall height — vertical on right side */}
+        <DimensionLine
+          start={[sideX, 0, 0]}
+          end={[sideX, wallHeight, 0]}
+          label={`Wall: ${fmtFt(wallHeight)}`}
+        />
+        {/* Total height — slightly further out */}
+        <DimensionLine
+          start={[sideX + 0.55, 0, 0]}
+          end={[sideX + 0.55, totalHeight, 0]}
+          label={`Total: ${fmtFt(totalHeight)}`}
+        />
+      </>
+    );
+  }
+
+  // Rectangular / square
+  const halfW = spanWidthFt / 2;
+  const halfD = spanDepthFt / 2;
+  const sideX = halfW + 0.55;
+  return (
+    <>
+      {/* Width — above cap along X */}
+      <DimensionLine
+        start={[-halfW, totalHeight + 0.18, 0]}
+        end={[halfW, totalHeight + 0.18, 0]}
+        label={`W: ${fmtFt(spanWidthFt)}`}
+      />
+      {/* Depth — above cap along Z */}
+      <DimensionLine
+        start={[0, totalHeight + 0.18, -halfD]}
+        end={[0, totalHeight + 0.18, halfD]}
+        label={`D: ${fmtFt(spanDepthFt)}`}
+      />
+      {/* Wall height */}
+      <DimensionLine
+        start={[sideX, 0, 0]}
+        end={[sideX, wallHeight, 0]}
+        label={`Wall: ${fmtFt(wallHeight)}`}
+      />
+      {/* Total height */}
+      <DimensionLine
+        start={[sideX + 0.55, 0, 0]}
+        end={[sideX + 0.55, totalHeight, 0]}
+        label={`Total: ${fmtFt(totalHeight)}`}
+      />
+    </>
+  );
+}
+
 export default function Stage3D({
   output,
   seatingFurnitureCount,
@@ -1312,6 +1462,7 @@ export default function Stage3D({
   const [selectedBrick, setSelectedBrick] = useState<BrickSelectionInfo | null>(
     null,
   );
+  const [showDimensions, setShowDimensions] = useState(false);
   const orbitRef = useRef<OrbitHandle>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const lastCaptureSignalRef = useRef<number | null | undefined>(undefined);
@@ -2053,6 +2204,20 @@ export default function Stage3D({
               >
                 <span
                   className={`block h-4 w-4 rounded-full bg-amber-50 transition-transform ${enableAdvancedEffects ? 'translate-x-5' : 'translate-x-0.5'}`}
+                />
+              </button>
+            </div>
+
+            <div className='mt-2 flex items-center gap-2 rounded-full bg-amber-50/95 px-3 py-1.5 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
+              <span>Dims</span>
+              <button
+                className={`h-5 w-10 rounded-full transition-colors ${showDimensions ? 'bg-blue-600' : 'bg-amber-300'}`}
+                onClick={() => setShowDimensions((v) => !v)}
+                aria-label='Toggle dimension annotations'
+                title='Toggle dimension annotations'
+              >
+                <span
+                  className={`block h-4 w-4 rounded-full bg-amber-50 transition-transform ${showDimensions ? 'translate-x-5' : 'translate-x-0.5'}`}
                 />
               </button>
             </div>
@@ -3770,6 +3935,17 @@ export default function Stage3D({
               />
             )}
 
+            {showDimensions && (
+              <DimensionAnnotationsScene
+                innerRadius={renderedWallInnerRadiusFt}
+                capOuterRadius={renderedCapOuterRadiusFt}
+                wallHeight={wallHeightFt}
+                totalHeight={wallHeightFt + visCapBrickHeightFt}
+                planShape={output.planShape}
+                spanWidthFt={geometry.wallSpanWidthFt}
+                spanDepthFt={geometry.wallSpanDepthFt}
+              />
+            )}
             <ContactShadows
               position={[0, -0.019, 0]}
               opacity={isPhotoreal ? 0.7 : 0.5}
