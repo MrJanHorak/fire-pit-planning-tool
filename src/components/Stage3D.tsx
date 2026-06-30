@@ -1,4 +1,4 @@
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, type ThreeEvent } from '@react-three/fiber';
 import { ContactShadows, Edges, Html, OrbitControls } from '@react-three/drei';
 import {
   Component,
@@ -30,6 +30,8 @@ import {
   getMaxCircularSeatingCount,
   getSeatingGuideInsetFt,
 } from '../utils/seatingLayout';
+import { Stage3DEffects, getCameraPresets, PHOTOREAL_LIGHTING, STYLIZED_LIGHTING, getActiveHemisphereLightArgs } from './Stage3DEffects';
+import { useCameraAnimation } from './useCameraAnimation';
 
 interface Stage3DProps {
   output: MasonryOutput;
@@ -40,6 +42,18 @@ interface Stage3DProps {
     message: string;
   }) => void;
 }
+
+interface BrickSelectionInfo {
+  id: string;
+  courseIndex: number;
+  brickIndex: number;
+  kind: 'wall-brick' | 'vent-opening';
+  isSpacer: boolean;
+  requiresTaperCut: boolean;
+  isVent: boolean;
+}
+
+type StageLodLevel = 'high' | 'medium' | 'low';
 
 type MortarMode = 'solid' | 'ghost' | 'off';
 type MaterialStyle = 'classic-red' | 'charcoal' | 'limestone';
@@ -1288,6 +1302,14 @@ export default function Stage3D({
   const [webglBlocked, setWebglBlocked] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
   const [showControls, setShowControls] = useState(false);
+  const [enableAdvancedEffects, setEnableAdvancedEffects] = useState(true);
+  const [activeCameraPreset, setActiveCameraPreset] = useState<string | null>(null);
+  const [stageLodLevel, setStageLodLevel] = useState<StageLodLevel>('high');
+  const [webglBlockReason, setWebglBlockReason] = useState<string | null>(null);
+  const [hoveredBrickId, setHoveredBrickId] = useState<string | null>(null);
+  const [selectedBrick, setSelectedBrick] = useState<BrickSelectionInfo | null>(
+    null,
+  );
   const orbitRef = useRef<OrbitHandle>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const lastCaptureSignalRef = useRef<number | null | undefined>(undefined);
@@ -1295,6 +1317,9 @@ export default function Stage3D({
   useEffect(() => {
     if (!canCreateWebGLContext()) {
       setWebglBlocked(true);
+      setWebglBlockReason(
+        'WebGL context creation failed. Hardware acceleration may be disabled or the GPU process is unstable.',
+      );
     }
   }, []);
 
@@ -1360,6 +1385,8 @@ export default function Stage3D({
   }, [captureSignal, onStakeholderRenderComplete, webglBlocked]);
 
   const geometry = useMemo(() => computeStage3DGeometry(output), [output]);
+  const cameraPresets = useMemo(() => getCameraPresets(geometry), [geometry]);
+  const { animateToPreset } = useCameraAnimation(orbitRef as any);
 
   const brickLengthFt = output.resolvedUnit.lengthIn / 12;
   const brickHeightFt = output.resolvedUnit.heightIn / 12;
@@ -1551,6 +1578,7 @@ export default function Stage3D({
 
   const palette = STYLE_PALETTES[materialStyle];
   const isPhotoreal = true;
+  const lightingConfig = isPhotoreal ? PHOTOREAL_LIGHTING : STYLIZED_LIGHTING;
   const effectiveWireframe = wireframe;
   const effectiveShowBrickOutlines = showBrickOutlines;
   const seatingArea = output.logistics.seatingAreaMaterials;
@@ -1590,6 +1618,17 @@ export default function Stage3D({
   const cameraDistanceFt = Math.max(5.2, stageGroundRadiusFt * 1.35);
   const topCameraHeightFt = Math.max(6, stageGroundRadiusFt * 1.55);
   const orbitMaxDistanceFt = Math.max(9, stageGroundRadiusFt * 2.6);
+  const getLodLevelForDistance = (distanceFt: number): StageLodLevel => {
+    if (distanceFt <= stageGroundRadiusFt * 1.55) {
+      return 'high';
+    }
+    if (distanceFt <= stageGroundRadiusFt * 2.15) {
+      return 'medium';
+    }
+    return 'low';
+  };
+  const isLodHigh = stageLodLevel === 'high';
+  const isLodMedium = stageLodLevel === 'medium';
   const textureMaps = useMemo(() => {
     const loader = new TextureLoader();
     const brickDiffuseMap = loader.load('/textures/brick_diffuse.jpg');
@@ -1734,6 +1773,38 @@ export default function Stage3D({
     return getWallCourseColor(course);
   };
 
+  const isBrickSelected = (brickId: string) => selectedBrick?.id === brickId;
+  const isBrickHovered = (brickId: string) => hoveredBrickId === brickId;
+  const getBrickEdgeColor = (brickId: string, defaultColor: string) => {
+    if (isBrickSelected(brickId)) {
+      return '#0c4a6e';
+    }
+    if (isBrickHovered(brickId)) {
+      return '#1d4ed8';
+    }
+    return defaultColor;
+  };
+  const getBrickEmissiveIntensity = (brickId: string) =>
+    isBrickSelected(brickId) ? 0.18 : isBrickHovered(brickId) ? 0.1 : 0;
+
+  const handleBrickPointerOver =
+    (brickId: string) => (event: ThreeEvent<PointerEvent>) => {
+      event.stopPropagation();
+      setHoveredBrickId(brickId);
+    };
+
+  const handleBrickPointerOut =
+    (brickId: string) => (event: ThreeEvent<PointerEvent>) => {
+      event.stopPropagation();
+      setHoveredBrickId((current) => (current === brickId ? null : current));
+    };
+
+  const handleBrickSelect =
+    (info: BrickSelectionInfo) => (event: ThreeEvent<PointerEvent>) => {
+      event.stopPropagation();
+      setSelectedBrick((current) => (current?.id === info.id ? null : info));
+    };
+
   const topDown = () => {
     if (!orbitRef.current) {
       return;
@@ -1757,6 +1828,47 @@ export default function Stage3D({
     );
     orbitRef.current.update();
   };
+
+  const handleOrbitChange = () => {
+    const controls = orbitRef.current as unknown as {
+      object?: { position?: { distanceTo?: (target: unknown) => number } };
+      target?: unknown;
+    } | null;
+    const position = controls?.object?.position;
+    if (!position?.distanceTo || !controls?.target) {
+      return;
+    }
+
+    const distanceFt = position.distanceTo(controls.target);
+    const nextLodLevel = getLodLevelForDistance(distanceFt);
+    setStageLodLevel((current) => (current === nextLodLevel ? current : nextLodLevel));
+  };
+
+  const retryWebglStage = () => {
+    if (canCreateWebGLContext()) {
+      setWebglBlocked(false);
+      setWebglBlockReason(null);
+      return;
+    }
+
+    setWebglBlocked(true);
+    setWebglBlockReason(
+      'Retry failed: browser is still unable to create a WebGL context.',
+    );
+  };
+
+  useEffect(() => {
+    setStageLodLevel(getLodLevelForDistance(cameraDistanceFt));
+    setHoveredBrickId(null);
+    setSelectedBrick(null);
+  }, [cameraDistanceFt]);
+
+  useEffect(() => {
+    if (!isLodHigh) {
+      setHoveredBrickId(null);
+      setSelectedBrick(null);
+    }
+  }, [isLodHigh]);
 
   return (
     <div className='card-rise relative h-[460px] rounded-2xl border border-amber-900/20 bg-amber-100/70 p-2 shadow-lg sm:h-[500px]'>
@@ -1907,6 +2019,20 @@ export default function Stage3D({
               </button>
             </div>
 
+            <div className='mt-2 flex items-center gap-2 rounded-full bg-amber-50/95 px-3 py-1.5 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
+              <span>FX</span>
+              <button
+                className={`h-5 w-10 rounded-full transition-colors ${enableAdvancedEffects ? 'bg-blue-500' : 'bg-amber-300'}`}
+                onClick={() => setEnableAdvancedEffects((value) => !value)}
+                aria-label='Toggle advanced lighting effects'
+                title='Toggle bloom and ambient occlusion'
+              >
+                <span
+                  className={`block h-4 w-4 rounded-full bg-amber-50 transition-transform ${enableAdvancedEffects ? 'translate-x-5' : 'translate-x-0.5'}`}
+                />
+              </button>
+            </div>
+
             {seatingArea && (
               <div className='mt-2 flex items-center gap-2 rounded-full bg-amber-50/95 px-3 py-1.5 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
                 <span>Seating</span>
@@ -1936,6 +2062,56 @@ export default function Stage3D({
                 Side
               </button>
             </div>
+
+            <div className='mt-2 flex flex-col gap-1'>
+              <p className='text-[10px] uppercase tracking-wide text-amber-900/70'>Camera Presets</p>
+              <div className='flex flex-wrap gap-1'>
+                {Object.entries(cameraPresets).map(([key, preset]) => (
+                  <button
+                    key={key}
+                    onClick={() => {
+                      animateToPreset(preset);
+                      setActiveCameraPreset(key);
+                    }}
+                    className={`rounded-md px-2 py-1 text-[10px] font-semibold transition-colors ${
+                      activeCameraPreset === key
+                        ? 'bg-amber-900 text-amber-50'
+                        : 'bg-amber-200/60 text-amber-950 hover:bg-amber-300/60'
+                    }`}
+                    title={`Switch to ${preset.label}`}
+                  >
+                    {preset.label.split(' ')[0]}
+                  </button>
+                ))}
+              </div>
+              <p className='text-[10px] font-semibold text-amber-900/80'>
+                LOD: {stageLodLevel.toUpperCase()}
+              </p>
+            </div>
+
+            {isLodHigh && selectedBrick && (
+              <div className='mt-2 rounded-xl border border-sky-900/25 bg-sky-50/95 px-3 py-2 text-[11px] text-sky-950 shadow sm:text-xs'>
+                <p className='text-[10px] font-bold uppercase tracking-wide text-sky-900/80'>
+                  Selected Brick
+                </p>
+                <p className='mt-1 font-semibold'>
+                  Course {selectedBrick.courseIndex + 1} · Brick{' '}
+                  {selectedBrick.brickIndex + 1}
+                </p>
+                <p className='mt-1'>
+                  Type:{' '}
+                  {selectedBrick.kind === 'vent-opening'
+                    ? 'Vent opening'
+                    : selectedBrick.isSpacer
+                      ? 'Shim spacer brick'
+                      : 'Wall brick'}
+                </p>
+                <p>
+                  Taper cut:{' '}
+                  {selectedBrick.requiresTaperCut ? 'Required' : 'Not required'}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Visual queue hint when controls are hidden - gear icon */}
@@ -2079,20 +2255,46 @@ export default function Stage3D({
       </div>
 
       {webglBlocked ? (
-        <div className='absolute inset-2 z-20 flex items-center justify-center rounded-xl border border-red-800/20 bg-red-50/95 p-5 text-center'>
-          <div className='max-w-md space-y-2 text-red-950'>
-            <p className='text-sm font-semibold'>
-              WebGL is unavailable or was blocked by the browser.
-            </p>
+        <div className='absolute inset-2 z-20 flex items-center justify-center rounded-xl border border-red-800/20 bg-red-50/95 p-5'>
+          <div className='max-w-md space-y-3 text-center text-red-950'>
+            <p className='text-sm font-semibold'>3D stage is temporarily unavailable.</p>
             <p className='text-xs leading-5'>
-              The 3D stage is paused to prevent repeated GPU crashes. Save your
-              project and reload the page, then close other GPU-heavy tabs if
-              needed. Construction Mode remains available.
+              WebGL failed to initialize. You can continue planning with the rest of
+              the app while 3D is paused.
             </p>
+            {webglBlockReason && (
+              <p className='rounded-md border border-red-900/20 bg-white/70 px-2 py-1 text-[11px] leading-5 text-red-900'>
+                {webglBlockReason}
+              </p>
+            )}
+            <div className='flex items-center justify-center gap-2'>
+              <button
+                className='rounded-full bg-red-900 px-3 py-1.5 text-xs font-semibold text-red-50'
+                onClick={retryWebglStage}
+              >
+                Retry 3D
+              </button>
+              <button
+                className='rounded-full bg-red-100 px-3 py-1.5 text-xs font-semibold text-red-900'
+                onClick={() => {
+                  setEnableAdvancedEffects(false);
+                  retryWebglStage();
+                }}
+              >
+                Retry in light mode
+              </button>
+            </div>
           </div>
         </div>
       ) : (
-        <Stage3DCanvasErrorBoundary onError={() => setWebglBlocked(true)}>
+        <Stage3DCanvasErrorBoundary
+          onError={() => {
+            setWebglBlocked(true);
+            setWebglBlockReason(
+              'A rendering error occurred while initializing the 3D canvas.',
+            );
+          }}
+        >
           <Canvas
             camera={{
               position: [
@@ -2111,31 +2313,44 @@ export default function Stage3D({
             }}
             onCreated={({ gl }) => {
               canvasRef.current = gl.domElement;
+              setWebglBlockReason(null);
+            }}
+            onPointerMissed={() => {
+              setSelectedBrick(null);
+              setHoveredBrickId(null);
             }}
             shadows={isPhotoreal}
           >
-            <ambientLight intensity={isPhotoreal ? 0.38 : 0.65} />
-            <hemisphereLight
-              args={['#fff4dd', '#8e7a5b', isPhotoreal ? 0.32 : 0.48]}
-            />
-            <directionalLight
-              position={[3.5, 5.5, 3]}
-              intensity={isPhotoreal ? 1.55 : 1.1}
-              castShadow={isPhotoreal}
-              shadow-mapSize-width={1024}
-              shadow-mapSize-height={1024}
-            />
-            {isPhotoreal && (
-              <directionalLight position={[-2.2, 2.4, -3]} intensity={0.34} />
-            )}
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            <OrbitControls
+           <ambientLight intensity={lightingConfig.ambientIntensity} />
+           <hemisphereLight args={getActiveHemisphereLightArgs(lightingConfig)} />
+           <directionalLight
+             position={lightingConfig.directionalPosition}
+             intensity={lightingConfig.directionalIntensity}
+             castShadow={lightingConfig.castShadows}
+             shadow-mapSize-width={lightingConfig.shadowMapSize}
+             shadow-mapSize-height={lightingConfig.shadowMapSize}
+             shadow-camera-far={50}
+             shadow-camera-left={-20}
+             shadow-camera-right={20}
+             shadow-camera-top={20}
+             shadow-camera-bottom={-20}
+           />
+           {lightingConfig.fillLightIntensity && (
+             <directionalLight 
+               position={[-4, 3, -3]} 
+               intensity={lightingConfig.fillLightIntensity}
+             />
+           )}
+           <Stage3DEffects enabled={enableAdvancedEffects} geometry={geometry} />
+           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+           <OrbitControls
               ref={orbitRef as any}
               enablePan={false}
               maxPolarAngle={Math.PI * 0.49}
               minDistance={2.2}
               maxDistance={orbitMaxDistanceFt}
-            />
+             onChange={handleOrbitChange}
+           />
 
             <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]}>
               <circleGeometry args={[stageGroundRadiusFt, 96]} />
@@ -2485,7 +2700,8 @@ export default function Stage3D({
                   ),
               )}
 
-            {output.courses.map((course) => (
+            {isLodHigh &&
+              output.courses.map((course) => (
               <group key={course.courseIndex}>
                 {Array.from({ length: course.unitCount }, (_, brickIdx) => {
                   const isSpacer =
@@ -2526,12 +2742,25 @@ export default function Stage3D({
                   const renderedWidthFt = isSpacer
                     ? Math.max(0.04, shimWidthFt - mortarJointFt * 0.35)
                     : visBrickWidthFt;
+                  const brickId = `${course.courseIndex}-${brickIdx}`;
+                  const brickInfo: BrickSelectionInfo = {
+                    id: brickId,
+                    courseIndex: course.courseIndex,
+                    brickIndex: brickIdx,
+                    kind: isVentOpening ? 'vent-opening' : 'wall-brick',
+                    isSpacer,
+                    requiresTaperCut: wallRequiresTaperCut && !isSpacer,
+                    isVent: isVentOpening,
+                  };
 
                   return isVentOpening ? (
                     <group key={`${course.courseIndex}-${brickIdx}-vent`}>
                       <mesh
                         position={[placement.x, y, placement.z]}
                         rotation={[0, placement.rotationY, 0]}
+                        onPointerOver={handleBrickPointerOver(brickId)}
+                        onPointerOut={handleBrickPointerOut(brickId)}
+                        onClick={handleBrickSelect(brickInfo)}
                       >
                         <boxGeometry
                           args={[
@@ -2542,11 +2771,17 @@ export default function Stage3D({
                         />
                         <meshStandardMaterial
                           color='#241a12'
+                          emissive='#f59e0b'
+                          emissiveIntensity={getBrickEmissiveIntensity(brickId)}
                           roughness={1}
                           wireframe={effectiveWireframe}
                         />
                         {effectiveShowBrickOutlines && (
-                          <Edges color='#14100a' lineWidth={1} scale={1.003} />
+                          <Edges
+                            color={getBrickEdgeColor(brickId, '#14100a')}
+                            lineWidth={1}
+                            scale={1.003}
+                          />
                         )}
                       </mesh>
                       {output.planShape !== 'circular' &&
@@ -2578,6 +2813,9 @@ export default function Stage3D({
                       key={`${course.courseIndex}-${brickIdx}`}
                       position={[placement.x, y, placement.z]}
                       rotation={[0, placement.rotationY, 0]}
+                      onPointerOver={handleBrickPointerOver(brickId)}
+                      onPointerOut={handleBrickPointerOut(brickId)}
+                      onClick={handleBrickSelect(brickInfo)}
                     >
                       {isRockWallVisual && !isSpacer ? (
                         (() => {
@@ -2726,13 +2964,17 @@ export default function Stage3D({
                               )}
                               <meshStandardMaterial
                                 color={rockColor}
+                                emissive='#fbbf24'
+                                emissiveIntensity={getBrickEmissiveIntensity(
+                                  brickId,
+                                )}
                                 roughness={0.92}
                                 metalness={0.01}
                                 wireframe={effectiveWireframe}
                               />
                               {effectiveShowBrickOutlines && (
                                 <Edges
-                                  color='#2d241c'
+                                  color={getBrickEdgeColor(brickId, '#2d241c')}
                                   lineWidth={1}
                                   scale={1.01}
                                 />
@@ -2759,6 +3001,8 @@ export default function Stage3D({
                           />
                           <meshStandardMaterial
                             color={perBrickColor}
+                            emissive='#f59e0b'
+                            emissiveIntensity={getBrickEmissiveIntensity(brickId)}
                             map={
                               isPhotoreal
                                 ? (brickDiffuseMap ?? brickAlbedoTexture)
@@ -2775,7 +3019,7 @@ export default function Stage3D({
                           />
                           {effectiveShowBrickOutlines && (
                             <Edges
-                              color='#2a1a10'
+                              color={getBrickEdgeColor(brickId, '#2a1a10')}
                               lineWidth={1}
                               scale={1.003}
                             />
@@ -2788,7 +3032,8 @@ export default function Stage3D({
               </group>
             ))}
 
-            {(() => {
+            {isLodHigh &&
+              (() => {
               // For rectangular/square shapes with overhang, offset capstone placement to align corners with wall
               let capstoneOffsetIn = 0;
               if (output.planShape !== 'circular') {
@@ -2800,7 +3045,7 @@ export default function Stage3D({
                 capstoneOffsetIn = -overhangPerimeterIn / 2;
               }
 
-              return Array.from(
+                return Array.from(
                 { length: output.capstone.capUnitsPerCourseRounded },
                 (_, capIdx) => {
                   const placement = getPlacement(
@@ -2924,10 +3169,11 @@ export default function Stage3D({
                     </mesh>
                   );
                 },
-              );
-            })()}
+                );
+              })()}
 
-            {showMortar &&
+            {isLodHigh &&
+              showMortar &&
               capJointLengthFt > 0.02 &&
               (() => {
                 let capstoneOffsetIn = 0;
@@ -3031,7 +3277,8 @@ export default function Stage3D({
                 );
               })()}
 
-            {showMortar &&
+            {isLodHigh &&
+              showMortar &&
               output.planShape !== 'circular' &&
               capCornerJointSizeFt > 0.02 && (
                 <>
@@ -3074,6 +3321,122 @@ export default function Stage3D({
                   ))}
                 </>
               )}
+
+            {!isLodHigh && (
+              <>
+                {isLodMedium ? (
+                  <>
+                    {output.courses.map((course) => {
+                      const courseY =
+                        (brickHeightFt / 2) +
+                        course.courseIndex * geometry.courseRiseFt +
+                        mortarJointFt / 2;
+                      const courseColor = getWallCourseColor(course);
+                      return output.planShape === 'circular' ? (
+                        <mesh
+                          key={`lod-medium-wall-${course.courseIndex}`}
+                          position={[0, courseY, 0]}
+                        >
+                          <cylinderGeometry
+                            args={[
+                              renderedWallOuterRadiusFt,
+                              renderedWallOuterRadiusFt,
+                              visBrickHeightFt,
+                              64,
+                              1,
+                              true,
+                            ]}
+                          />
+                          <meshStandardMaterial
+                            color={courseColor}
+                            roughness={isPhotoreal ? 0.78 : 0.84}
+                            metalness={0.02}
+                            wireframe={effectiveWireframe}
+                          />
+                        </mesh>
+                      ) : (
+                        <RectangularRing
+                          key={`lod-medium-wall-${course.courseIndex}`}
+                          widthFt={geometry.wallSpanWidthFt}
+                          depthFt={geometry.wallSpanDepthFt}
+                          thicknessFt={visBrickWidthFt}
+                          heightFt={visBrickHeightFt}
+                          y={courseY}
+                          color={courseColor}
+                          wireframe={effectiveWireframe}
+                        />
+                      );
+                    })}
+                  </>
+                ) : output.planShape === 'circular' ? (
+                  <mesh position={[0, wallHeightFt / 2, 0]}>
+                    <cylinderGeometry
+                      args={[
+                        renderedWallOuterRadiusFt,
+                        renderedWallOuterRadiusFt,
+                        wallHeightFt,
+                        64,
+                        1,
+                        true,
+                      ]}
+                    />
+                    <meshStandardMaterial
+                      color={palette.wallEvenColor}
+                      roughness={isPhotoreal ? 0.78 : 0.84}
+                      metalness={0.02}
+                      wireframe={effectiveWireframe}
+                    />
+                  </mesh>
+                ) : (
+                  <RectangularRing
+                    widthFt={geometry.wallSpanWidthFt}
+                    depthFt={geometry.wallSpanDepthFt}
+                    thicknessFt={visBrickWidthFt}
+                    heightFt={wallHeightFt}
+                    y={wallHeightFt / 2}
+                    color={palette.wallEvenColor}
+                    wireframe={effectiveWireframe}
+                  />
+                )}
+
+                {output.planShape === 'circular' ? (
+                  <mesh
+                    position={[
+                      0,
+                      geometry.capRiseFt + visCapBrickHeightFt / 2 + mortarJointFt / 2,
+                      0,
+                    ]}
+                  >
+                    <cylinderGeometry
+                      args={[
+                        renderedCapOuterRadiusFt,
+                        renderedCapOuterRadiusFt,
+                        visCapBrickHeightFt,
+                        64,
+                        1,
+                        true,
+                      ]}
+                    />
+                    <meshStandardMaterial
+                      color={palette.capColor}
+                      roughness={isPhotoreal ? 0.62 : 0.68}
+                      metalness={0.02}
+                      wireframe={effectiveWireframe}
+                    />
+                  </mesh>
+                ) : (
+                  <RectangularRing
+                    widthFt={geometry.capSpanWidthFt}
+                    depthFt={geometry.capSpanDepthFt}
+                    thicknessFt={capBrickWidthFt}
+                    heightFt={visCapBrickHeightFt}
+                    y={geometry.capRiseFt + visCapBrickHeightFt / 2 + mortarJointFt / 2}
+                    color={palette.capColor}
+                    wireframe={effectiveWireframe}
+                  />
+                )}
+              </>
+            )}
 
             {showMortar && output.planShape === 'circular' ? (
               <mesh
