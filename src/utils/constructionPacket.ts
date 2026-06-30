@@ -847,3 +847,167 @@ export function buildConstructionPacketHtml(
   </body>
 </html>`;
 }
+
+export function buildEngineeringReportHtml(
+  input: MasonryInput,
+  output: MasonryOutput,
+): string {
+  const generatedOn = new Date().toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+  const foundationAdvisory = buildFoundationAdvisory(input, output);
+  const clearanceSvg = buildSafetyClearanceSvg(input, output);
+  const layoutSvg = buildCoursePlanSvg(output);
+  const warningList =
+    output.warnings.length > 0
+      ? `<ul>${output.warnings.map((warning) => `<li>${warning.message}</li>`).join('')}</ul>`
+      : '<p>No active safety warnings under the current model settings.</p>';
+
+  const ventRange =
+    output.ventSpec.recommendedAreaMaxSqIn === undefined
+      ? `${output.ventSpec.recommendedAreaMinSqIn.toFixed(1)}+`
+      : `${output.ventSpec.recommendedAreaMinSqIn.toFixed(1)}-${output.ventSpec.recommendedAreaMaxSqIn.toFixed(1)}`;
+
+  const summaryRows: Array<[string, string]> = [
+    ['Report type', 'Preliminary engineering planning report'],
+    ['Generated on', generatedOn],
+    ['Plan shape', formatShapeName(input.planShape)],
+    ['Fuel type', formatFuelName(input.fuelType)],
+    [
+      'Inner fire opening',
+      `${output.innerSpanWidthIn.toFixed(2)} in x ${output.innerSpanDepthIn.toFixed(2)} in`,
+    ],
+    ['Wall height', `${input.wallHeightIn.toFixed(2)} in`],
+    ['Structure setback', `${input.proximityToStructuresFt.toFixed(2)} ft`],
+    [
+      'Foundation footprint',
+      `${output.foundation.footprintWidthIn.toFixed(2)} in x ${output.foundation.footprintDepthIn.toFixed(2)} in`,
+    ],
+    ['Foundation advisory', foundationAdvisory.heading],
+  ];
+
+  const complianceRows: Array<[string, string]> = [
+    [
+      'Combustible setback (10 ft min)',
+      input.proximityToStructuresFt >= 10
+        ? 'PASS'
+        : `FAIL (configured ${input.proximityToStructuresFt.toFixed(2)} ft)`,
+    ],
+    [
+      'Fuel gas vent area',
+      input.fuelType === 'wood'
+        ? 'N/A for wood fuel mode'
+        : `${output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in (typical range ${ventRange} sq in)`,
+    ],
+    [
+      'Site/foundation context',
+      `${input.soilType ?? 'unknown'} soil, ${input.drainageCondition ?? 'unknown'} drainage, ${input.frostClimate ? 'freeze-thaw' : 'minimal frost risk'}`,
+    ],
+    [
+      'Heat protection system',
+      `${formatLinerName(output.linerSpec.type)} (${output.linerSpec.description})`,
+    ],
+  ];
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fire Pit Professional Engineering Report</title>
+    <style>
+      body { font-family: "Segoe UI", Arial, sans-serif; margin: 24px; color: #1f1508; }
+      h1, h2, h3 { margin: 0 0 10px; }
+      h1 { font-size: 28px; letter-spacing: 0.02em; }
+      h2 { font-size: 18px; margin-top: 8px; }
+      h3 { font-size: 14px; color: #3f2b12; margin-top: 10px; }
+      p { margin: 6px 0; line-height: 1.45; }
+      ul { margin: 8px 0 0 18px; }
+      li { margin: 5px 0; }
+      .block { border: 1px solid #bca684; border-radius: 8px; padding: 12px; margin-bottom: 14px; }
+      .muted { color: #6f5434; }
+      table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+      th, td { border: 1px solid #ccb694; padding: 6px 8px; text-align: left; vertical-align: top; }
+      th { background: #f5ead8; }
+      .twocol { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .break-before { page-break-before: always; break-before: page; }
+      .avoid-break { page-break-inside: avoid; break-inside: avoid; }
+      .signature-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 18px; }
+      .signature-box { border-top: 1px solid #8a724f; padding-top: 6px; min-height: 52px; }
+      .small { font-size: 11px; }
+      @media print {
+        @page { size: letter portrait; margin: 0.45in; }
+        body { margin: 0; }
+      }
+    </style>
+  </head>
+  <body>
+    <section class="block avoid-break">
+      <h1>Professional Engineering Report</h1>
+      <p class="muted">Parametric Masonry Fire Pit Design Review</p>
+      <p class="small">
+        This report is an engineering-aware planning document generated from user inputs and geometric rules.
+        Final jurisdictional compliance, permit acceptance, and stamped design approval remain project-specific.
+      </p>
+    </section>
+
+    <section class="block avoid-break">
+      <h2>1. Executive Summary</h2>
+      ${buildKeyValueTable(summaryRows, 'Item', 'Value')}
+      <p>
+        Current design resolves to <strong>${output.totalUnits}</strong> total wall units,
+        <strong>${output.capstone.capUnitsPerCourseRounded}</strong> cap units per course,
+        and approximately <strong>${output.foundation.stoneVolumeCubicYards.toFixed(2)} yd³</strong> of foundation stone.
+      </p>
+    </section>
+
+    <section class="block avoid-break">
+      <h2>2. Safety + Compliance Review</h2>
+      ${buildKeyValueTable(complianceRows, 'Check', 'Status / Notes')}
+      <h3>Active warnings</h3>
+      ${warningList}
+    </section>
+
+    <section class="block avoid-break">
+      <h2>3. Foundation Review</h2>
+      <p><strong>${foundationAdvisory.heading}</strong></p>
+      <ul>${foundationAdvisory.checks.map((check) => `<li>${check}</li>`).join('')}</ul>
+      <p class="small">
+        Baseline model values: ${output.foundation.stoneDepthIn.toFixed(1)} in compacted angular stone,
+        ${output.foundation.footprintAreaSquareFeet.toFixed(1)} ft² footprint, ${output.foundation.stoneVolumeCubicFeet.toFixed(1)} ft³ base volume.
+      </p>
+    </section>
+
+    <section class="block avoid-break">
+      <h2>4. Materials Summary</h2>
+      ${buildFirePitMaterialsTable(output)}
+      <h3>Seating area materials</h3>
+      ${buildSeatingMaterialsSection(output)}
+    </section>
+
+    <section class="block break-before">
+      <h2>5. Setback Diagram</h2>
+      ${clearanceSvg}
+    </section>
+
+    <section class="block avoid-break">
+      <h2>6. Course Layout Diagram</h2>
+      <p class="small">C1 is the lowest course and CAP is the capstone layer.</p>
+      ${layoutSvg}
+    </section>
+
+    <section class="block avoid-break">
+      <h2>7. Professional Sign-Off</h2>
+      <p class="small">For licensed engineer, reviewer, or authority having jurisdiction.</p>
+      <div class="signature-row">
+        <div class="signature-box">Engineer / Reviewer Name & Signature</div>
+        <div class="signature-box">License # / Company / Date</div>
+      </div>
+    </section>
+  </body>
+</html>`;
+}

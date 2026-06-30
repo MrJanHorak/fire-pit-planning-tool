@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { MasonryOutput } from '../types';
 import type { MasonryInput } from '../types';
 import {
+  buildEngineeringReportHtml,
   buildCapstonePlacementSampleSvg,
   buildConstructionPacketHtml,
   buildCoursePlanSvg,
@@ -124,16 +125,38 @@ export default function ConstructionMode({
     URL.revokeObjectURL(url);
   };
 
+  const printEngineeringReportPdf = () => {
+    const html = buildEngineeringReportHtml(input, output);
+    const win = window.open('', '_blank', 'width=980,height=760');
+    if (!win) {
+      return;
+    }
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => {
+      win.print();
+    }, 250);
+  };
+
   return (
     <section className='card-rise min-w-0 w-full rounded-2xl border border-amber-900/20 bg-amber-50/80 p-4 shadow-lg'>
       <div className='mb-2 flex flex-wrap items-center justify-between gap-2'>
         <h3 className='text-base font-semibold'>Construction Mode (SVG)</h3>
-        <button
-          className='rounded-full bg-amber-900 px-4 py-2 text-xs font-semibold text-amber-50'
-          onClick={downloadPacket}
-        >
-          Download Packet
-        </button>
+        <div className='flex flex-wrap items-center gap-2'>
+          <button
+            className='rounded-full border border-amber-900/25 bg-white px-4 py-2 text-xs font-semibold text-amber-950 hover:bg-amber-50'
+            onClick={printEngineeringReportPdf}
+          >
+            Engineering Report PDF
+          </button>
+          <button
+            className='rounded-full bg-amber-900 px-4 py-2 text-xs font-semibold text-amber-50'
+            onClick={downloadPacket}
+          >
+            Download Packet
+          </button>
+        </div>
       </div>
       <p className='mb-3 text-sm text-amber-950/80'>
         C1 is the lowest wall course and numbering rises upward. CAP is the

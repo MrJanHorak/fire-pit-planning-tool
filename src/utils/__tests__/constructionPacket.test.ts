@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { MasonryEngine } from '../../engine/MasonryEngine';
 import type { MasonryInput } from '../../types';
 import {
+  buildEngineeringReportHtml,
   buildConstructionPacketHtml,
   buildCoursePlanSvg,
   buildSafetyClearanceSvg,
@@ -114,6 +115,17 @@ describe('construction packet export', () => {
     expect(html).toContain('Call for utility locates');
     expect(html).toContain('Foundation review status');
     expect(html).toContain('28-day curing period');
+  });
+
+  it('builds a professional engineering report HTML suitable for print-to-PDF', () => {
+    const output = new MasonryEngine().calculateDesign(input);
+    const html = buildEngineeringReportHtml(input, output);
+
+    expect(html).toContain('Professional Engineering Report');
+    expect(html).toContain('Executive Summary');
+    expect(html).toContain('Safety + Compliance Review');
+    expect(html).toContain('Setback Diagram');
+    expect(html).toContain('Professional Sign-Off');
   });
 
   it('includes seating quantities when seating inputs are configured', () => {
