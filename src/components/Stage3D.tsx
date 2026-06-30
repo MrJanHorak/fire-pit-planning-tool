@@ -454,32 +454,30 @@ interface CircularCapBrickGeometryInput {
   brickLengthIn: number;
 }
 
+/**
+ * Probe WebGL availability without consuming a permanent context slot.
+ * The test context is released immediately via WEBGL_lose_context.
+ */
 function canCreateWebGLContext(): boolean {
-  if (typeof document === 'undefined') {
-    return false;
-  }
-
-  const testCanvas = document.createElement('canvas');
-  const contextAttributes: WebGLContextAttributes = {
+  if (typeof document === 'undefined') return false;
+  const attrs: WebGLContextAttributes = {
     antialias: false,
     powerPreference: 'low-power',
     failIfMajorPerformanceCaveat: false,
   };
-
-  const webgl2 = testCanvas.getContext('webgl2', contextAttributes);
-  if (webgl2) {
-    return true;
-  }
-
-  const webgl =
-    testCanvas.getContext('webgl', contextAttributes) ||
-    testCanvas.getContext('experimental-webgl', contextAttributes);
-
-  return Boolean(webgl);
+  const probe = document.createElement('canvas');
+  const ctx =
+    (probe.getContext('webgl2', attrs) as WebGLRenderingContext | null) ??
+    (probe.getContext('webgl', attrs) as WebGLRenderingContext | null) ??
+    (probe.getContext('experimental-webgl', attrs) as WebGLRenderingContext | null);
+  if (!ctx) return false;
+  // Release immediately — Chrome allows ~16 simultaneous contexts.
+  ctx.getExtension('WEBGL_lose_context')?.loseContext();
+  return true;
 }
 
 class Stage3DCanvasErrorBoundary extends Component<
-  { children: ReactNode; onError: () => void },
+  { children: ReactNode; onError: (reason: string) => void },
   { hasError: boolean }
 > {
   state = { hasError: false };
@@ -488,8 +486,8 @@ class Stage3DCanvasErrorBoundary extends Component<
     return { hasError: true };
   }
 
-  componentDidCatch() {
-    this.props.onError();
+  componentDidCatch(error: Error) {
+    this.props.onError(error.message ?? 'Unknown WebGL render error');
   }
 
   render() {
@@ -1458,6 +1456,7 @@ export default function Stage3D({
   const [cutawayMode, setCutawayMode] = useState<CutawayMode>('off');
   const [stageLodLevel, setStageLodLevel] = useState<StageLodLevel>('high');
   const [webglBlockReason, setWebglBlockReason] = useState<string | null>(null);
+  const [canvasKey, setCanvasKey] = useState(0);
   const [hoveredBrickId, setHoveredBrickId] = useState<string | null>(null);
   const [selectedBrick, setSelectedBrick] = useState<BrickSelectionInfo | null>(
     null,
@@ -1467,14 +1466,8 @@ export default function Stage3D({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const lastCaptureSignalRef = useRef<number | null | undefined>(undefined);
 
-  useEffect(() => {
-    if (!canCreateWebGLContext()) {
-      setWebglBlocked(true);
-      setWebglBlockReason(
-        'WebGL context creation failed. Hardware acceleration may be disabled or the GPU process is unstable.',
-      );
-    }
-  }, []);
+  // No proactive WebGL check on mount — the Canvas onCreated/onError callbacks
+  // handle detection. Probing here would burn a WebGL context slot unnecessarily.
 
   useEffect(() => {
     if (captureSignal === undefined) {
@@ -1536,6 +1529,38 @@ export default function Stage3D({
     };
     requestAnimationFrame(waitAndCapture);
   }, [captureSignal, onStakeholderRenderComplete, webglBlocked]);
+
+  // Proactive check: detect GPU-disabled / hardware acceleration off BEFORE
+  // mounting the Canvas. The probe releases its context immediately so it
+  // doesn't consume a slot. This also catches the R3F v9 edge case where
+  // WebGLRenderer failures throw as unhandled Promise rejections that bypass
+  // React Error Boundaries.
+  useEffect(() => {
+    if (!canCreateWebGLContext()) {
+      setWebglBlocked(true);
+      setWebglBlockReason(
+        'Hardware acceleration appears to be disabled. ' +
+        'In Chrome: open chrome://settings/system and enable "Use graphics acceleration when available", then restart.',
+      );
+    }
+  }, []);
+
+  // Belt-and-suspenders: catch R3F WebGL errors that propagate as unhandled
+  // Promise rejections (they bypass React Error Boundaries in R3F v9).
+  useEffect(() => {
+    const handler = (evt: PromiseRejectionEvent) => {
+      const msg = String(evt.reason?.message ?? evt.reason ?? '');
+      if (/webgl context/i.test(msg)) {
+        setWebglBlocked(true);
+        setWebglBlockReason(
+          'WebGL failed to initialize (' + msg + '). ' +
+          'Enable hardware acceleration in your browser settings.',
+        );
+      }
+    };
+    window.addEventListener('unhandledrejection', handler);
+    return () => window.removeEventListener('unhandledrejection', handler);
+  }, []);
 
   const geometry = useMemo(() => computeStage3DGeometry(output), [output]);
   const cameraPresets = useMemo(() => getCameraPresets(geometry), [geometry]);
@@ -2015,18 +2040,20 @@ export default function Stage3D({
   };
 
   const retryWebglStage = () => {
-    if (canCreateWebGLContext()) {
-      setWebglBlocked(false);
-      setWebglBlockReason(null);
+    if (!canCreateWebGLContext()) {
+      // Still broken — give an actionable message rather than silently failing
+      setWebglBlockReason(
+        'Hardware acceleration is still unavailable. ' +
+        'In Chrome: go to chrome://settings/system → enable "Use graphics acceleration when available" → restart Chrome. ' +
+        'In Edge: edge://settings/system → same toggle.',
+      );
       return;
     }
-
-    setWebglBlocked(true);
-    setWebglBlockReason(
-      'Retry failed: browser is still unable to create a WebGL context.',
-    );
+    // GPU is usable again — force a fresh Canvas mount via key change
+    setWebglBlockReason(null);
+    setWebglBlocked(false);
+    setCanvasKey((k) => k + 1);
   };
-
   useEffect(() => {
     setStageLodLevel(getLodLevelForDistance(cameraDistanceFt));
     setHoveredBrickId(null);
@@ -2502,14 +2529,18 @@ export default function Stage3D({
         </div>
       ) : (
         <Stage3DCanvasErrorBoundary
-          onError={() => {
+          key={canvasKey}
+          onError={(reason: string) => {
             setWebglBlocked(true);
             setWebglBlockReason(
-              'A rendering error occurred while initializing the 3D canvas.',
+              reason
+                ? `Render error: ${reason}`
+                : 'WebGL context creation failed. Try enabling hardware acceleration in your browser settings.',
             );
           }}
         >
           <Canvas
+            key={canvasKey}
             camera={{
               position: [
                 0,
@@ -2519,6 +2550,7 @@ export default function Stage3D({
               fov: 48,
             }}
             dpr={[1, 1.5]}
+            frameloop='demand'
             gl={{
               antialias: false,
               powerPreference: 'low-power',

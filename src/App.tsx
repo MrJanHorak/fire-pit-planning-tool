@@ -4,6 +4,7 @@ import ControlPanel from './components/ControlPanel';
 import { FoundationRiskBadge } from './components/FoundationReview';
 import SafetyClearanceDiagram from './components/SafetyClearanceDiagram';
 import ProjectInfoCard from './components/ProjectInfoCard';
+import BillOfMaterials from './components/BillOfMaterials';
 import { MasonryEngine } from './engine/MasonryEngine';
 import type { MasonryInput } from './types';
 import { DEFAULT_MASONRY_INPUT } from './utils/defaultInput';
@@ -31,8 +32,6 @@ const ANALYTICS_CONSENT_STORAGE_KEY =
 const ANALYTICS_CONSENT_VERSION_STORAGE_KEY =
   'firepit-parametric-masonry-designer-analytics-consent-version';
 const ANALYTICS_CONSENT_VERSION = '2026-03-23';
-const DETAILS_LOGISTICS_KEY =
-  'firepit-parametric-masonry-designer-details-logistics';
 const DETAILS_REFERENCES_KEY =
   'firepit-parametric-masonry-designer-details-references';
 
@@ -323,11 +322,6 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const hasInitializedAutosave = useRef(false);
   const hasConfiguredAnalytics = useRef(false);
-  const [logisticsOpen, setLogisticsOpen] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    const stored = window.localStorage.getItem(DETAILS_LOGISTICS_KEY);
-    return stored === null ? false : stored === 'true';
-  });
   const [referencesOpen, setReferencesOpen] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     const stored = window.localStorage.getItem(DETAILS_REFERENCES_KEY);
@@ -1362,142 +1356,6 @@ export default function App() {
               </div>
             </div>
 
-            <details
-              className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg'
-              open={logisticsOpen}
-              onToggle={(e) => {
-                const next = e.currentTarget.open;
-                setLogisticsOpen(next);
-                window.localStorage.setItem(
-                  DETAILS_LOGISTICS_KEY,
-                  String(next),
-                );
-              }}
-            >
-              <summary className='group cursor-pointer list-none'>
-                <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg px-2 py-1 transition-colors group-hover:bg-amber-100/50'>
-                  <div className='flex items-center gap-2'>
-                    <svg
-                      className='h-4 w-4 text-amber-900/60 transition-transform group-open:rotate-90'
-                      fill='none'
-                      stroke='currentColor'
-                      viewBox='0 0 24 24'
-                    >
-                      <path
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                        strokeWidth={2}
-                        d='M9 5l7 7-7 7'
-                      />
-                    </svg>
-                    <div>
-                      <p className='text-xs font-semibold uppercase tracking-wide text-amber-950'>
-                        Project Stats
-                      </p>
-                      <p className='text-xs text-amber-900/60'>
-                        {output.logistics.purchasedUnits} units •{' '}
-                        {Math.round(output.logistics.estimatedBrickWeightLb)} lb
-                      </p>
-                    </div>
-                  </div>
-                  <span className='rounded-full border border-amber-900/20 bg-white px-3 py-1 text-xs font-semibold text-amber-950'>
-                    Click for more
-                  </span>
-                </div>
-              </summary>
-
-              <div className='mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5'>
-                <div>
-                  <p className='text-xs uppercase tracking-wide text-amber-950/75'>
-                    Purchased Units
-                  </p>
-                  <p className='text-xl font-bold'>
-                    {output.logistics.purchasedUnits}
-                  </p>
-                  <p className='text-xs text-amber-900/70'>
-                    Includes {output.logistics.wasteFactorPct}% waste
-                  </p>
-                </div>
-                <div>
-                  <p className='text-xs uppercase tracking-wide text-amber-950/75'>
-                    Wall Unit Weight
-                  </p>
-                  <p className='text-xl font-bold'>
-                    {Math.round(output.logistics.estimatedBrickWeightLb)} lb
-                  </p>
-                </div>
-                <div>
-                  <p className='text-xs uppercase tracking-wide text-amber-950/75'>
-                    Stone Weight
-                  </p>
-                  <p className='text-xl font-bold'>
-                    {Math.round(output.logistics.estimatedStoneWeightLb)} lb
-                  </p>
-                </div>
-                <div>
-                  <p className='text-xs uppercase tracking-wide text-amber-950/75'>
-                    Mortar Volume
-                  </p>
-                  <p className='text-xl font-bold'>
-                    {output.logistics.estimatedMortarVolumeCubicFeet.toFixed(1)}{' '}
-                    ft3
-                  </p>
-                </div>
-                <div>
-                  <p className='text-xs uppercase tracking-wide text-amber-950/75'>
-                    Cap Weight
-                  </p>
-                  <p className='text-xl font-bold'>
-                    {Math.round(output.logistics.estimatedCapWeightLb)} lb
-                  </p>
-                  <p className='text-xs text-amber-900/70'>
-                    Purchased caps: {output.logistics.purchasedCapUnits}
-                  </p>
-                </div>
-              </div>
-
-              {output.logistics.naturalStoneEstimate && (
-                <div className='mt-4 rounded-xl border border-amber-900/20 bg-white/75 p-3'>
-                  <p className='text-xs font-semibold uppercase tracking-wide text-amber-950'>
-                    Natural Stone Planning Mode
-                  </p>
-                  <p className='mt-1 text-sm text-amber-900/80'>
-                    Face area:{' '}
-                    {output.logistics.naturalStoneEstimate.faceAreaSquareFeet.toFixed(
-                      1,
-                    )}{' '}
-                    sq ft • Outer perimeter:{' '}
-                    {output.logistics.naturalStoneEstimate.outerPerimeterFeet.toFixed(
-                      1,
-                    )}{' '}
-                    ft
-                  </p>
-                  <p className='mt-1 text-sm text-amber-900/80'>
-                    8 in wall stone:{' '}
-                    {output.logistics.naturalStoneEstimate.tonsAt8InDepthWithWaste10Pct.toFixed(
-                      2,
-                    )}{' '}
-                    to{' '}
-                    {output.logistics.naturalStoneEstimate.tonsAt8InDepthWithWaste15Pct.toFixed(
-                      2,
-                    )}{' '}
-                    tons (with 10-15% waste)
-                  </p>
-                  <p className='mt-1 text-sm text-amber-900/80'>
-                    4 in building stone:{' '}
-                    {output.logistics.naturalStoneEstimate.tonsAt4InDepthWithWaste10Pct.toFixed(
-                      2,
-                    )}{' '}
-                    to{' '}
-                    {output.logistics.naturalStoneEstimate.tonsAt4InDepthWithWaste15Pct.toFixed(
-                      2,
-                    )}{' '}
-                    tons (with 10-15% waste)
-                  </p>
-                </div>
-              )}
-            </details>
-
             <div className='flex gap-2'>
               <button
                 className={`rounded-full px-4 py-2 text-sm font-semibold ${view === '3d' ? 'bg-amber-900 text-amber-50' : 'bg-amber-100 text-amber-900'}`}
@@ -1531,17 +1389,20 @@ export default function App() {
                 </div>
               }
             >
-              {view === '3d' ? (
+              {view === '3d' && (
                 <Stage3D
                   output={output}
                   seatingFurnitureCount={input.seatingFurnitureCount}
                   captureSignal={stakeholderRenderSignal}
                   onStakeholderRenderComplete={handleStakeholderRenderComplete}
                 />
-              ) : (
+              )}
+              {view === 'construction' && (
                 <ConstructionMode input={input} output={output} />
               )}
             </Suspense>
+
+            <BillOfMaterials output={output} />
 
             <div className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg'>
               <div className='flex flex-wrap items-center justify-between gap-2'>
