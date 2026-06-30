@@ -5,6 +5,8 @@ import { FoundationRiskBadge } from './components/FoundationReview';
 import SafetyClearanceDiagram from './components/SafetyClearanceDiagram';
 import ProjectInfoCard from './components/ProjectInfoCard';
 import BillOfMaterials from './components/BillOfMaterials';
+import RegionalCodeChecker from './components/RegionalCodeChecker';
+import MaterialOptimizationSuggestions from './components/MaterialOptimizationSuggestions';
 import { MasonryEngine } from './engine/MasonryEngine';
 import type { MasonryInput } from './types';
 import { DEFAULT_MASONRY_INPUT } from './utils/defaultInput';
@@ -1403,6 +1405,10 @@ export default function App() {
             </Suspense>
 
             <BillOfMaterials output={output} />
+
+            <RegionalCodeChecker input={input} output={output} />
+
+            <MaterialOptimizationSuggestions input={input} output={output} />
 
             <div className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg'>
               <div className='flex flex-wrap items-center justify-between gap-2'>

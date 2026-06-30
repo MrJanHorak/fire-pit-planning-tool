@@ -38,6 +38,11 @@ export type NaturalStoneType =
   | 'limestone'
   | 'shale';
 export type StoneBuildMethod = 'dry-stack' | 'mortared';
+export type RegionalCodeProfile =
+  | 'ibc-general'
+  | 'irc-residential'
+  | 'wui-high-risk';
+export type HoaConstraintLevel = 'unknown' | 'none' | 'typical' | 'strict';
 
 export interface MasonryUnit {
   name: string;
@@ -68,6 +73,9 @@ export interface MasonryInput {
   soilType?: SoilType;
   drainageCondition?: DrainageCondition;
   frostClimate?: boolean;
+  frostLineDepthIn?: number;
+  regionalCodeProfile?: RegionalCodeProfile;
+  hoaConstraintLevel?: HoaConstraintLevel;
   capstonePresetKey?: string;
   brickPresetKey?: string;
   customBrickLengthIn?: number;

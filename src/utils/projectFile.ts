@@ -110,6 +110,18 @@ export function normalizeMasonryInput(
       value.frostClimate,
       defaults.frostClimate ?? false,
     ),
+    frostLineDepthIn: coerceNumber(
+      value.frostLineDepthIn,
+      defaults.frostLineDepthIn ?? 0,
+    ),
+    regionalCodeProfile: coerceString(
+      value.regionalCodeProfile,
+      defaults.regionalCodeProfile ?? 'ibc-general',
+    ) as MasonryInput['regionalCodeProfile'],
+    hoaConstraintLevel: coerceString(
+      value.hoaConstraintLevel,
+      defaults.hoaConstraintLevel ?? 'unknown',
+    ) as MasonryInput['hoaConstraintLevel'],
     capstonePresetKey: coerceString(
       value.capstonePresetKey,
       defaults.capstonePresetKey ?? 'matching',

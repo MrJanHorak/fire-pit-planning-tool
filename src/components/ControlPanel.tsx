@@ -803,6 +803,77 @@ export default function ControlPanel({
 
         <label className='flex flex-col gap-1'>
           <FieldLabel
+            label='Local Frost Line Depth (in)'
+            tip='Use your local jurisdiction or geotech value. This drives code-checker guidance only.'
+          />
+          <input
+            className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label='Local Frost Line Depth in inches'
+            title='Local Frost Line Depth in inches'
+            type='number'
+            min={0}
+            step={1}
+            value={input.frostLineDepthIn ?? 0}
+            onChange={(event) =>
+              setInput((prev) => ({
+                ...prev,
+                frostLineDepthIn: Number(event.target.value),
+              }))
+            }
+          />
+        </label>
+
+        <label className='flex flex-col gap-1'>
+          <FieldLabel
+            label='Regional Code Profile'
+            tip='Select the broad jurisdiction profile used by the regional checker. This is advisory and does not replace permit review.'
+          />
+          <select
+            className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label='Regional Code Profile'
+            title='Regional Code Profile'
+            value={input.regionalCodeProfile ?? 'ibc-general'}
+            onChange={(event) =>
+              setInput((prev) => ({
+                ...prev,
+                regionalCodeProfile: event.target
+                  .value as NonNullable<MasonryInput['regionalCodeProfile']>,
+              }))
+            }
+          >
+            <option value='ibc-general'>IBC general</option>
+            <option value='irc-residential'>IRC residential</option>
+            <option value='wui-high-risk'>WUI high-risk wildfire zone</option>
+          </select>
+        </label>
+
+        <label className='flex flex-col gap-1'>
+          <FieldLabel
+            label='HOA Constraint Level'
+            tip='Use this to add pre-approval reminders and conservative checks for strict communities.'
+          />
+          <select
+            className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label='HOA Constraint Level'
+            title='HOA Constraint Level'
+            value={input.hoaConstraintLevel ?? 'unknown'}
+            onChange={(event) =>
+              setInput((prev) => ({
+                ...prev,
+                hoaConstraintLevel: event.target
+                  .value as NonNullable<MasonryInput['hoaConstraintLevel']>,
+              }))
+            }
+          >
+            <option value='unknown'>Unknown</option>
+            <option value='none'>No HOA restrictions</option>
+            <option value='typical'>Typical HOA review</option>
+            <option value='strict'>Strict HOA review</option>
+          </select>
+        </label>
+
+        <label className='flex flex-col gap-1'>
+          <FieldLabel
             label='Fuel Type'
             tip='Fuel type drives vent placement rules. Propane vents low, natural gas vents high, and wood focuses on combustion airflow.'
           />
