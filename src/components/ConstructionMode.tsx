@@ -28,6 +28,7 @@ export default function ConstructionMode({
   const [expandedDetail, setExpandedDetail] = useState<'wall' | 'cap' | null>(
     null,
   );
+  const [isPreparingReport, setIsPreparingReport] = useState(false);
   const [activeTab, setActiveTab] = useState<ConstructionTab>(() => {
     if (typeof window === 'undefined') return 'layout';
     const stored = window.localStorage.getItem(CONSTRUCTION_TAB_KEY);
@@ -126,9 +127,11 @@ export default function ConstructionMode({
   };
 
   const printEngineeringReportPdf = () => {
+    setIsPreparingReport(true);
     const html = buildEngineeringReportHtml(input, output);
     const win = window.open('', '_blank', 'width=980,height=760');
     if (!win) {
+      setIsPreparingReport(false);
       return;
     }
     win.document.write(html);
@@ -136,6 +139,7 @@ export default function ConstructionMode({
     win.focus();
     setTimeout(() => {
       win.print();
+      setIsPreparingReport(false);
     }, 250);
   };
 
@@ -147,8 +151,9 @@ export default function ConstructionMode({
           <button
             className='rounded-full border border-amber-900/25 bg-white px-4 py-2 text-xs font-semibold text-amber-950 hover:bg-amber-50'
             onClick={printEngineeringReportPdf}
+            disabled={isPreparingReport}
           >
-            Engineering Report PDF
+            {isPreparingReport ? 'Preparing PDF…' : 'Engineering Report PDF'}
           </button>
           <button
             className='rounded-full bg-amber-900 px-4 py-2 text-xs font-semibold text-amber-50'
@@ -162,6 +167,10 @@ export default function ConstructionMode({
         C1 is the lowest wall course and numbering rises upward. CAP is the
         capstone course. Alternating start offsets implement running bond. Red
         marks planned vent openings and blue marks gas line entry.
+      </p>
+      <p className='mb-3 text-xs text-amber-900/70'>
+        Engineering report PDF includes assumptions/limitations and a sign-off
+        section for reviewer handoff.
       </p>
 
       <div

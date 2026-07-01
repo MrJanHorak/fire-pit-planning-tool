@@ -939,9 +939,20 @@ export function buildEngineeringReportHtml(
       .signature-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 18px; }
       .signature-box { border-top: 1px solid #8a724f; padding-top: 6px; min-height: 52px; }
       .small { font-size: 11px; }
+      .report-footer { display: none; }
       @media print {
         @page { size: letter portrait; margin: 0.45in; }
         body { margin: 0; }
+        .report-footer {
+          display: block;
+          position: fixed;
+          bottom: 0.1in;
+          left: 0;
+          right: 0;
+          text-align: center;
+          font-size: 10px;
+          color: #7a6447;
+        }
       }
     </style>
   </head>
@@ -1008,6 +1019,18 @@ export function buildEngineeringReportHtml(
         <div class="signature-box">License # / Company / Date</div>
       </div>
     </section>
+    <section class="block avoid-break">
+      <h2>8. Assumptions And Limitations</h2>
+      <ul>
+        <li>This report is generated from user-provided inputs and the app's baseline engineering assumptions.</li>
+        <li>Foundation quantity math remains on the fixed baseline model and does not replace site-specific geotechnical design.</li>
+        <li>Local permitting requirements, HOA rules, and jurisdiction-specific code interpretation must be verified by the project owner/reviewer.</li>
+        <li>For final construction and stamp-ready deliverables, have a licensed professional review this output in project context.</li>
+      </ul>
+    </section>
+    <div class="report-footer">
+      Parametric Masonry Designer • Professional Engineering Report • Generated ${generatedOn}
+    </div>
   </body>
 </html>`;
 }

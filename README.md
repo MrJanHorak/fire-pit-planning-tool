@@ -23,6 +23,35 @@ Instead of using rough napkin math, I built a tool that turns engineering formul
 
 ![Parametric Masonry Designer screenshot](./public/screenshot-firepit-planner.png)
 
+## Current Capabilities
+
+- Parametric circular, square, and rectangular firepit design.
+- Engineering-aware wall, capstone, venting, liner, and foundation calculations.
+- 3D preview with camera presets, cutaway mode, dimension overlays, LOD, and WebGL fallback handling.
+- Construction Mode with printable layer-by-layer SVG guidance.
+- Enhanced Bill of Materials with categorized material groups, cost estimator, and BOM-focused print layout.
+- Professional Engineering Report generation (print-to-PDF flow).
+- Project workspace with autosave, snapshots, import/export JSON, and side-by-side variant comparison.
+- Regional advisory checks (setback, venting, frost-line/HOA context) and material/cost optimization suggestions.
+- GLB model export for downstream Blender/Fusion-style workflows.
+
+## Recent UX Improvements
+
+- Optional advanced tooling is now grouped under **Optional Insights** so the default designer view stays cleaner.
+- Variant comparison is hidden by default and can be toggled on demand.
+- Knowledge Center content is easier to scan:
+  - quick topic index,
+  - collapsible guidance sections,
+  - searchable FAQ filter.
+
+## What Is Next
+
+Current roadmap priorities after the completed PDF + GLB + comparison work:
+
+1. Multi-firepit site planning (place and evaluate multiple pits in one layout).
+2. Additional CAD interoperability refinements (export options and workflow polish).
+3. Optional AR/mobile preview phase (deferred by design for now).
+
 ## Phase 1: Engineering Math
 
 ### 1. Masonry Unit Dimensions and Jointing
@@ -148,6 +177,10 @@ $$
 - `src/engine/__tests__/MasonryEngine.test.ts`: verification tests.
 - `src/components/Stage3D.tsx`: @react-three/fiber 3D stage.
 - `src/components/ConstructionMode.tsx`: SVG layer-by-layer build map.
+- `src/components/BillOfMaterials.tsx`: enhanced BOM + cost estimator + print output.
+- `src/components/ProjectComparisonPanel.tsx`: side-by-side snapshot variant analysis.
+- `src/components/RegionalCodeChecker.tsx`: regional advisory checks.
+- `src/components/MaterialOptimizationSuggestions.tsx`: optimization prompts.
 - `firepit-research.md`: engineering baseline and expanded research notes.
 
 ## Run

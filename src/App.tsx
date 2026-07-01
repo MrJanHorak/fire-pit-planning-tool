@@ -310,6 +310,8 @@ export default function App() {
     number | null
   >(null);
   const [glbExportSignal, setGlbExportSignal] = useState<number | null>(null);
+  const [isRenderingImage, setIsRenderingImage] = useState(false);
+  const [isExportingGlb, setIsExportingGlb] = useState(false);
   const [siteView, setSiteView] = useState<SiteView>('designer');
   const [projectNotice, setProjectNotice] = useState<string | null>(null);
   const [projectStatus, setProjectStatus] = useState<ProjectStatus | null>(
@@ -771,6 +773,7 @@ export default function App() {
     ok: boolean;
     message: string;
   }) => {
+    setIsRenderingImage(false);
     setProjectNotice(result.message);
     if (result.ok) {
       setProjectStatus({
@@ -782,10 +785,12 @@ export default function App() {
 
   const handleStakeholderRender = () => {
     setView('3d');
+    setIsRenderingImage(true);
     setStakeholderRenderSignal((value) => (value ?? 0) + 1);
   };
 
   const handleGlbExportComplete = (result: { ok: boolean; message: string }) => {
+    setIsExportingGlb(false);
     setProjectNotice(result.message);
     if (result.ok) {
       setProjectStatus({
@@ -797,6 +802,7 @@ export default function App() {
 
   const handleExportGlb = () => {
     setView('3d');
+    setIsExportingGlb(true);
     setGlbExportSignal((value) => (value ?? 0) + 1);
   };
 
@@ -1410,21 +1416,24 @@ export default function App() {
               <button
                 className='rounded-full bg-amber-900 px-4 py-2 text-sm font-semibold text-amber-50'
                 onClick={handleStakeholderRender}
+                disabled={isRenderingImage}
               >
-                Save Image
+                {isRenderingImage ? 'Rendering Image…' : 'Save Image'}
               </button>
               <button
                 className='rounded-full bg-amber-100 px-4 py-2 text-sm font-semibold text-amber-900'
                 onClick={handleExportGlb}
+                disabled={isExportingGlb}
               >
-                Export GLB
+                {isExportingGlb ? 'Exporting GLB…' : 'Export GLB'}
               </button>
             </div>
             {/* <p className='text-xs text-amber-900/75'>
               3D Preview: drag to rotate and scroll to zoom. Build Plan: use
               this for print-ready layout and cut references. Stakeholder
               Render: export a polished still image to share. Export GLB: save
-              a 3D model for Blender/Fusion workflows.
+              a 3D model for Blender/Fusion workflows. GLB export uses a
+              CAD-safe material path (no texture maps) for compatibility.
             </p>
             {projectNotice && (
               <p className='rounded-lg border border-amber-900/15 bg-white/70 px-3 py-2 text-xs text-amber-950/85'>
