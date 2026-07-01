@@ -42,6 +42,7 @@ export const quickStartSteps: ContentSection[] = [
     bullets: [
       'Read the safety warnings first, especially structure clearance and gas vent guidance.',
       'Use Soil Type, Drainage, and Freeze-Thaw fields to review foundation risk level while keeping the baseline 8 in angular-stone quantity model fixed.',
+      'Use Optional Insights for regional code checks, material optimization suggestions, and side-by-side snapshot comparison when needed.',
       'Check unit count, purchased quantity, mortar volume, and stone volume before ordering materials.',
       'Use Construction Mode to review the courses one layer at a time before the build begins.',
     ],
@@ -105,6 +106,7 @@ export const designBestPractices: ContentSection[] = [
       'Name your project early so exported JSON and snapshots stay easy to track during iterations.',
       'Use Save As Snapshot before large geometry or fuel changes so you can compare design branches safely.',
       'Use import and export to move the exact design state between browsers, devices, or review sessions.',
+      'Use Engineering Report PDF in Build Plan to generate a review-ready report for permitting and stakeholder handoff.',
     ],
   },
 ];
@@ -251,6 +253,16 @@ export const faqItems: FaqItem[] = [
     question: 'How should I use autosave, snapshots, and JSON files together?',
     answer:
       'Autosave continuously stores the current design in browser local storage. Use snapshots for named restore points before major changes. Use JSON export/import when you need to archive, share, or move projects across devices or browser sessions.',
+  },
+  {
+    question: 'What are Optional Insights, and do I need them every time?',
+    answer:
+      'Optional Insights is a collapsible section that keeps advanced tools out of the main flow. Use it when you want regional code/advisory checks, material optimization prompts, or variant comparison between snapshots. For routine sizing and layout, you can keep it collapsed.',
+  },
+  {
+    question: 'How do I generate a professional PDF report?',
+    answer:
+      'Open Build Plan and use the Engineering Report PDF button. It opens a print-ready report with executive summary, safety/compliance review, foundation notes, material quantities, and diagrams. Save it as PDF from your browser print dialog.',
   },
 ];
 

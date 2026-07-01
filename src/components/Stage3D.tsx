@@ -17,7 +17,8 @@ import {
   Shape,
   TextureLoader,
 } from 'three';
-import type { Group, Mesh } from 'three';
+import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
+import type { Group, Mesh, Scene } from 'three';
 import type {
   MasonryOutput,
   SeatingAreaShape,
@@ -37,10 +38,12 @@ interface Stage3DProps {
   output: MasonryOutput;
   seatingFurnitureCount?: number;
   captureSignal?: number | null;
+  glbExportSignal?: number | null;
   onStakeholderRenderComplete?: (result: {
     ok: boolean;
     message: string;
   }) => void;
+  onModelExportComplete?: (result: { ok: boolean; message: string }) => void;
 }
 
 interface BrickSelectionInfo {
@@ -1437,7 +1440,9 @@ export default function Stage3D({
   output,
   seatingFurnitureCount,
   captureSignal,
+  glbExportSignal,
   onStakeholderRenderComplete,
+  onModelExportComplete,
 }: Stage3DProps) {
   const [wireframe, setWireframe] = useState(false);
   const [showBrickOutlines, setShowBrickOutlines] = useState(true);
@@ -1464,13 +1469,15 @@ export default function Stage3D({
   const [showDimensions, setShowDimensions] = useState(false);
   const orbitRef = useRef<OrbitHandle>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const sceneRef = useRef<Scene | null>(null);
   const lastCaptureSignalRef = useRef<number | null | undefined>(undefined);
+  const lastGlbExportSignalRef = useRef<number | null | undefined>(undefined);
 
   // No proactive WebGL check on mount — the Canvas onCreated/onError callbacks
   // handle detection. Probing here would burn a WebGL context slot unnecessarily.
 
   useEffect(() => {
-    if (captureSignal === undefined) {
+    if (captureSignal == null) {
       return;
     }
 
@@ -1529,6 +1536,150 @@ export default function Stage3D({
     };
     requestAnimationFrame(waitAndCapture);
   }, [captureSignal, onStakeholderRenderComplete, webglBlocked]);
+
+  useEffect(() => {
+    if (glbExportSignal == null) {
+      return;
+    }
+
+    if (lastGlbExportSignalRef.current === glbExportSignal) {
+      return;
+    }
+    lastGlbExportSignalRef.current = glbExportSignal;
+
+    if (webglBlocked) {
+      onModelExportComplete?.({
+        ok: false,
+        message: 'GLB export unavailable while WebGL is blocked.',
+      });
+      return;
+    }
+
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const triggerDownload = (blob: Blob, fileName: string) => {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    };
+
+    let cancelled = false;
+    let rafId: number | null = null;
+    const maxSceneWaitFrames = 45;
+
+    const exportWhenReady = async (waitFrame = 0) => {
+      if (cancelled) {
+        return;
+      }
+
+      const scene = sceneRef.current;
+      if (!scene) {
+        if (waitFrame < maxSceneWaitFrames) {
+          rafId = requestAnimationFrame(() => exportWhenReady(waitFrame + 1));
+          return;
+        }
+        onModelExportComplete?.({
+          ok: false,
+          message:
+            'GLB export failed: 3D scene was not ready. Try again after the preview fully loads.',
+        });
+        return;
+      }
+
+      try {
+        const exportScene = scene.clone(true);
+        exportScene.traverse((node) => {
+          const meshNode = node as Mesh & {
+            material?: unknown;
+          };
+          if (!meshNode.material) {
+            return;
+          }
+
+          const materialList = Array.isArray(meshNode.material)
+            ? meshNode.material
+            : [meshNode.material];
+
+          for (const material of materialList) {
+            const mat = material as unknown as {
+              map?: unknown;
+              alphaMap?: unknown;
+              aoMap?: unknown;
+              bumpMap?: unknown;
+              displacementMap?: unknown;
+              emissiveMap?: unknown;
+              envMap?: unknown;
+              lightMap?: unknown;
+              metalnessMap?: unknown;
+              normalMap?: unknown;
+              roughnessMap?: unknown;
+              specularMap?: unknown;
+            };
+            // CAD-safe export path: remove texture maps that can include runtime
+            // image sources unsupported by GLTFExporter (e.g. procedural maps).
+            mat.map = null;
+            mat.alphaMap = null;
+            mat.aoMap = null;
+            mat.bumpMap = null;
+            mat.displacementMap = null;
+            mat.emissiveMap = null;
+            mat.envMap = null;
+            mat.lightMap = null;
+            mat.metalnessMap = null;
+            mat.normalMap = null;
+            mat.roughnessMap = null;
+            mat.specularMap = null;
+          }
+        });
+
+        const exporter = new GLTFExporter();
+        const result = await exporter.parseAsync(exportScene, {
+          binary: true,
+          onlyVisible: true,
+          trs: false,
+        });
+
+        if (result instanceof ArrayBuffer) {
+          const fileName = `firepit-model-${stamp}.glb`;
+          triggerDownload(new Blob([result], { type: 'model/gltf-binary' }), fileName);
+          onModelExportComplete?.({
+            ok: true,
+            message: `Downloaded 3D model: ${fileName}`,
+          });
+          return;
+        }
+
+        const fallbackName = `firepit-model-${stamp}.gltf`;
+        triggerDownload(
+          new Blob([JSON.stringify(result, null, 2)], {
+            type: 'model/gltf+json',
+          }),
+          fallbackName,
+        );
+        onModelExportComplete?.({
+          ok: true,
+          message: `Downloaded 3D model as ${fallbackName} (JSON glTF fallback).`,
+        });
+      } catch (error) {
+        onModelExportComplete?.({
+          ok: false,
+          message: `GLB export failed: ${error instanceof Error ? error.message : String(error)}`,
+        });
+      }
+    };
+
+    exportWhenReady();
+    return () => {
+      cancelled = true;
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+    };
+  }, [glbExportSignal, onModelExportComplete, webglBlocked]);
 
   // Proactive check: detect GPU-disabled / hardware acceleration off BEFORE
   // mounting the Canvas. The probe releases its context immediately so it
@@ -2557,8 +2708,9 @@ export default function Stage3D({
               failIfMajorPerformanceCaveat: false,
               preserveDrawingBuffer: true,
             }}
-            onCreated={({ gl }) => {
+            onCreated={({ gl, scene }) => {
               canvasRef.current = gl.domElement;
+              sceneRef.current = scene;
               setWebglBlockReason(null);
             }}
             onPointerMissed={() => {

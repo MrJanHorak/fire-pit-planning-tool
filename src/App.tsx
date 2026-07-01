@@ -7,6 +7,7 @@ import ProjectInfoCard from './components/ProjectInfoCard';
 import BillOfMaterials from './components/BillOfMaterials';
 import RegionalCodeChecker from './components/RegionalCodeChecker';
 import MaterialOptimizationSuggestions from './components/MaterialOptimizationSuggestions';
+import ProjectComparisonPanel from './components/ProjectComparisonPanel';
 import { MasonryEngine } from './engine/MasonryEngine';
 import type { MasonryInput } from './types';
 import { DEFAULT_MASONRY_INPUT } from './utils/defaultInput';
@@ -36,6 +37,10 @@ const ANALYTICS_CONSENT_VERSION_STORAGE_KEY =
 const ANALYTICS_CONSENT_VERSION = '2026-03-23';
 const DETAILS_REFERENCES_KEY =
   'firepit-parametric-masonry-designer-details-references';
+const SHOW_VARIANT_COMPARISON_KEY =
+  'firepit-parametric-masonry-designer-show-variant-comparison';
+const SHOW_OPTIONAL_INSIGHTS_KEY =
+  'firepit-parametric-masonry-designer-show-optional-insights';
 
 const Stage3D = lazy(() => import('./components/Stage3D'));
 const ConstructionMode = lazy(() => import('./components/ConstructionMode'));
@@ -304,6 +309,7 @@ export default function App() {
   const [stakeholderRenderSignal, setStakeholderRenderSignal] = useState<
     number | null
   >(null);
+  const [glbExportSignal, setGlbExportSignal] = useState<number | null>(null);
   const [siteView, setSiteView] = useState<SiteView>('designer');
   const [projectNotice, setProjectNotice] = useState<string | null>(null);
   const [projectStatus, setProjectStatus] = useState<ProjectStatus | null>(
@@ -329,6 +335,21 @@ export default function App() {
     const stored = window.localStorage.getItem(DETAILS_REFERENCES_KEY);
     return stored === null ? false : stored === 'true';
   });
+  const [showVariantComparison, setShowVariantComparison] =
+    useState<boolean>(() => {
+      if (typeof window === 'undefined') return false;
+      return (
+        window.localStorage.getItem(SHOW_VARIANT_COMPARISON_KEY) === 'true'
+      );
+    });
+  const [showOptionalInsights, setShowOptionalInsights] = useState<boolean>(
+    () => {
+      if (typeof window === 'undefined') return false;
+      return (
+        window.localStorage.getItem(SHOW_OPTIONAL_INSIGHTS_KEY) === 'true'
+      );
+    },
+  );
   const [analyticsConsent, setAnalyticsConsent] = useState<AnalyticsConsent>(
     () => {
       if (typeof window === 'undefined') {
@@ -762,6 +783,21 @@ export default function App() {
   const handleStakeholderRender = () => {
     setView('3d');
     setStakeholderRenderSignal((value) => (value ?? 0) + 1);
+  };
+
+  const handleGlbExportComplete = (result: { ok: boolean; message: string }) => {
+    setProjectNotice(result.message);
+    if (result.ok) {
+      setProjectStatus({
+        label: 'Exported GLB model',
+        timestamp: new Date().toISOString(),
+      });
+    }
+  };
+
+  const handleExportGlb = () => {
+    setView('3d');
+    setGlbExportSignal((value) => (value ?? 0) + 1);
   };
 
   const handleClearBrowserData = () => {
@@ -1377,12 +1413,24 @@ export default function App() {
               >
                 Save Image
               </button>
+              <button
+                className='rounded-full bg-amber-100 px-4 py-2 text-sm font-semibold text-amber-900'
+                onClick={handleExportGlb}
+              >
+                Export GLB
+              </button>
             </div>
-            <p className='text-xs text-amber-900/75'>
+            {/* <p className='text-xs text-amber-900/75'>
               3D Preview: drag to rotate and scroll to zoom. Build Plan: use
               this for print-ready layout and cut references. Stakeholder
-              Render: export a polished still image to share.
+              Render: export a polished still image to share. Export GLB: save
+              a 3D model for Blender/Fusion workflows.
             </p>
+            {projectNotice && (
+              <p className='rounded-lg border border-amber-900/15 bg-white/70 px-3 py-2 text-xs text-amber-950/85'>
+                {projectNotice}
+              </p>
+            )} */}
 
             <Suspense
               fallback={
@@ -1396,7 +1444,9 @@ export default function App() {
                   output={output}
                   seatingFurnitureCount={input.seatingFurnitureCount}
                   captureSignal={stakeholderRenderSignal}
+                  glbExportSignal={glbExportSignal}
                   onStakeholderRenderComplete={handleStakeholderRenderComplete}
+                  onModelExportComplete={handleGlbExportComplete}
                 />
               )}
               {view === 'construction' && (
@@ -1406,9 +1456,68 @@ export default function App() {
 
             <BillOfMaterials output={output} />
 
-            <RegionalCodeChecker input={input} output={output} />
+            <details
+              className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-3 shadow-lg'
+              open={showOptionalInsights}
+              onToggle={(event) => {
+                const next = event.currentTarget.open;
+                setShowOptionalInsights(next);
+                window.localStorage.setItem(
+                  SHOW_OPTIONAL_INSIGHTS_KEY,
+                  String(next),
+                );
+              }}
+            >
+              <summary className='cursor-pointer list-none'>
+                <div className='flex flex-wrap items-center justify-between gap-2'>
+                  <p className='text-xs font-semibold uppercase tracking-[0.15em] text-amber-900/75'>
+                    Optional Insights
+                  </p>
+                  <span className='rounded-full border border-amber-900/20 bg-white px-3 py-1 text-xs font-semibold text-amber-950'>
+                    {showOptionalInsights ? 'Hide' : 'Show'}
+                  </span>
+                </div>
+              </summary>
 
-            <MaterialOptimizationSuggestions input={input} output={output} />
+              <div className='mt-3 space-y-3'>
+                <div className='flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-900/15 bg-white/70 px-3 py-2'>
+                  <p className='text-xs text-amber-900/80'>
+                    Toggle advanced tools for comparison and advisory analysis.
+                  </p>
+                  <button
+                    type='button'
+                    className='rounded-full border border-amber-900/20 bg-white px-3 py-1.5 text-xs font-semibold text-amber-950 hover:bg-amber-50'
+                    onClick={() => {
+                      setShowVariantComparison((prev) => {
+                        const next = !prev;
+                        window.localStorage.setItem(
+                          SHOW_VARIANT_COMPARISON_KEY,
+                          String(next),
+                        );
+                        return next;
+                      });
+                    }}
+                  >
+                    {showVariantComparison
+                      ? 'Hide Variant Comparison'
+                      : 'Show Variant Comparison'}
+                  </button>
+                </div>
+
+                {showVariantComparison && (
+                  <ProjectComparisonPanel
+                    currentProjectName={projectName}
+                    currentInput={input}
+                    currentOutput={output}
+                    snapshots={snapshots}
+                  />
+                )}
+
+                <RegionalCodeChecker input={input} output={output} />
+
+                <MaterialOptimizationSuggestions input={input} output={output} />
+              </div>
+            </details>
 
             <div className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg'>
               <div className='flex flex-wrap items-center justify-between gap-2'>

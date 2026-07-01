@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import {
   designBestPractices,
   faqItems,
@@ -17,14 +18,35 @@ interface KnowledgeCenterProps {
   view: LibraryView;
 }
 
-function SectionCard({ section }: { section: ContentSection }) {
+function toSlug(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function SectionCard({
+  section,
+  sectionId,
+}: {
+  section: ContentSection;
+  sectionId: string;
+}) {
   return (
-    <section className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/80 p-5 shadow-lg'>
-      <h3 className='text-lg font-semibold text-amber-950'>{section.title}</h3>
+    <details
+      id={sectionId}
+      className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/80 p-5 shadow-lg'
+    >
+      <summary className='cursor-pointer list-none'>
+        <div className='flex items-center justify-between gap-3'>
+          <h3 className='text-lg font-semibold text-amber-950'>{section.title}</h3>
+          <span className='rounded-full border border-amber-900/20 bg-white px-2.5 py-1 text-[11px] font-semibold text-amber-900'>
+            {section.bullets.length} points
+          </span>
+        </div>
+      </summary>
       {section.intro && (
-        <p className='mt-2 text-sm leading-6 text-amber-950/80'>
-          {section.intro}
-        </p>
+        <p className='mt-2 text-sm leading-6 text-amber-950/80'>{section.intro}</p>
       )}
       <ul className='mt-3 space-y-2 text-sm leading-6 text-amber-950/85'>
         {section.bullets.map((bullet) => (
@@ -33,7 +55,7 @@ function SectionCard({ section }: { section: ContentSection }) {
           </li>
         ))}
       </ul>
-    </section>
+    </details>
   );
 }
 
@@ -80,6 +102,26 @@ export default function KnowledgeCenter({ view }: KnowledgeCenterProps) {
                   "Use this like a builder's brief: each section explains the engineering logic in plain language so your design choices hold up in the field.",
                 sections: researchHighlights,
               };
+  const [faqQuery, setFaqQuery] = useState('');
+  const sectionAnchors = useMemo(
+    () =>
+      content.sections.map((section) => ({
+        title: section.title,
+        id: `section-${toSlug(section.title)}`,
+      })),
+    [content.sections],
+  );
+  const filteredFaq = useMemo(() => {
+    const query = faqQuery.trim().toLowerCase();
+    if (!query) {
+      return faqItems;
+    }
+    return faqItems.filter(
+      (item) =>
+        item.question.toLowerCase().includes(query) ||
+        item.answer.toLowerCase().includes(query),
+    );
+  }, [faqQuery]);
 
   return (
     <section className='space-y-5'>
@@ -100,9 +142,30 @@ export default function KnowledgeCenter({ view }: KnowledgeCenterProps) {
         )}
       </article>
 
+      <section className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/80 p-4 shadow-lg'>
+        <p className='text-xs font-semibold uppercase tracking-[0.15em] text-amber-900/70'>
+          Quick Topic Index
+        </p>
+        <div className='mt-2 flex flex-wrap gap-2'>
+          {sectionAnchors.map((anchor) => (
+            <a
+              key={anchor.id}
+              href={`#${anchor.id}`}
+              className='rounded-full border border-amber-900/20 bg-white px-3 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-50'
+            >
+              {anchor.title}
+            </a>
+          ))}
+        </div>
+      </section>
+
       <div className='grid gap-4 lg:grid-cols-2'>
         {content.sections.map((section) => (
-          <SectionCard key={section.title} section={section} />
+          <SectionCard
+            key={section.title}
+            section={section}
+            sectionId={`section-${toSlug(section.title)}`}
+          />
         ))}
       </div>
 
@@ -124,11 +187,24 @@ export default function KnowledgeCenter({ view }: KnowledgeCenterProps) {
 
       {(view === 'guide' || view === 'tips' || view === 'research') && (
         <section className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/80 p-5 shadow-lg'>
-          <h3 className='text-lg font-semibold text-amber-950'>
-            Common questions
-          </h3>
+          <div className='flex flex-wrap items-center justify-between gap-2'>
+            <h3 className='text-lg font-semibold text-amber-950'>
+              Common questions
+            </h3>
+            <input
+              type='search'
+              value={faqQuery}
+              onChange={(event) => setFaqQuery(event.target.value)}
+              placeholder='Filter FAQ...'
+              aria-label='Filter FAQ'
+              className='w-full rounded-lg border border-amber-900/20 bg-white px-3 py-1.5 text-sm text-amber-950 sm:w-64'
+            />
+          </div>
+          <p className='mt-2 text-xs text-amber-900/70'>
+            Showing {filteredFaq.length} of {faqItems.length} questions.
+          </p>
           <div className='mt-3 space-y-3'>
-            {faqItems.map((item) => (
+            {filteredFaq.map((item) => (
               <details
                 key={item.question}
                 className='rounded-xl border border-amber-900/15 bg-white/80 p-4'
@@ -141,6 +217,11 @@ export default function KnowledgeCenter({ view }: KnowledgeCenterProps) {
                 </p>
               </details>
             ))}
+            {filteredFaq.length === 0 && (
+              <p className='rounded-xl border border-amber-900/15 bg-white/80 p-4 text-sm text-amber-950/80'>
+                No FAQ entries match that filter yet.
+              </p>
+            )}
           </div>
         </section>
       )}
