@@ -71,7 +71,9 @@ html[data-theme='dark'] .bg-white\/35,
 html[data-theme='dark'] .bg-white\/60,
 html[data-theme='dark'] .bg-white\/70,
 html[data-theme='dark'] .bg-white\/80,
-html[data-theme='dark'] .bg-white\/85 {
+html[data-theme='dark'] .bg-white\/85,
+html[data-theme='dark'] .bg-white\/90,
+html[data-theme='dark'] .bg-white\/95 {
   background-color: rgba(45, 30, 20, 0.9) !important;
 }
 
@@ -123,4 +125,35 @@ html[data-theme='dark'] button:disabled {
   color: #d8c1a1 !important;
   border-color: rgba(186, 128, 78, 0.35) !important;
   opacity: 0.9;
+}
+
+html[data-theme='dark'] .stage3d-label {
+  background: rgba(255, 249, 240, 0.96) !important;
+  color: #3b2311 !important;
+  border-color: rgba(95, 58, 31, 0.45) !important;
+}
+
+html[data-theme='dark'] .stage3d-shell .stage3d-controls-panel [class*='bg-amber-50'],
+html[data-theme='dark'] .stage3d-shell .stage3d-legend-panel,
+html[data-theme='dark'] .stage3d-shell .stage3d-controls-panel [class*='bg-sky-50'] {
+  background-color: rgba(34, 23, 15, 0.95) !important;
+  border-color: rgba(186, 128, 78, 0.35) !important;
+}
+
+html[data-theme='dark'] .stage3d-shell .stage3d-controls-panel [class*='text-amber-95'],
+html[data-theme='dark'] .stage3d-shell .stage3d-controls-panel [class*='text-amber-90'],
+html[data-theme='dark'] .stage3d-shell .stage3d-controls-panel [class*='text-amber-80'],
+html[data-theme='dark'] .stage3d-shell .stage3d-controls-panel [class*='text-sky-95'],
+html[data-theme='dark'] .stage3d-shell .stage3d-legend-panel [class*='text-amber-95'],
+html[data-theme='dark'] .stage3d-shell .stage3d-legend-panel [class*='text-amber-90'],
+html[data-theme='dark'] .stage3d-shell .stage3d-legend-panel [class*='text-amber-80'] {
+  color: #f3e3cc !important;
+}
+
+html[data-theme='dark'] .stage3d-shell .stage3d-controls-panel [class*='bg-amber-200'] {
+  background-color: rgba(118, 84, 54, 0.9) !important;
+}
+
+html[data-theme='dark'] .stage3d-shell .stage3d-controls-panel [class*='bg-amber-300'] {
+  background-color: rgba(146, 105, 67, 0.9) !important;
 }

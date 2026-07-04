@@ -2224,7 +2224,7 @@ export default function Stage3D({
   }, [cutawayMode]);
 
   return (
-    <div className='card-rise relative h-[620px] rounded-2xl border border-amber-900/20 bg-amber-100/70 p-2 shadow-lg sm:h-[680px]'>
+    <div className='stage3d-shell card-rise relative h-[620px] rounded-2xl border border-amber-900/20 bg-amber-100/70 p-2 shadow-lg sm:h-[680px]'>
       <div className='absolute right-2 top-2 z-10 flex flex-col items-end gap-2 sm:right-4 sm:top-4'>
         {/* Hoverable wrapper - always has presence for hover detection */}
         <div
@@ -2234,7 +2234,7 @@ export default function Stage3D({
         >
           {/* Main controls panel - expands on hover */}
           <div
-            className='overflow-y-auto overflow-x-hidden transition-all duration-300 ease-out'
+            className='stage3d-controls-panel overflow-y-auto overflow-x-hidden transition-all duration-300 ease-out'
             style={{
               maxWidth: showControls ? '300px' : '0px',
               maxHeight: showControls ? '640px' : '0px',
@@ -2563,7 +2563,7 @@ export default function Stage3D({
             opacity: showLegend ? 1 : 0,
           }}
         >
-          <div className='max-w-sm rounded-xl border border-amber-900/15 bg-amber-50/95 px-3 py-2 text-[11px] text-amber-950 shadow sm:text-xs'>
+          <div className='stage3d-legend-panel max-w-sm rounded-xl border border-amber-900/15 bg-amber-50/95 px-3 py-2 text-[11px] text-amber-950 shadow sm:text-xs'>
             <p className='mb-1 text-[11px] font-bold uppercase tracking-wide text-amber-900/80 sm:text-xs'>
               3D Legend
             </p>
@@ -2879,16 +2879,18 @@ export default function Stage3D({
                             wireframe={effectiveWireframe}
                           />
                         </mesh>
-                        <Html
-                          position={[seatingArea.radiusFt / 2, 0.36, 0]}
-                          center
-                          transform
-                          distanceFactor={9}
-                        >
-                          <div className='rounded-full border border-amber-900/35 bg-white/92 px-2 py-1 text-[10px] font-bold text-amber-950 shadow'>
-                            Seating radius {seatingArea.radiusFt.toFixed(1)} ft
-                          </div>
-                        </Html>
+                        {!showControls && (
+                          <Html
+                            position={[seatingArea.radiusFt / 2, 0.36, 0]}
+                            center
+                            transform
+                            distanceFactor={9}
+                          >
+                            <div className='stage3d-label rounded-full border border-amber-900/35 bg-white/92 px-2 py-1 text-[10px] font-bold text-amber-950 shadow'>
+                              Seating radius {seatingArea.radiusFt.toFixed(1)} ft
+                            </div>
+                          </Html>
+                        )}
                       </>
                     ) : (
                       <>
@@ -2935,18 +2937,20 @@ export default function Stage3D({
                             wireframe={effectiveWireframe}
                           />
                         </mesh>
-                        <Html
-                          position={[0, 0.36, 0]}
-                          center
-                          transform
-                          distanceFactor={9}
-                        >
-                          <div className='rounded-full border border-amber-900/35 bg-white/92 px-2 py-1 text-[10px] font-bold text-amber-950 shadow'>
-                            Square seating{' '}
-                            {seatingArea.overallWidthFt.toFixed(1)} ft x{' '}
-                            {seatingArea.overallDepthFt.toFixed(1)} ft
-                          </div>
-                        </Html>
+                        {!showControls && (
+                          <Html
+                            position={[0, 0.36, 0]}
+                            center
+                            transform
+                            distanceFactor={9}
+                          >
+                            <div className='stage3d-label rounded-full border border-amber-900/35 bg-white/92 px-2 py-1 text-[10px] font-bold text-amber-950 shadow'>
+                              Square seating{' '}
+                              {seatingArea.overallWidthFt.toFixed(1)} ft x{' '}
+                              {seatingArea.overallDepthFt.toFixed(1)} ft
+                            </div>
+                          </Html>
+                        )}
                       </>
                     )}
                     {seatingReferencePlacements.map((placement, index) =>
@@ -3210,7 +3214,7 @@ export default function Stage3D({
                             transform
                             distanceFactor={8}
                           >
-                            <div className='rounded-full border border-amber-900/35 bg-white/90 px-1.5 py-0.5 text-[10px] font-bold text-amber-950 shadow'>
+                            <div className='stage3d-label rounded-full border border-amber-900/35 bg-white/90 px-1.5 py-0.5 text-[10px] font-bold text-amber-950 shadow'>
                               {getRectangularSideLabel(
                                 placement.x,
                                 placement.z,
