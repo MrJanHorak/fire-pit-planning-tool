@@ -1643,13 +1643,14 @@ export class MasonryEngine {
     }
 
     const overheadClearanceFt = input.overheadClearanceFt ?? 20;
-    if (overheadClearanceFt < 15) {
+    const recommendedOverheadClearanceFt = input.fuelType === 'wood' ? 21 : 15;
+    if (overheadClearanceFt < recommendedOverheadClearanceFt) {
       warnings.push({
         code: 'vertical-clearance-low',
         message:
-          'Overhead clearance is below the recommended 15 ft baseline for branches, soffits, and overhead combustible structures.',
+          `Overhead clearance is below the recommended ${recommendedOverheadClearanceFt} ft baseline for ${input.fuelType === 'wood' ? 'wood-burning' : 'gas'} builds near branches, soffits, and other overhead combustibles.`,
         actualValue: overheadClearanceFt,
-        requiredValue: 15,
+        requiredValue: recommendedOverheadClearanceFt,
       });
     }
 

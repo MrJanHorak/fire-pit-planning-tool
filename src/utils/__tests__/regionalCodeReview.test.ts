@@ -70,4 +70,28 @@ describe('regional code review', () => {
     );
     expect(overheadCheck?.status).toBe('review');
   });
+
+  it('applies fuel-specific overhead clearance baseline in regional review', () => {
+    const gasInput = { ...baseInput, fuelType: 'propane' as const, overheadClearanceFt: 18 };
+    const woodInput = { ...baseInput, fuelType: 'wood' as const, overheadClearanceFt: 18 };
+
+    const gasReview = buildRegionalCodeReview(
+      gasInput,
+      new MasonryEngine().calculateDesign(gasInput),
+    );
+    const woodReview = buildRegionalCodeReview(
+      woodInput,
+      new MasonryEngine().calculateDesign(woodInput),
+    );
+
+    const gasOverhead = gasReview.checks.find(
+      (check) => check.key === 'vertical-clearance',
+    );
+    const woodOverhead = woodReview.checks.find(
+      (check) => check.key === 'vertical-clearance',
+    );
+
+    expect(gasOverhead?.status).toBe('pass');
+    expect(woodOverhead?.status).toBe('review');
+  });
 });

@@ -780,6 +780,7 @@ export function buildConstructionPacketHtml(
     output.ventSpec.recommendedAreaMaxSqIn === undefined
       ? `${output.ventSpec.recommendedAreaMinSqIn.toFixed(1)}+`
       : `${output.ventSpec.recommendedAreaMinSqIn.toFixed(1)}-${output.ventSpec.recommendedAreaMaxSqIn.toFixed(1)}`;
+  const recommendedOverheadClearanceFt = input.fuelType === 'wood' ? 21 : 15;
   const gasLineEntry =
     output.ventSpec.gasLineEntryAngleDeg === undefined
       ? '<p>Gas Line Entry: not used for a wood-burning layout.</p>'
@@ -915,8 +916,11 @@ export function buildConstructionPacketHtml(
       detail: `Configured at ${input.proximityToStructuresFt.toFixed(1)} ft.`,
     },
     {
-      item: 'Overhead combustible clearance (15 ft recommended)',
-      status: (input.overheadClearanceFt ?? 20) >= 15 ? 'PASS' : 'REVIEW',
+      item: `Overhead combustible clearance (${recommendedOverheadClearanceFt} ft recommended for ${input.fuelType === 'wood' ? 'wood' : 'gas'})`,
+      status:
+        (input.overheadClearanceFt ?? 20) >= recommendedOverheadClearanceFt
+          ? 'PASS'
+          : 'REVIEW',
       detail: `Configured at ${(input.overheadClearanceFt ?? 20).toFixed(1)} ft.`,
     },
     ...regionalCodeReview.checks.map((check) => ({
@@ -1126,6 +1130,7 @@ export function buildEngineeringReportHtml(
     output.ventSpec.recommendedAreaMaxSqIn === undefined
       ? `${output.ventSpec.recommendedAreaMinSqIn.toFixed(1)}+`
       : `${output.ventSpec.recommendedAreaMinSqIn.toFixed(1)}-${output.ventSpec.recommendedAreaMaxSqIn.toFixed(1)}`;
+  const recommendedOverheadClearanceFt = input.fuelType === 'wood' ? 21 : 15;
 
   const summaryRows: Array<[string, string]> = [
     ['Report type', 'Preliminary engineering planning report'],
@@ -1166,7 +1171,7 @@ export function buildEngineeringReportHtml(
     ],
     [
       'Overhead clearance',
-      `${(input.overheadClearanceFt ?? 20).toFixed(1)} ft (recommended baseline: 15 ft)`,
+      `${(input.overheadClearanceFt ?? 20).toFixed(1)} ft (recommended baseline for ${input.fuelType === 'wood' ? 'wood' : 'gas'}: ${recommendedOverheadClearanceFt} ft)`,
     ],
     [
       'Site/foundation context',

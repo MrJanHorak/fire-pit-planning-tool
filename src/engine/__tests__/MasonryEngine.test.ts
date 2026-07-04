@@ -153,6 +153,31 @@ describe('MasonryEngine', () => {
     ).toBe(true);
   });
 
+  it('uses a stricter overhead-clearance recommendation for wood fuel', () => {
+    const engine = new MasonryEngine();
+    const gasOutput = engine.calculateDesign({
+      ...baseInput,
+      fuelType: 'propane',
+      overheadClearanceFt: 18,
+    });
+    const woodOutput = engine.calculateDesign({
+      ...baseInput,
+      fuelType: 'wood',
+      overheadClearanceFt: 18,
+    });
+
+    expect(
+      gasOutput.warnings.some(
+        (warning) => warning.code === 'vertical-clearance-low',
+      ),
+    ).toBe(false);
+    expect(
+      woodOutput.warnings.some(
+        (warning) => warning.code === 'vertical-clearance-low',
+      ),
+    ).toBe(true);
+  });
+
   it('adds shim spacer units when shim spacer strategy is selected', () => {
     const engine = new MasonryEngine();
     const uniform = engine.calculateDesign(baseInput);

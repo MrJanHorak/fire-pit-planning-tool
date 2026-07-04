@@ -181,8 +181,10 @@ Status key:
 - Gas-line entry planning with auto-adjustment away from vent openings.
 - Foundation footprint diameter and 8 in angular stone volume.
 - Safety warning when combustible structure clearance is below 10 ft.
+- Overhead clearance input and warning guidance for vertical combustibles.
 - Thermal liner modeling with fire-brick and steel-ring options.
 - Liner expansion-gap modeling in calculations and output.
+- Double-wall cavity assembly planning, including cap-bridge rows and closure-unit estimates.
 - Layer-by-layer SVG construction output.
 - 3D geometry preview using React Three Fiber, driven by resolved wall and cap unit dimensions.
 - Logistics estimates for waste, brick weight, stone weight, cap units, and mortar volume.
@@ -198,33 +200,26 @@ Status key:
 - Wood venting is implemented, but airflow performance is still represented as design guidance rather than combustion simulation.
 - Capstone overhang and presets are implemented, but explicit drip-edge detailing rules remain advisory-focused rather than geometry-enforced.
 - Logistics estimates are broad and useful, but still do not include adhesive-specific quantity modeling.
-- Safety visualization covers horizontal clearance only; vertical clearance is not modeled.
+- Thermal behavior modeling remains rule-based and advisory (not transient heat-transfer simulation).
 
 ### Missing
 
-- Double-wall cavity construction logic and cavity-specific thermal behavior.
-- Explicit corner-overlap pattern guidance for rectangular corner interlock details.
+- Advanced transient thermal simulation for cavity/liner assemblies (CFD/FEA class modeling).
 - Dedicated soldier-course cap behavior.
-- Vertical exclusion-zone visualization.
-- Shareable URL-state persistence for portable links (local browser persistence is implemented).
 - Manufacturer-specific material presets and exact per-unit weight models.
 
 ## Open Gaps in the Current Code Implementation
 
 The most important remaining gaps, based on current implementation and the research target state, are below.
 
-### 1. Thermal Safety Model Is Still Too Shallow
+### 1. Thermal Safety Model Is Still Rule-Based
 
-The code now supports liner type selection and expansion-gap output, but advanced thermal assembly rules are still not modeled:
-
-- no double-wall cavity,
-- no cavity heat-transfer assumptions or liner retention hardware modeling.
-
-This remains one of the larger engineering gaps for higher-output wood-burning scenarios.
+The code now supports liner selection, expansion-gap output, double-wall cavity planning, cap-bridge row schedules, and closure-unit logistics.  
+Remaining gap: advanced heat-transfer simulation (time-dependent thermal behavior, moisture migration, and material-specific heat cycling) is not modeled.
 
 ### 2. Corner and Non-Circular Bonding Details Need More Depth
 
-The engine supports both circular and rectangular footprints, but detailed corner-overlap and corner-cut planning for rectangular builds is still limited.
+The engine supports circular, square, and rectangular planning with corner guidance, but construction-grade corner detailing can still be expanded (e.g., richer corner cut schedules and step-by-step corner sequences).
 
 ### 3. Visualization Accuracy Lags Behind the Engine
 
@@ -237,22 +232,21 @@ The model now includes fuel-specific placement, gas vent-area range warnings, an
 - hardware-specific compliance,
 - burner-manufacturer-specific cavity diagrams.
 
-### 5. Safety Coverage Is Only Horizontal
+### 5. Safety Coverage Is Implemented but Baseline-Oriented
 
-The current warning system correctly enforces the 10 ft horizontal rule, but the newer research also introduces vertical clearance and site exclusion-zone reasoning.
+The warning system now includes both horizontal setback and overhead clearance checks.  
+Remaining opportunity: fuel-specific setback recommendations (e.g., stricter advisory ranges for wood vs gas) in addition to the current baseline minimum rule.
 
-### 6. Construction Packet Is Not Yet a Full Build Packet
+### 6. Construction Packet Is Strong but Still Expandable
 
-The exported packet now includes quantities, warnings, course SVG output, liner guidance, gas-line checks, and curing guidance, but it still does not include:
-
-- cap style instructions,
-- stepwise checklist items.
+The exported packet now includes quantities, warnings, cap-bridge row schedules, course SVG output, liner guidance, gas-line checks, and stepwise build sequence guidance.  
+Remaining opportunity: add more cap-style-specific install variants and richer field QA checklists.
 
 ## Recommended Next Implementation Order
 
-1. Add vertical clearance and exclusion-zone output to safety visualization and warnings.
-2. Add rectangular corner-overlap/interlock guidance with explicit corner detailing in packet output.
-3. Extend thermal modeling toward double-wall cavity rules and higher-fidelity liner assembly guidance.
-4. Add URL-state share links for portable design handoff.
-5. Expand manufacturer-specific material presets and per-unit weight fidelity.
-6. Add richer cap style instruction variants (including soldier-course specific guidance) in packet output.
+1. Add fuel-specific clearance advisory bands while preserving baseline minimum code checks.
+2. Expand rectangular/square corner detailing to construction-grade corner cut and overlap sequences.
+3. Increase thermal fidelity (advanced cavity/liner heat-transfer behavior and moisture-response modeling).
+4. Expand manufacturer-specific presets and per-unit weight fidelity.
+5. Add richer cap-style instruction variants (including dedicated soldier-course workflows) in packet output.
+6. Deepen field QA checklists for pre-ignition acceptance and inspection sign-off.

@@ -37,14 +37,15 @@ export function buildRegionalCodeReview(
   });
 
   const overheadClearanceFt = input.overheadClearanceFt ?? 20;
+  const recommendedOverheadClearanceFt = input.fuelType === 'wood' ? 21 : 15;
   checks.push({
     key: 'vertical-clearance',
     title: 'Overhead clearance to combustibles',
-    status: overheadClearanceFt >= 15 ? 'pass' : 'review',
+    status: overheadClearanceFt >= recommendedOverheadClearanceFt ? 'pass' : 'review',
     detail:
-      overheadClearanceFt >= 15
-        ? `Configured at ${overheadClearanceFt.toFixed(1)} ft (recommended baseline: 15 ft).`
-        : `Configured at ${overheadClearanceFt.toFixed(1)} ft. Increase overhead clearance where possible and confirm local authority requirements.`,
+      overheadClearanceFt >= recommendedOverheadClearanceFt
+        ? `Configured at ${overheadClearanceFt.toFixed(1)} ft (recommended baseline for ${input.fuelType === 'wood' ? 'wood' : 'gas'}: ${recommendedOverheadClearanceFt} ft).`
+        : `Configured at ${overheadClearanceFt.toFixed(1)} ft. Increase overhead clearance toward at least ${recommendedOverheadClearanceFt} ft for ${input.fuelType === 'wood' ? 'wood-burning' : 'gas'} configurations and confirm local authority requirements.`,
   });
 
   if (input.fuelType !== 'wood') {

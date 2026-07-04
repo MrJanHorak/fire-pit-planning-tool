@@ -993,6 +993,8 @@ export default function App() {
     QUICK_PRESET_GROUPS[0];
 
   const nextSteps = useMemo(() => {
+    const recommendedOverheadClearanceFt =
+      input.fuelType === 'wood' ? 21 : 15;
     const steps: Array<{
       key: string;
       label: string;
@@ -1005,8 +1007,11 @@ export default function App() {
       },
       {
         key: 'overhead-clearance',
-        label: 'Keep overhead combustible clearance at or above 15 ft.',
-        status: (input.overheadClearanceFt ?? 20) >= 15 ? 'done' : 'todo',
+        label: `Keep overhead combustible clearance at or above ${recommendedOverheadClearanceFt} ft for ${input.fuelType === 'wood' ? 'wood' : 'gas'}.`,
+        status:
+          (input.overheadClearanceFt ?? 20) >= recommendedOverheadClearanceFt
+            ? 'done'
+            : 'todo',
       },
       {
         key: 'venting',
