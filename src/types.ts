@@ -48,6 +48,9 @@ export type GasHardwareTemplate =
   | 'drop-in-pan'
   | 'linear-burner'
   | 'high-btu-bowl';
+export type ThermalAssemblyMode = 'single-wall' | 'double-wall';
+export type ThermalCavityFill = 'air-gap' | 'sand-fill' | 'insulation-board';
+export type ThermalCavityVentMode = 'vented' | 'sealed';
 
 export interface MasonryUnit {
   name: string;
@@ -75,6 +78,11 @@ export interface MasonryInput {
   gasLineEntryAngleDeg: number;
   capstoneOverhangIn: number;
   capPlacementMode: CapPlacementMode;
+  thermalAssemblyMode?: ThermalAssemblyMode;
+  thermalCavityFill?: ThermalCavityFill;
+  thermalCavityVentMode?: ThermalCavityVentMode;
+  thermalCavityWidthIn?: number;
+  thermalTieSpacingIn?: number;
   soilType?: SoilType;
   drainageCondition?: DrainageCondition;
   frostClimate?: boolean;
@@ -130,10 +138,12 @@ export interface SafetyWarning {
     | 'gas-vent-layout-invalid'
     | 'gas-line-near-vent'
     | 'course-bearing-risk'
-    | 'vertical-clearance-low';
-  message: string;
-  actualValue?: number;
-  requiredValue?: number;
+    | 'vertical-clearance-low'
+    | 'double-wall-cavity-tight'
+    | 'double-wall-thermal-review';
+    message: string;
+    actualValue?: number;
+    requiredValue?: number;
 }
 
 export interface CutPlanSpec {
@@ -171,6 +181,25 @@ export interface CornerInterlockGuidance {
   required: boolean;
   recommendedOverlapIn: number;
   cornerCutPerSideIn: number;
+  notes: string[];
+}
+
+export interface ThermalAssemblySpec {
+  mode: ThermalAssemblyMode;
+  cavityFill: ThermalCavityFill;
+  cavityVentMode: ThermalCavityVentMode;
+  cavityWidthIn: number;
+  innerShellThicknessIn: number;
+  outerShellThicknessIn: number;
+  totalWallDepthIn: number;
+  capBridgeRequiredWidthIn: number;
+  capBridgeRows: number;
+  capBridgeAdditionalUnits: number;
+  capBridgeCourseUnitCounts: number[];
+  estimatedTieCount: number;
+  outerShellWeightLb: number;
+  riskLevel: 'low' | 'moderate' | 'high';
+  description: string;
   notes: string[];
 }
 
@@ -241,6 +270,12 @@ export interface LogisticsSpec {
   purchasedCapUnits: number;
   estimatedCapWeightLb: number;
   estimatedMortarVolumeCubicFeet: number;
+  thermalAssemblyWeightLb?: number;
+  thermalAssemblyAdditionalUnits?: number;
+  thermalCapBridgeAdditionalUnits?: number;
+  thermalCapBridgePurchasedUnits?: number;
+  thermalCapBridgeWeightLb?: number;
+  thermalAssemblyNotes?: string[];
   seatingAreaMaterials?: SeatingAreaMaterials;
   naturalStoneEstimate?: NaturalStoneEstimate;
 }
@@ -319,4 +354,5 @@ export interface MasonryOutput {
   logistics: LogisticsSpec;
   warnings: SafetyWarning[];
   cornerGuidance?: CornerInterlockGuidance;
+  thermalAssembly: ThermalAssemblySpec;
 }

@@ -247,6 +247,15 @@ export const CAPSTONE_PRESETS: Record<string, CapstonePreset> = {
     },
     unitWeightLb: 26,
   },
+  bridgeCopingWide: {
+    unit: {
+      name: 'Bridge Coping Cap (Wide)',
+      widthIn: 18,
+      heightIn: 2.5,
+      lengthIn: 24,
+    },
+    unitWeightLb: 44,
+  },
   halfRoundCoping: {
     unit: {
       name: 'Half-Round Coping',
@@ -306,6 +315,12 @@ export class MasonryEngine {
       input,
     );
     const linerSpec = this.calculateLiner(input, planMetrics);
+    let thermalAssembly = this.calculateThermalAssembly(
+      input,
+      planMetrics,
+      oriented,
+      linerSpec,
+    );
     const ventSpec = this.calculateVents(
       input,
       planMetrics,
@@ -328,6 +343,12 @@ export class MasonryEngine {
       input.capstoneOverhangIn,
       input.capPlacementMode,
     );
+    thermalAssembly = this.applyCapBridgePlanning(
+      input,
+      thermalAssembly,
+      capstone,
+      resolvedCap.unit,
+    );
     const cornerGuidance = this.calculateCornerInterlockGuidance(
       planMetrics,
       oriented.lengthIn,
@@ -338,6 +359,7 @@ export class MasonryEngine {
       ventSpec,
       cutPlan,
       strategySummary,
+      thermalAssembly,
     );
 
     return {
@@ -377,9 +399,11 @@ export class MasonryEngine {
         resolvedCap.unitWeightLb,
         foundation,
         input,
+        thermalAssembly,
       ),
       warnings,
       cornerGuidance,
+      thermalAssembly,
     };
   }
 
@@ -995,6 +1019,162 @@ export class MasonryEngine {
     };
   }
 
+  private calculateThermalAssembly(
+    input: MasonryInput,
+    planMetrics: PlanMetrics,
+    wallUnit: MasonryUnit,
+    linerSpec: LinerSpec,
+  ): import('../types').ThermalAssemblySpec {
+    const mode = input.thermalAssemblyMode ?? 'single-wall';
+    const cavityFill = input.thermalCavityFill ?? 'air-gap';
+    const cavityVentMode = input.thermalCavityVentMode ?? 'vented';
+    const cavityWidthIn = this.sanitizeDim(input.thermalCavityWidthIn, 1.5);
+    const tieSpacingIn = this.sanitizeDim(input.thermalTieSpacingIn, 16);
+    const shellThicknessIn = Math.max(
+      wallUnit.widthIn,
+      linerSpec.enabled ? linerSpec.thicknessIn : wallUnit.widthIn,
+    );
+    const totalWallDepthIn =
+      mode === 'double-wall'
+        ? shellThicknessIn * 2 + cavityWidthIn
+        : shellThicknessIn;
+    const perimeterIn =
+      planMetrics.planShape === 'circular'
+        ? Math.PI * Math.max(planMetrics.outerWidthIn, planMetrics.outerDepthIn)
+        : this.calculateRectangularPerimeter(
+            planMetrics.outerWidthIn,
+            planMetrics.outerDepthIn,
+          );
+    const estimatedTieCount =
+      mode === 'double-wall' ? Math.max(4, Math.ceil(perimeterIn / tieSpacingIn)) : 0;
+    const outerShellWeightLb =
+      mode === 'double-wall'
+        ? estimatedTieCount * 2.25 + perimeterIn * 0.95
+        : 0;
+
+    const riskLevel =
+      mode === 'double-wall'
+        ? cavityWidthIn < 1.25
+          ? 'high'
+          : cavityFill === 'sand-fill'
+            ? 'moderate'
+            : input.fuelType === 'wood' && linerSpec.type === 'none'
+              ? 'high'
+              : cavityVentMode === 'sealed'
+                ? 'moderate'
+                : 'low'
+        : 'low';
+
+    const notes =
+      mode === 'double-wall'
+        ? [
+            `Double-wall assembly active with a ${cavityWidthIn.toFixed(2)} in cavity.`,
+            cavityVentMode === 'vented'
+              ? 'Vented cavity improves heat release and reduces trapped moisture.'
+              : 'Sealed cavity reduces airflow and should be reviewed for moisture/expansion risk.',
+            cavityFill === 'air-gap'
+              ? 'Air-gap fill gives the strongest thermal break in this first-pass model.'
+              : cavityFill === 'sand-fill'
+                ? 'Sand fill increases mass and slows heat transfer, but can also hold heat longer.'
+                : 'Insulated cavity board improves thermal resistance but should be verified against manufacturer ratings.',
+          ]
+        : [
+            'Single-wall assembly active. Thermal liner handles the primary hot-face protection.',
+          ];
+
+    return {
+      mode,
+      cavityFill,
+      cavityVentMode,
+      cavityWidthIn: mode === 'double-wall' ? cavityWidthIn : 0,
+      innerShellThicknessIn: shellThicknessIn,
+      outerShellThicknessIn: mode === 'double-wall' ? wallUnit.widthIn : 0,
+      totalWallDepthIn,
+      capBridgeRequiredWidthIn: 0,
+      capBridgeRows: 1,
+      capBridgeAdditionalUnits: 0,
+      capBridgeCourseUnitCounts: [],
+      estimatedTieCount,
+      outerShellWeightLb,
+      riskLevel,
+      description:
+        mode === 'double-wall'
+          ? `Double-wall cavity assembly with ${cavityFill.replace('-', ' ')} fill and ${cavityVentMode} cavity behavior.`
+          : 'Single-wall assembly with thermal liner protection.',
+      notes,
+    };
+  }
+
+  private applyCapBridgePlanning(
+    input: MasonryInput,
+    thermalAssembly: import('../types').ThermalAssemblySpec,
+    capstone: CapstoneSpec,
+    capUnit: MasonryUnit,
+  ): import('../types').ThermalAssemblySpec {
+    if (thermalAssembly.mode !== 'double-wall') {
+      return thermalAssembly;
+    }
+
+    const requiredCapWidthIn =
+      thermalAssembly.totalWallDepthIn + Math.max(0, input.capstoneOverhangIn);
+    const capRowModuleWidthIn =
+      Math.max(0.001, capUnit.widthIn + Math.max(0, input.mortarJointIn));
+    const capBridgeRows = Math.max(
+      1,
+      Math.ceil(
+        (requiredCapWidthIn + Math.max(0, input.mortarJointIn)) /
+          capRowModuleWidthIn,
+      ),
+    );
+    const capBridgeCourseUnitCounts = Array.from(
+      { length: capBridgeRows },
+      (_, rowIdx) => {
+        if (rowIdx === 0) {
+          return capstone.capUnitsPerCourseRounded;
+        }
+        const rowOffsetIn = rowIdx * capRowModuleWidthIn;
+        const rowCenterlineWidthIn =
+          capstone.capCenterlineWidthIn + rowOffsetIn * 2;
+        const rowCenterlineDepthIn =
+          capstone.capCenterlineDepthIn + rowOffsetIn * 2;
+        const rowPerimeterIn =
+          input.planShape === 'circular'
+            ? Math.PI * Math.max(rowCenterlineWidthIn, rowCenterlineDepthIn)
+            : this.calculateRectangularPerimeter(
+                rowCenterlineWidthIn,
+                rowCenterlineDepthIn,
+              );
+        const rowUnitsRaw =
+          rowPerimeterIn / (capUnit.lengthIn + capstone.joint.actualJointIn);
+        return Math.max(1, Math.floor(rowUnitsRaw));
+      },
+    );
+    const capBridgeAdditionalUnits = capBridgeCourseUnitCounts
+      .slice(1)
+      .reduce((sum, units) => sum + units, 0);
+    const capBridgeRowsSummary = capBridgeCourseUnitCounts
+      .map((units, idx) => `R${idx + 1}: ${units}`)
+      .join(', ');
+
+    const capBridgeNote =
+      capBridgeRows > 1
+        ? `Cap bridge planning: ${capBridgeRows} cap rows are required to span approximately ${requiredCapWidthIn.toFixed(2)} in over the double-wall assembly. Add ${capBridgeAdditionalUnits} closure units (before waste) beyond the primary cap ring.`
+        : `Cap bridge planning: one cap row spans approximately ${requiredCapWidthIn.toFixed(2)} in over the double-wall assembly.`;
+    const capBridgeBreakdownNote =
+      capBridgeRows > 1
+        ? `Cap bridge row counts (inside to outside): ${capBridgeRowsSummary}.`
+        : `Cap bridge row count: ${capBridgeRowsSummary}.`;
+
+    return {
+      ...thermalAssembly,
+      capBridgeRequiredWidthIn: requiredCapWidthIn,
+      capBridgeRows,
+      capBridgeAdditionalUnits,
+      capBridgeCourseUnitCounts,
+      notes: [...thermalAssembly.notes, capBridgeNote, capBridgeBreakdownNote],
+    };
+  }
+
   private calculateVents(
     input: MasonryInput,
     planMetrics: PlanMetrics,
@@ -1372,6 +1552,7 @@ export class MasonryEngine {
     capUnitWeightLb: number,
     foundation: FoundationSpec,
     input: MasonryInput,
+    thermalAssembly: import('../types').ThermalAssemblySpec,
   ): LogisticsSpec {
     const purchasedUnits = Math.ceil(
       totalUnits * (1 + BRICK_WASTE_FACTOR_PCT / 100),
@@ -1379,6 +1560,19 @@ export class MasonryEngine {
     const purchasedCapUnits = Math.ceil(
       capUnits * (1 + CAP_WASTE_FACTOR_PCT / 100),
     );
+    const thermalCapBridgeAdditionalUnits =
+      thermalAssembly.mode === 'double-wall'
+        ? thermalAssembly.capBridgeAdditionalUnits
+        : 0;
+    const thermalCapBridgePurchasedUnits =
+      thermalAssembly.mode === 'double-wall'
+        ? Math.ceil(
+            thermalCapBridgeAdditionalUnits *
+              (1 + CAP_WASTE_FACTOR_PCT / 100),
+          )
+        : 0;
+    const thermalCapBridgeWeightLb =
+      thermalCapBridgePurchasedUnits * capUnitWeightLb;
     const stoneWithWasteFt3 =
       foundation.stoneVolumeCubicFeet * (1 + STONE_WASTE_FACTOR_PCT / 100);
     const wallUnitWeightLb = this.calculateWallUnitWeightLb(input, wallUnit);
@@ -1388,9 +1582,20 @@ export class MasonryEngine {
       purchasedUnits,
       purchasedCapUnits,
       estimatedBrickWeightLb: purchasedUnits * wallUnitWeightLb,
-      estimatedCapWeightLb: purchasedCapUnits * capUnitWeightLb,
+      estimatedCapWeightLb:
+        purchasedCapUnits * capUnitWeightLb + thermalCapBridgeWeightLb,
       estimatedStoneWeightLb: stoneWithWasteFt3 * STONE_WEIGHT_LB_PER_FT3,
       estimatedMortarVolumeCubicFeet: purchasedUnits * MORTAR_FT3_PER_BRICK,
+      thermalAssemblyWeightLb:
+        thermalAssembly.mode === 'double-wall'
+          ? totalUnits * wallUnitWeightLb * 1.05
+          : 0,
+      thermalAssemblyAdditionalUnits:
+        thermalAssembly.mode === 'double-wall' ? totalUnits : 0,
+      thermalCapBridgeAdditionalUnits,
+      thermalCapBridgePurchasedUnits,
+      thermalCapBridgeWeightLb,
+      thermalAssemblyNotes: thermalAssembly.notes,
     };
 
     if (this.isRockWallPreset(input)) {
@@ -1423,6 +1628,7 @@ export class MasonryEngine {
     ventSpec: VentSpec,
     cutPlan: CutPlanSpec,
     strategySummary: CourseStrategySummary,
+    thermalAssembly: import('../types').ThermalAssemblySpec,
   ): SafetyWarning[] {
     const warnings: SafetyWarning[] = [];
 
@@ -1453,6 +1659,29 @@ export class MasonryEngine {
         message:
           'Wood-burning configurations should include a refractory liner or steel fire ring.',
       });
+    }
+
+    if (thermalAssembly.mode === 'double-wall') {
+      if (thermalAssembly.cavityWidthIn < 1.25) {
+        warnings.push({
+          code: 'double-wall-cavity-tight',
+          message:
+            'Double-wall cavity width is below the recommended 1.25 in minimum for a practical thermal break.',
+          actualValue: thermalAssembly.cavityWidthIn,
+          requiredValue: 1.25,
+        });
+      }
+
+      if (
+        thermalAssembly.riskLevel === 'high' ||
+        thermalAssembly.cavityVentMode === 'sealed'
+      ) {
+        warnings.push({
+          code: 'double-wall-thermal-review',
+          message:
+            'Double-wall thermal assembly needs a closer review for heat transfer, moisture, and expansion behavior.',
+        });
+      }
     }
 
     if (this.isRockWallPreset(input)) {

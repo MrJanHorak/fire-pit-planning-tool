@@ -140,8 +140,26 @@ export default function BillOfMaterials({ output }: Props) {
   const stoneTonPrice = parseDollar(costs.stoneTon);
 
   // --- line totals ---
-  const wallTotal = wallUnitPrice * logistics.purchasedUnits;
+  const thermalAssemblyNetUnits = logistics.thermalAssemblyAdditionalUnits ?? 0;
+  const thermalAssemblyPurchasedUnits =
+    output.thermalAssembly.mode === 'double-wall'
+      ? Math.ceil(
+          thermalAssemblyNetUnits * (1 + logistics.wasteFactorPct / 100),
+        )
+      : 0;
+  const thermalCapBridgePurchasedUnits =
+    output.thermalAssembly.mode === 'double-wall'
+      ? (logistics.thermalCapBridgePurchasedUnits ?? 0)
+      : 0;
+  const totalWallUnitsPurchased =
+    logistics.purchasedUnits + thermalAssemblyPurchasedUnits;
+  const wallUnitsForPricing =
+    output.thermalAssembly.mode === 'double-wall'
+      ? totalWallUnitsPurchased
+      : logistics.purchasedUnits;
+  const wallTotal = wallUnitPrice * wallUnitsForPricing;
   const capTotal = capUnitPrice * logistics.purchasedCapUnits;
+  const capBridgeTotal = capUnitPrice * thermalCapBridgePurchasedUnits;
   const mortarTotal = mortarBagPrice * mortarBags;
   const gravelTotal = gravelTonPrice * gravelTons;
   const linerTotal = linerSpec.enabled ? linerUnitPrice : 0;
@@ -156,6 +174,7 @@ export default function BillOfMaterials({ output }: Props) {
   const grandTotal =
     wallTotal +
     capTotal +
+    capBridgeTotal +
     mortarTotal +
     gravelTotal +
     linerTotal +
@@ -181,12 +200,24 @@ export default function BillOfMaterials({ output }: Props) {
 
   const wallSpec = `${resolvedUnit.name} — ${resolvedUnit.lengthIn}"L × ${resolvedUnit.widthIn}"W × ${resolvedUnit.heightIn}"H`;
   const capSpec = `${resolvedCapUnit.name} — ${resolvedCapUnit.lengthIn}"L × ${resolvedCapUnit.widthIn}"W × ${resolvedCapUnit.heightIn}"H`;
+  const capBridgeRowBreakdown =
+    output.thermalAssembly.capBridgeCourseUnitCounts.length > 0
+      ? output.thermalAssembly.capBridgeCourseUnitCounts
+          .map((units, idx) => `R${idx + 1}: ${units}`)
+          .join(', ')
+      : '';
   const bomRows: BomTableRow[] = [
     {
       key: 'wall-units',
-      item: 'Wall Units',
-      detail: `${wallSpec} · ${logistics.wasteFactorPct}% waste included`,
-      qty: logistics.purchasedUnits,
+      item:
+        output.thermalAssembly.mode === 'double-wall'
+          ? 'Wall Units (Double-Wall Total)'
+          : 'Wall Units',
+      detail:
+        output.thermalAssembly.mode === 'double-wall'
+          ? `${wallSpec} · inner ${logistics.purchasedUnits} + outer ${thermalAssemblyPurchasedUnits} units · ${logistics.wasteFactorPct}% waste included`
+          : `${wallSpec} · ${logistics.wasteFactorPct}% waste included`,
+      qty: wallUnitsForPricing,
       unit: 'ea',
       unitPrice: costs.wallUnit,
       onUnitPriceChange: (value) => updateCost('wallUnit', value),
@@ -202,6 +233,20 @@ export default function BillOfMaterials({ output }: Props) {
       onUnitPriceChange: (value) => updateCost('capUnit', value),
       lineTotal: capTotal,
     },
+    ...(thermalCapBridgePurchasedUnits > 0
+      ? ([
+          {
+            key: 'cap-bridge',
+            item: 'Cap Closure Units (Rows 2+)',
+            detail: `${capSpec} · double-wall bridge closure${capBridgeRowBreakdown ? ` · ${capBridgeRowBreakdown}` : ''}`,
+            qty: thermalCapBridgePurchasedUnits,
+            unit: 'ea',
+            unitPrice: costs.capUnit,
+            onUnitPriceChange: (value) => updateCost('capUnit', value),
+            lineTotal: capBridgeTotal,
+          },
+        ] satisfies BomTableRow[])
+      : []),
     {
       key: 'mortar',
       item: 'Type S Mortar',
@@ -276,9 +321,15 @@ export default function BillOfMaterials({ output }: Props) {
     const allCostRows: string[] = [];
     if (hasCostData) {
       if (wallTotal > 0)
-        allCostRows.push(`<tr><td>Wall Units (${logistics.purchasedUnits} × ${fmtDollar(wallUnitPrice)})</td><td>${fmtDollar(wallTotal)}</td></tr>`);
+        allCostRows.push(
+          output.thermalAssembly.mode === 'double-wall'
+            ? `<tr><td>Wall Units (${wallUnitsForPricing} total = ${logistics.purchasedUnits} inner + ${thermalAssemblyPurchasedUnits} outer, incl. waste × ${fmtDollar(wallUnitPrice)})</td><td>${fmtDollar(wallTotal)}</td></tr>`
+            : `<tr><td>Wall Units (${wallUnitsForPricing} × ${fmtDollar(wallUnitPrice)})</td><td>${fmtDollar(wallTotal)}</td></tr>`,
+        );
       if (capTotal > 0)
         allCostRows.push(`<tr><td>Capstones (${logistics.purchasedCapUnits} × ${fmtDollar(capUnitPrice)})</td><td>${fmtDollar(capTotal)}</td></tr>`);
+      if (capBridgeTotal > 0)
+        allCostRows.push(`<tr><td>Cap Closure Units (Rows 2+, ${thermalCapBridgePurchasedUnits} × ${fmtDollar(capUnitPrice)})</td><td>${fmtDollar(capBridgeTotal)}</td></tr>`);
       if (mortarTotal > 0)
         allCostRows.push(`<tr><td>Mortar Mix (~${mortarBags} bags × ${fmtDollar(mortarBagPrice)})</td><td>${fmtDollar(mortarTotal)}</td></tr>`);
       if (gravelTotal > 0)
@@ -299,6 +350,14 @@ export default function BillOfMaterials({ output }: Props) {
     const stoneRow = logistics.naturalStoneEstimate
       ? `<tr><td><strong>Natural Stone Wall</strong></td><td>Fieldstone / Ledgestone</td><td>${logistics.naturalStoneEstimate.tonsAt8InDepthWithWaste10Pct.toFixed(2)}–${logistics.naturalStoneEstimate.tonsAt8InDepthWithWaste15Pct.toFixed(2)} tons</td><td>${logistics.naturalStoneEstimate.faceAreaSquareFeet.toFixed(1)} ft² face area</td><td></td></tr>`
       : '';
+    const baseCapWeightLb = Math.max(
+      0,
+      logistics.estimatedCapWeightLb - (logistics.thermalCapBridgeWeightLb ?? 0),
+    );
+    const capBridgeRow =
+      thermalCapBridgePurchasedUnits > 0
+        ? `<tr><td><strong>Cap Closure Units (Rows 2+)</strong></td><td>${capSpec}</td><td>${thermalCapBridgePurchasedUnits} units</td><td>Double-wall cap bridge closure${capBridgeRowBreakdown ? ` · ${capBridgeRowBreakdown}` : ''}</td><td>${Math.round(logistics.thermalCapBridgeWeightLb ?? 0).toLocaleString()} lb</td></tr>`
+        : '';
     const linerRow = linerSpec.enabled
       ? `<tr><td><strong>Thermal Liner</strong></td><td>${linerSpec.type === 'fire-brick' ? 'Fire Brick Liner' : linerSpec.type === 'steel-ring' ? 'Steel Ring Insert' : linerSpec.type}</td><td>${linerSpec.thicknessIn}" thick</td><td>${linerSpec.description}</td><td></td></tr>`
       : '';
@@ -342,7 +401,8 @@ export default function BillOfMaterials({ output }: Props) {
     </thead>
     <tbody>
       <tr><td><strong>Wall Units</strong></td><td>${wallSpec}</td><td>${logistics.purchasedUnits} units</td><td>${logistics.wasteFactorPct}% waste · ${output.totalUnits} net required</td><td>${Math.round(logistics.estimatedBrickWeightLb).toLocaleString()} lb</td></tr>
-      <tr><td><strong>Capstones</strong></td><td>${capSpec}</td><td>${logistics.purchasedCapUnits} units</td><td>${logistics.wasteFactorPct}% waste included</td><td>${Math.round(logistics.estimatedCapWeightLb).toLocaleString()} lb</td></tr>
+      <tr><td><strong>Capstones</strong></td><td>${capSpec}</td><td>${logistics.purchasedCapUnits} units</td><td>${logistics.wasteFactorPct}% waste included</td><td>${Math.round(baseCapWeightLb).toLocaleString()} lb</td></tr>
+      ${capBridgeRow}
       <tr><td><strong>Mortar Mix</strong></td><td>Type S / N premix (80-lb bags)</td><td>~${mortarBags} bags</td><td>${logistics.estimatedMortarVolumeCubicFeet.toFixed(1)} ft³ · ${MORTAR_BAG_80LB_FT3} ft³/bag yield</td><td>—</td></tr>
       <tr><td><strong>Foundation Gravel</strong></td><td>${foundation.stoneDepthIn}" compacted base</td><td>${foundation.stoneVolumeCubicFeet.toFixed(1)} ft³</td><td>Footprint: ${foundation.footprintAreaSquareFeet.toFixed(1)} ft² · ${foundation.stoneVolumeCubicYards.toFixed(2)} yd³</td><td>≈ ${gravelTons} tons</td></tr>
       ${stoneRow}${linerRow}${seatingRows}
@@ -391,6 +451,21 @@ export default function BillOfMaterials({ output }: Props) {
           <p className='text-sm text-amber-900/70'>
             All quantities include {logistics.wasteFactorPct}% waste factor
           </p>
+          {output.thermalAssembly.mode === 'double-wall' && (
+            <p className='mt-1 text-xs text-amber-900/80'>
+              Double-wall mode splits counts into inner and outer shells. Combined wall units to buy:{' '}
+              <strong className='text-amber-950'>{totalWallUnitsPurchased.toLocaleString()} ea</strong>
+              {thermalCapBridgePurchasedUnits > 0 && (
+                <>
+                  {' '}· cap closure units:{' '}
+                  <strong className='text-amber-950'>
+                    {thermalCapBridgePurchasedUnits.toLocaleString()} ea
+                  </strong>
+                </>
+              )}
+              .
+            </p>
+          )}
         </div>
         <div className='flex gap-2'>
           <button
@@ -477,6 +552,7 @@ export default function BillOfMaterials({ output }: Props) {
           <strong className='text-amber-950'>
             {Math.round(
               logistics.estimatedBrickWeightLb +
+                (logistics.thermalAssemblyWeightLb ?? 0) +
                 logistics.estimatedCapWeightLb +
                 logistics.estimatedStoneWeightLb,
             ).toLocaleString()}{' '}

@@ -192,6 +192,24 @@ describe('construction packet export', () => {
     expect(html).toContain('48.00 in x 30.00 in');
   });
 
+  it('documents double-wall cap bridge closure requirements', () => {
+    const doubleWallInput: MasonryInput = {
+      ...input,
+      thermalAssemblyMode: 'double-wall',
+      thermalCavityWidthIn: 1.5,
+      capOrientation: 'header',
+    };
+    const output = new MasonryEngine().calculateDesign(doubleWallInput);
+    const html = buildConstructionPacketHtml(doubleWallInput, output);
+
+    expect(html).toContain('Cap Bridge Rows');
+    expect(html).toContain('Cap Closure Units');
+    expect(html).toContain('Cap Bridge Row Schedule');
+    expect(html).toContain('Cap Row');
+    expect(html).toContain('R1');
+    expect(html).toContain('Double-wall cap closure');
+  });
+
   it('builds clearance diagram with pass status when distance meets code', () => {
     const output = new MasonryEngine().calculateDesign({
       ...input,

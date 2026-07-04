@@ -1,4 +1,4 @@
-const CACHE_NAME = 'firepit-offline-v1';
+const CACHE_NAME = 'firepit-offline-v2';
 const APP_SHELL_ASSETS = [
   '/',
   '/index.html',
@@ -41,6 +41,15 @@ self.addEventListener('fetch', (event) => {
 
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) {
+    return;
+  }
+
+  if (
+    requestUrl.pathname.startsWith('/src/') ||
+    requestUrl.pathname.startsWith('/@vite/') ||
+    requestUrl.pathname.startsWith('/node_modules/')
+  ) {
+    event.respondWith(fetch(event.request));
     return;
   }
 

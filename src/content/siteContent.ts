@@ -33,6 +33,7 @@ export const quickStartSteps: ContentSection[] = [
       'Propane vents belong low in the wall because LP gas settles near the base.',
       'Natural gas vents belong high because the gas rises and needs upper relief.',
       'For gas builds, set the gas-line entry angle so routing stays clear of vent openings and confirm hardware-specific vent area requirements.',
+      'If you select double-wall, treat cap closure as a structural decision: verify cap-bridge rows, row-by-row unit counts, and closure units before ordering.',
     ],
   },
   {
@@ -57,6 +58,7 @@ export const quickStartSteps: ContentSection[] = [
       'Use cap orientation and cap placement mode to control how the top course reads and how far it projects inward versus outward.',
       'Keep cap overhang modest so the top course sheds water without feeling oversized.',
       'If the curve is tight, consider radial units or expect tapered cuts at the wall and cap.',
+      'For double-wall caps, keep a mortar gap between cap rows and review the cap-bridge row schedule so adjacent rows do not overlap.',
     ],
   },
 ];
@@ -208,6 +210,11 @@ export const faqItems: FaqItem[] = [
     question: 'What do the no-cut sizes mean?',
     answer:
       'For circular plans, the no-cut suggestions show inner diameters that let the wall, the cap, or both resolve without taper cuts. They are useful when you want cleaner coursing and faster layout on site.',
+  },
+  {
+    question: 'How should I read double-wall cap closure rows?',
+    answer:
+      'R1 is the inner cap bridge row and higher row numbers move outward. Each row has its own perimeter and unit count, so row spacing and taper-cut guidance can differ. Use the Build Plan cap-bridge row schedule to cut and place rows with a mortar gap between rows instead of forcing rows to touch.',
   },
   {
     question: 'When should I use shim spacer or vented accent strategy?',

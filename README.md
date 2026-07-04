@@ -54,6 +54,7 @@ Adding feature-focused screenshots will improve adoption and clarity. Suggested 
 - 3D preview with camera presets, cutaway mode, dimension overlays, LOD, and WebGL fallback handling.
 - Construction Mode with printable layer-by-layer SVG guidance.
 - Enhanced Bill of Materials with categorized material groups, cost estimator, and BOM-focused print layout.
+- Double-wall cavity planning with outer-shell counts, cap-bridge row schedule, closure-unit estimates, and 3D multi-row cap preview.
 - Professional Engineering Report generation (print-to-PDF flow).
 - Project workspace with autosave, snapshots, import/export JSON, and side-by-side variant comparison.
 - Regional advisory checks (setback, venting, frost-line/HOA context) and material/cost optimization suggestions.
@@ -73,7 +74,7 @@ Adding feature-focused screenshots will improve adoption and clarity. Suggested 
 
 ## Known Limitations
 
-- Double-wall cavity thermal assemblies and advanced heat-transfer behavior are not yet modeled.
+- Advanced heat-transfer simulation is still first-pass/rule-based (not transient CFD/FEA).
 - Manufacturer-specific gas hardware SKU compliance is still template-based, not model/SKU exact.
 - Offline support currently focuses on app-shell and cached assets; full offline map/weather/code integrations are not included.
 
@@ -90,7 +91,7 @@ Adding feature-focused screenshots will improve adoption and clarity. Suggested 
 1. Define geometry: plan shape, inner size, wall height, wall/cap units, and mortar settings.
 2. Set fuel + thermal strategy: wood, propane, or natural gas with liner/ring selection.
 3. Validate safety + site context: horizontal setback, vent area/placement, and soil/drainage/frost advisory output.
-4. Review quantities: units, waste-adjusted purchase count, mortar, cap count, and base stone volume.
+4. Review quantities: units, waste-adjusted purchase count, mortar, cap count, cap-bridge row schedule (if double-wall), and base stone volume.
 5. Review Construction Mode, permit checklist output, and course-level guidance before field layout starts.
 6. Use Field Toolkit during install for checklist progress, measured-vs-planned tolerance checks, and weather/burn gating.
 7. Build foundation and wall system, then follow cure and first-fire guidance (28-day cure for mortared assemblies).
@@ -113,7 +114,7 @@ Adding feature-focused screenshots will improve adoption and clarity. Suggested 
 | Vertical clearance | Modeled in safety visualization inset with review warning below recommended baseline. |
 | Foundation sizing | Baseline quantity model fixed; soil/drainage/frost context is advisory. |
 | Gas venting | Rule-based guidance using fuel + hardware template ranges; confirm exact manufacturer requirements. |
-| Thermal assembly depth | Liner/ring modeled; advanced double-wall cavity behavior not yet modeled. |
+| Thermal assembly depth | Double-wall cavity depth and cap-bridge row/closure planning are modeled; thermal behavior remains rule-based. |
 
 ## Field Validation Steps (On Site)
 

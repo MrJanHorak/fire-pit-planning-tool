@@ -327,6 +327,24 @@ describe('MasonryEngine', () => {
     );
   });
 
+  it('computes double-wall cap bridge rows and closure units', () => {
+    const engine = new MasonryEngine();
+    const output = engine.calculateDesign({
+      ...baseInput,
+      thermalAssemblyMode: 'double-wall',
+      thermalCavityWidthIn: 1.5,
+      capOrientation: 'header',
+    });
+
+    expect(output.thermalAssembly.mode).toBe('double-wall');
+    expect(output.thermalAssembly.capBridgeRows).toBeGreaterThan(1);
+    expect(output.thermalAssembly.capBridgeAdditionalUnits).toBeGreaterThan(0);
+    expect(output.logistics.thermalCapBridgeAdditionalUnits).toBe(
+      output.thermalAssembly.capBridgeAdditionalUnits,
+    );
+    expect(output.logistics.thermalCapBridgePurchasedUnits).toBeGreaterThan(0);
+  });
+
   it('supports rectangular plans with shape-aware spans and quantities', () => {
     const engine = new MasonryEngine();
     const output = engine.calculateDesign({

@@ -130,6 +130,26 @@ export function normalizeMasonryInput(
       value.gasHardwareTemplate,
       defaults.gasHardwareTemplate ?? 'generic-firepit',
     ) as MasonryInput['gasHardwareTemplate'],
+    thermalAssemblyMode: coerceString(
+      value.thermalAssemblyMode,
+      defaults.thermalAssemblyMode ?? 'single-wall',
+    ) as MasonryInput['thermalAssemblyMode'],
+    thermalCavityFill: coerceString(
+      value.thermalCavityFill,
+      defaults.thermalCavityFill ?? 'air-gap',
+    ) as MasonryInput['thermalCavityFill'],
+    thermalCavityVentMode: coerceString(
+      value.thermalCavityVentMode,
+      defaults.thermalCavityVentMode ?? 'vented',
+    ) as MasonryInput['thermalCavityVentMode'],
+    thermalCavityWidthIn: coerceNumber(
+      value.thermalCavityWidthIn,
+      defaults.thermalCavityWidthIn ?? 1.5,
+    ),
+    thermalTieSpacingIn: coerceNumber(
+      value.thermalTieSpacingIn,
+      defaults.thermalTieSpacingIn ?? 16,
+    ),
     capstonePresetKey: coerceString(
       value.capstonePresetKey,
       defaults.capstonePresetKey ?? 'matching',

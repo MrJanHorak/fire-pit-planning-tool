@@ -142,6 +142,62 @@ function buildCutScheduleTable(output: MasonryOutput): string {
   </table>`;
 }
 
+function buildCapBridgeRowScheduleTable(
+  output: MasonryOutput,
+  capCut: ReturnType<typeof getCapstoneCutMetrics>,
+): string {
+  if (output.thermalAssembly.mode !== 'double-wall') {
+    return '';
+  }
+
+  const rowCounts = output.thermalAssembly.capBridgeCourseUnitCounts;
+  if (rowCounts.length === 0) {
+    return '<p>No cap bridge row schedule available.</p>';
+  }
+
+  const rows = rowCounts
+    .map((unitCount, rowIndex) => {
+      const rowOffsetIn =
+        rowIndex * (output.resolvedCapUnit.widthIn + output.mortarJointIn);
+      const rowCenterlineWidthIn = output.capstone.capCenterlineWidthIn + rowOffsetIn * 2;
+      const rowCenterlineDepthIn = output.capstone.capCenterlineDepthIn + rowOffsetIn * 2;
+      const rowPerimeterIn =
+        output.planShape === 'circular'
+          ? Math.PI * Math.max(rowCenterlineWidthIn, rowCenterlineDepthIn)
+          : 2 * (rowCenterlineWidthIn + rowCenterlineDepthIn);
+      const moduleSpacingIn = rowPerimeterIn / Math.max(1, unitCount);
+      const rowJointIn = Math.max(0, moduleSpacingIn - output.resolvedCapUnit.lengthIn);
+      const taperRequired = output.planShape === 'circular' && rowIndex === 0 && capCut.requiresCutting;
+      const rowCutGuide = taperRequired
+        ? `${capCut.recommendedCutPerSideIn.toFixed(3)} in per side @ ${capCut.recommendedCutAngleDeg.toFixed(2)} deg`
+        : 'Not required';
+
+      return `<tr>
+        <td>R${rowIndex + 1}</td>
+        <td>${unitCount}</td>
+        <td>${rowPerimeterIn.toFixed(2)} in</td>
+        <td>${rowJointIn.toFixed(3)} in</td>
+        <td>${taperRequired ? 'Yes' : 'No'}</td>
+        <td>${rowCutGuide}</td>
+      </tr>`;
+    })
+    .join('');
+
+  return `<table>
+    <thead>
+      <tr>
+        <th>Cap Row</th>
+        <th>Units</th>
+        <th>Centerline Perimeter</th>
+        <th>Expected Joint</th>
+        <th>Taper Cut</th>
+        <th>Cut Guide</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
 function buildKeyValueTable(
   rows: Array<[string, string]>,
   keyHeader = 'Item',
@@ -283,6 +339,11 @@ function buildDiyStepsHtml(input: MasonryInput, output: MasonryOutput): string {
         ? `Capstone units at this diameter also require taper cuts. Remove approximately ${capCut.recommendedCutPerSideIn.toFixed(3)} in per side at about ${capCut.recommendedCutAngleDeg.toFixed(2)} deg off square so cap inner edges do not overlap.`
         : `When setting cap units, keep the narrow mortar edge toward the fire opening and the wider mortar edge toward the outside. This build uses an inner cap joint of ${output.capstone.joint.innerJointIn.toFixed(3)} in and an outer cap joint of ${output.capstone.joint.outerJointIn.toFixed(3)} in.`
       : `Set cap units with a target joint width of ${output.capstone.joint.actualJointIn.toFixed(3)} in and confirm corners stay square.`;
+  const capBridgeStep =
+    output.thermalAssembly.mode === 'double-wall' &&
+    output.thermalAssembly.capBridgeRows > 1
+      ? `Double-wall cap closure: build ${output.thermalAssembly.capBridgeRows} cap rows total. Install ${output.capstone.capUnitsPerCourseRounded} primary cap units plus ${output.thermalAssembly.capBridgeAdditionalUnits} closure units (before waste) so the cap fully bridges the cavity and outer shell.`
+      : null;
   const cutStep = output.cutPlan.requiresCutting
     ? `Cut wall bricks as wedges before installation. Remove approximately ${output.cutPlan.recommendedCutPerSideIn.toFixed(3)} in from each side of the inner face and set the saw to about ${output.cutPlan.recommendedCutAngleDeg.toFixed(2)} deg off square.`
     : 'Dry-fit the first full course and confirm joints remain consistent before mixing mortar.';
@@ -310,7 +371,8 @@ function buildDiyStepsHtml(input: MasonryInput, output: MasonryOutput): string {
     strategyStep,
     `Leave vent openings in ${ventCourses} at brick indexes ${output.ventSpec.ventBrickIndexes.join(', ')}. This provides ${output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in of vent area for the selected ${formatFuelName(input.fuelType).toLowerCase()} configuration.`,
     linerStep,
-    `Set the cap course with ${output.capstone.capUnitsPerCourseRounded} units on the cap centerline. Maintain a centerline cap joint of ${output.capstone.joint.actualJointIn.toFixed(3)} in.`,
+    `Set the primary cap ring with ${output.capstone.capUnitsPerCourseRounded} units on the cap centerline. Maintain a centerline cap joint of ${output.capstone.joint.actualJointIn.toFixed(3)} in.`,
+    ...(capBridgeStep ? [capBridgeStep] : []),
     capDirectionNote,
     input.mortarJointIn > 0
       ? `Tool exposed joints, clean mortar smears before they harden, and protect the installation from rain and freezing while mortar cures. Allow a minimum 28-day curing period before lighting the first fire. Do not apply sustained heat until the mortar has reached full strength.`
@@ -432,6 +494,37 @@ function buildFirePitMaterialsTable(output: MasonryOutput): string {
       `${output.foundation.footprintWidthIn.toFixed(2)} in x ${output.foundation.footprintDepthIn.toFixed(2)} in`,
     ],
   ];
+  if (output.thermalAssembly.mode === 'double-wall') {
+    const capBridgeRowDetail =
+      output.thermalAssembly.capBridgeCourseUnitCounts.length > 0
+        ? output.thermalAssembly.capBridgeCourseUnitCounts
+            .map((units, idx) => `R${idx + 1}: ${units}`)
+            .join(', ')
+        : 'n/a';
+    rows.push(
+      [
+        'Double-Wall Assembly',
+        `${output.thermalAssembly.totalWallDepthIn.toFixed(2)} in total depth`,
+      ],
+      [
+        'Extra Wall Units (estimate)',
+        `${output.logistics.thermalAssemblyAdditionalUnits ?? 0} units`,
+      ],
+      [
+        'Cap Bridge Coverage',
+        `${output.thermalAssembly.capBridgeRequiredWidthIn.toFixed(2)} in required depth`,
+      ],
+      [
+        'Cap Bridge Rows',
+        `${output.thermalAssembly.capBridgeRows} row(s)`,
+      ],
+      [
+        'Cap Closure Units (estimate)',
+        `${output.logistics.thermalCapBridgeAdditionalUnits ?? 0} units`,
+      ],
+      ['Cap Bridge Row Detail', capBridgeRowDetail],
+    );
+  }
 
   if (output.logistics.naturalStoneEstimate) {
     const estimate = output.logistics.naturalStoneEstimate;
@@ -718,6 +811,7 @@ export function buildConstructionPacketHtml(
     ],
     ['Heat Protection', formatLinerName(output.linerSpec.type)],
     ['Liner Expansion Gap', `${output.linerSpec.expansionGapIn.toFixed(3)} in`],
+    ['Thermal Assembly', output.thermalAssembly.description],
   ];
   if (output.logistics.naturalStoneEstimate) {
     designSummaryRows.push(
@@ -740,6 +834,13 @@ export function buildConstructionPacketHtml(
     ['Freeze-thaw climate', input.frostClimate ? 'Yes' : 'No'],
     ['Baseline stone depth', `${output.foundation.stoneDepthIn.toFixed(2)} in`],
   ];
+  if (output.thermalAssembly.mode === 'double-wall') {
+    foundationRows.push(
+      ['Cavity width', `${output.thermalAssembly.cavityWidthIn.toFixed(2)} in`],
+      ['Tie count', `${output.thermalAssembly.estimatedTieCount}`],
+      ['Thermal risk', output.thermalAssembly.riskLevel],
+    );
+  }
   const capRows: Array<[string, string]> = [
     [
       'Cap Joint At Layout Line',
@@ -758,6 +859,29 @@ export function buildConstructionPacketHtml(
       `${output.capstone.joint.outerJointIn.toFixed(3)} in`,
     ],
   ];
+  if (output.thermalAssembly.mode === 'double-wall') {
+    const capBridgeRowDetail =
+      output.thermalAssembly.capBridgeCourseUnitCounts.length > 0
+        ? output.thermalAssembly.capBridgeCourseUnitCounts
+            .map((units, idx) => `R${idx + 1}: ${units}`)
+            .join(', ')
+        : 'n/a';
+    capRows.push(
+      [
+        'Cap Bridge Required Width',
+        `${output.thermalAssembly.capBridgeRequiredWidthIn.toFixed(2)} in`,
+      ],
+      [
+        'Cap Bridge Rows',
+        `${output.thermalAssembly.capBridgeRows} row(s)`,
+      ],
+      [
+        'Cap Closure Units (before waste)',
+        `${output.thermalAssembly.capBridgeAdditionalUnits}`,
+      ],
+      ['Cap Bridge Row Detail', capBridgeRowDetail],
+    );
+  }
   const ventRows: Array<[string, string]> = [
     [
       'Gas Hardware Template',
@@ -887,6 +1011,7 @@ export function buildConstructionPacketHtml(
       ${buildKeyValueTable(capRows, 'Cap Parameter', 'Value')}
       <p>${output.planShape === 'circular' ? (capCut.requiresCutting ? `Capstone inner-edge overlap detected. Taper each cap unit by about ${capCut.recommendedCutPerSideIn.toFixed(3)} in per side at ${capCut.recommendedCutAngleDeg.toFixed(2)} deg.` : 'Capstone joints are buildable without taper cuts at this current diameter.') : 'Cap joints are shown at their resolved installed width.'}</p>
       ${output.planShape === 'circular' ? `<p>Approximate pit inner diameter for no cap taper cuts at this cap count: ${capCut.minimumRecommendedPitInnerDiameterIn.toFixed(2)} in.</p>` : ''}
+      ${output.thermalAssembly.mode === 'double-wall' ? `<h3>Cap Bridge Row Schedule</h3><p>Rows are listed from inside to outside. Joint and cut guidance are computed per row to avoid overlap and preserve buildable spacing.</p>${buildCapBridgeRowScheduleTable(output, capCut)}` : ''}
       <h3>Capstone Placement Detail</h3>
       ${capstonePlacementSample}
     </section>
@@ -898,6 +1023,38 @@ export function buildConstructionPacketHtml(
       <p>Heat Protection Note: ${output.linerSpec.description}</p>
       <p>Liner venting note: wall vent gaps provide the primary vent path in this model. Do not block the cavity or expansion gap, and verify any dedicated vent or drain requirements from the liner, burner, or ring manufacturer.</p>
       ${output.linerSpec.enabled ? `<p>Liner outside diameter: ${output.linerSpec.linerOuterDiameterIn.toFixed(2)} in. Liner inside diameter: ${output.linerSpec.linerInnerDiameterIn.toFixed(2)} in.</p>` : ''}
+      <h3>Thermal Assembly</h3>
+      ${buildKeyValueTable(
+        [
+          ['Mode', output.thermalAssembly.mode],
+          ['Fill', output.thermalAssembly.cavityFill.replace('-', ' ')],
+          ['Cavity Vent Mode', output.thermalAssembly.cavityVentMode],
+          ['Cavity Width', `${output.thermalAssembly.cavityWidthIn.toFixed(2)} in`],
+          ...(output.thermalAssembly.mode === 'double-wall'
+            ? ([
+                [
+                  'Cap Bridge Width',
+                  `${output.thermalAssembly.capBridgeRequiredWidthIn.toFixed(2)} in`,
+                ],
+                ['Cap Bridge Rows', `${output.thermalAssembly.capBridgeRows}`],
+                [
+                  'Cap Closure Units',
+                  `${output.thermalAssembly.capBridgeAdditionalUnits}`,
+                ],
+                [
+                  'Cap Bridge Row Detail',
+                  output.thermalAssembly.capBridgeCourseUnitCounts
+                    .map((units, idx) => `R${idx + 1}: ${units}`)
+                    .join(', '),
+                ],
+              ] as Array<[string, string]>)
+            : []),
+          ['Risk Level', output.thermalAssembly.riskLevel],
+        ],
+        'Assembly Parameter',
+        'Value',
+      )}
+      <ul>${output.thermalAssembly.notes.map((note) => `<li>${note}</li>`).join('')}</ul>
     </section>
 
     ${

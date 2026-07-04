@@ -1,7 +1,7 @@
 import { useState, type Dispatch, type SetStateAction } from 'react';
 import HelpTip from './HelpTip';
 import { BRICK_PRESETS, CAPSTONE_PRESETS } from '../engine/MasonryEngine';
-import type { MasonryInput } from '../types';
+import type { MasonryInput, MasonryUnit } from '../types';
 import {
   clampSeatingFurnitureCount,
   getMaxCircularSeatingCount,
@@ -57,6 +57,27 @@ function SectionHeading({
   );
 }
 
+function sanitizeDimension(value: number | undefined, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.max(0.5, value)
+    : fallback;
+}
+
+function orientUnit(
+  unit: MasonryUnit,
+  orientation: MasonryInput['orientation'],
+): MasonryUnit {
+  if (orientation === 'header') {
+    return {
+      ...unit,
+      widthIn: unit.lengthIn,
+      lengthIn: unit.widthIn,
+    };
+  }
+
+  return unit;
+}
+
 export default function ControlPanel({
   input,
   setInput,
@@ -101,6 +122,87 @@ export default function ControlPanel({
     selectedCapPresetKey in CAPSTONE_PRESETS
       ? CAPSTONE_PRESETS[selectedCapPresetKey as keyof typeof CAPSTONE_PRESETS]
       : null;
+  const resolvedWallBaseUnit: MasonryUnit =
+    selectedWallPreset ??
+    (usingCustomBrick
+      ? {
+          name: usingCustomBrickRadial
+            ? 'Custom Radial Brick (Avg)'
+            : 'Custom Brick',
+          lengthIn: usingCustomBrickRadial
+            ? (sanitizeDimension(input.customBrickInnerLengthIn, 7.25) +
+                sanitizeDimension(input.customBrickOuterLengthIn, 8)) /
+              2
+            : sanitizeDimension(input.customBrickLengthIn, 7.625),
+          widthIn: sanitizeDimension(input.customBrickWidthIn, 3.625),
+          heightIn: sanitizeDimension(input.customBrickHeightIn, 2.25),
+        }
+      : BRICK_PRESETS.modular);
+  const resolvedWallUnit = orientUnit(resolvedWallBaseUnit, input.orientation);
+  const resolvedCapBaseUnit: MasonryUnit =
+    !input.capstonePresetKey || input.capstonePresetKey === 'matching'
+      ? {
+          name: 'Matching Brick',
+          lengthIn: resolvedWallUnit.lengthIn,
+          widthIn: resolvedWallUnit.widthIn,
+          heightIn: resolvedWallUnit.heightIn,
+        }
+      : input.capstonePresetKey === 'custom'
+        ? {
+            name: 'Custom Cap Unit',
+            lengthIn: sanitizeDimension(input.customCapLengthIn, 14),
+            widthIn: sanitizeDimension(input.customCapWidthIn, 10),
+            heightIn: sanitizeDimension(input.customCapHeightIn, 2),
+          }
+        : input.capstonePresetKey === 'custom-radial'
+          ? {
+              name: 'Custom Radial Cap (Avg)',
+              lengthIn:
+                (sanitizeDimension(input.customCapInnerLengthIn, 13.5) +
+                  sanitizeDimension(input.customCapOuterLengthIn, 14.5)) /
+                2,
+              widthIn: sanitizeDimension(input.customCapWidthIn, 10),
+              heightIn: sanitizeDimension(input.customCapHeightIn, 2),
+            }
+          : (CAPSTONE_PRESETS[input.capstonePresetKey]?.unit ??
+            CAPSTONE_PRESETS.matching.unit);
+  const resolvedCapOrientation: MasonryInput['orientation'] =
+    (input.capOrientation ?? 'match-wall') === 'match-wall'
+      ? input.orientation
+      : (input.capOrientation as MasonryInput['orientation']);
+  const resolvedCapUnit = orientUnit(resolvedCapBaseUnit, resolvedCapOrientation);
+  const thermalAssemblyMode = input.thermalAssemblyMode ?? 'single-wall';
+  const cavityWidthIn = sanitizeDimension(input.thermalCavityWidthIn, 1.5);
+  const linerThicknessIn =
+    input.linerType === 'fire-brick' ? 2.5 : input.linerType === 'steel-ring' ? 0.25 : 0;
+  const shellThicknessIn = Math.max(
+    resolvedWallUnit.widthIn,
+    linerThicknessIn > 0 ? linerThicknessIn : resolvedWallUnit.widthIn,
+  );
+  const totalWallDepthIn =
+    thermalAssemblyMode === 'double-wall'
+      ? shellThicknessIn * 2 + cavityWidthIn
+      : shellThicknessIn;
+  const capBridgeRequiredWidthIn =
+    thermalAssemblyMode === 'double-wall'
+      ? totalWallDepthIn + input.capstoneOverhangIn
+      : resolvedCapUnit.widthIn;
+  const capBridgeRowsEstimate =
+    thermalAssemblyMode === 'double-wall'
+      ? Math.max(
+          1,
+          Math.ceil(
+            capBridgeRequiredWidthIn / Math.max(0.001, resolvedCapUnit.widthIn),
+          ),
+        )
+      : 1;
+  const singleRowBridgeCapCandidates = Object.entries(CAPSTONE_PRESETS)
+    .filter(([key]) => key !== 'matching')
+    .map(([key, preset]) => {
+      const orientedUnit = orientUnit(preset.unit, resolvedCapOrientation);
+      return { key, preset, orientedUnit };
+    })
+    .filter(({ orientedUnit }) => orientedUnit.widthIn >= capBridgeRequiredWidthIn);
   const primaryDimensionValue =
     input.planShape === 'circular' ? input.innerDiameterIn : input.innerWidthIn;
   const primaryDimensionMin = 18;
@@ -443,6 +545,122 @@ export default function ControlPanel({
 
         <label className='flex flex-col gap-1 sm:col-span-2'>
           <FieldLabel
+            label='Thermal Assembly'
+            tip='Choose this early. Double-wall changes wall depth, cap-bridge requirements, and overall material planning.'
+          />
+          <select
+            className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label='Thermal Assembly'
+            title='Thermal Assembly'
+            value={input.thermalAssemblyMode ?? 'single-wall'}
+            onChange={(event) =>
+              setInput((prev) => ({
+                ...prev,
+                thermalAssemblyMode: event.target
+                  .value as MasonryInput['thermalAssemblyMode'],
+              }))
+            }
+          >
+            <option value='single-wall'>Single Wall</option>
+            <option value='double-wall'>Double Wall Cavity</option>
+          </select>
+          {input.thermalAssemblyMode === 'double-wall' && (
+            <p className='text-xs text-amber-800/80'>
+              Estimated wall depth: <strong>{totalWallDepthIn.toFixed(2)} in</strong>.
+              Target cap-bridge coverage: <strong>{capBridgeRequiredWidthIn.toFixed(2)} in</strong>.
+            </p>
+          )}
+        </label>
+
+        {input.thermalAssemblyMode === 'double-wall' && (
+          <div className='grid gap-2 rounded-md border border-amber-700/20 bg-white/60 p-3 sm:col-span-2 sm:grid-cols-2'>
+            <label className='flex flex-col gap-1'>
+              <span className='text-xs font-medium text-amber-900'>
+                Cavity Fill
+              </span>
+              <select
+                className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                aria-label='Thermal Cavity Fill'
+                title='Thermal Cavity Fill'
+                value={input.thermalCavityFill ?? 'air-gap'}
+                onChange={(event) =>
+                  setInput((prev) => ({
+                    ...prev,
+                    thermalCavityFill: event.target
+                      .value as MasonryInput['thermalCavityFill'],
+                  }))
+                }
+              >
+                <option value='air-gap'>Vented air gap</option>
+                <option value='sand-fill'>Sand fill</option>
+                <option value='insulation-board'>Insulation board</option>
+              </select>
+            </label>
+
+            <label className='flex flex-col gap-1'>
+              <span className='text-xs font-medium text-amber-900'>
+                Cavity Vent Mode
+              </span>
+              <select
+                className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                aria-label='Thermal Cavity Vent Mode'
+                title='Thermal Cavity Vent Mode'
+                value={input.thermalCavityVentMode ?? 'vented'}
+                onChange={(event) =>
+                  setInput((prev) => ({
+                    ...prev,
+                    thermalCavityVentMode: event.target
+                      .value as MasonryInput['thermalCavityVentMode'],
+                  }))
+                }
+              >
+                <option value='vented'>Vented</option>
+                <option value='sealed'>Sealed</option>
+              </select>
+            </label>
+
+            <label className='flex flex-col gap-1'>
+              <span className='text-xs font-medium text-amber-900'>
+                Cavity Width (in)
+              </span>
+              <input
+                className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                type='number'
+                min={0.75}
+                step={0.25}
+                value={input.thermalCavityWidthIn ?? 1.5}
+                onChange={(event) =>
+                  setInput((prev) => ({
+                    ...prev,
+                    thermalCavityWidthIn: Number(event.target.value),
+                  }))
+                }
+              />
+            </label>
+
+            <label className='flex flex-col gap-1'>
+              <span className='text-xs font-medium text-amber-900'>
+                Tie Spacing (in)
+              </span>
+              <input
+                className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                type='number'
+                min={8}
+                step={1}
+                value={input.thermalTieSpacingIn ?? 16}
+                onChange={(event) =>
+                  setInput((prev) => ({
+                    ...prev,
+                    thermalTieSpacingIn: Number(event.target.value),
+                  }))
+                }
+              />
+            </label>
+          </div>
+        )}
+
+        <label className='flex flex-col gap-1 sm:col-span-2'>
+          <FieldLabel
             label='Capstone Type'
             tip='Cap units affect the finished top course, overhang, and cut planning. Matching wall units are the simplest starting point.'
           />
@@ -459,14 +677,46 @@ export default function ControlPanel({
             <option value='matching'>Matching Wall Unit</option>
             {Object.entries(CAPSTONE_PRESETS)
               .filter(([key]) => key !== 'matching')
+              .filter(([key]) =>
+                input.thermalAssemblyMode === 'double-wall'
+                  ? key !== 'matching'
+                  : true,
+              )
               .map(([key, preset]) => (
                 <option key={key} value={key}>
                   {preset.unit.name}
+                  {input.thermalAssemblyMode === 'double-wall'
+                    ? ` (${preset.unit.widthIn}" wide)`
+                    : ''}
                 </option>
               ))}
             <option value='custom'>Custom Cap Unit (Rectangular)</option>
             <option value='custom-radial'>Custom Cap Unit (Radial)</option>
           </select>
+          {input.thermalAssemblyMode === 'double-wall' && (
+            <div
+              className={`rounded-md border px-2 py-1.5 text-xs ${
+                capBridgeRowsEstimate > 1
+                  ? 'border-amber-700/30 bg-amber-50 text-amber-900'
+                  : 'border-emerald-700/30 bg-emerald-50 text-emerald-900'
+              }`}
+            >
+              {capBridgeRowsEstimate > 1 ? (
+                <>
+                  Current cap width is <strong>{resolvedCapUnit.widthIn.toFixed(2)} in</strong>, which does not fully bridge the
+                  double-wall depth in one row. Estimated bridge rows: <strong>{capBridgeRowsEstimate}</strong>.
+                  {singleRowBridgeCapCandidates.length > 0 && (
+                    <> Try a wider cap such as <strong>{singleRowBridgeCapCandidates[0]?.preset.unit.name}</strong>.</>
+                  )}
+                </>
+              ) : (
+                <>
+                  Current cap width <strong>{resolvedCapUnit.widthIn.toFixed(2)} in</strong> can bridge the
+                  double-wall assembly in a single row.
+                </>
+              )}
+            </div>
+          )}
           {selectedCapPresetKey === 'matching' && selectedWallPreset && (
             <span className='text-xs text-amber-800/75'>
               Matches wall unit: {selectedWallPreset.lengthIn}&Prime; L &times;{' '}
@@ -936,7 +1186,7 @@ export default function ControlPanel({
 
         <SectionHeading
           title='3 Fuel + Safety'
-          description='Set setback, site context, fuel behavior, and thermal controls.'
+          description='Set setback, site context, and fuel behavior.'
         />
 
         <label className='flex flex-col gap-1 sm:col-span-2'>

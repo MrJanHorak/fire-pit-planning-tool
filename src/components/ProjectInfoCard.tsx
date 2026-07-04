@@ -189,6 +189,15 @@ export default function ProjectInfoCard({
               <dd className='font-semibold'>{output.linerSpec.description}</dd>
             </div>
 
+            <div className='flex justify-between'>
+              <dt className='text-xs text-amber-950/75'>Thermal assembly</dt>
+              <dd className='font-semibold'>
+                {output.thermalAssembly.mode === 'double-wall'
+                  ? `Double wall · ${output.thermalAssembly.cavityFill.replace('-', ' ')}`
+                  : 'Single wall'}
+              </dd>
+            </div>
+
             {input.fuelType !== 'wood' &&
               output.ventSpec.gasLineEntryAngleDeg !== undefined && (
                 <div className='flex justify-between'>
@@ -235,6 +244,37 @@ export default function ProjectInfoCard({
                 Compacted angular stone (3/4 in minus)
               </dd>
             </div>
+
+            {output.thermalAssembly.mode === 'double-wall' && (
+              <>
+                <div className='flex justify-between'>
+                  <dt className='text-xs text-amber-950/75'>Cavity width</dt>
+                  <dd className='font-semibold'>
+                    {output.thermalAssembly.cavityWidthIn.toFixed(2)} in
+                  </dd>
+                </div>
+                <div className='flex justify-between'>
+                  <dt className='text-xs text-amber-950/75'>Tie count</dt>
+                  <dd className='font-semibold'>
+                    {output.thermalAssembly.estimatedTieCount}
+                  </dd>
+                </div>
+                <div className='flex justify-between'>
+                  <dt className='text-xs text-amber-950/75'>Cap bridge rows</dt>
+                  <dd className='font-semibold'>
+                    {output.thermalAssembly.capBridgeRows}
+                  </dd>
+                </div>
+                <div className='flex justify-between'>
+                  <dt className='text-xs text-amber-950/75'>
+                    Cap closure units
+                  </dt>
+                  <dd className='font-semibold'>
+                    {output.thermalAssembly.capBridgeAdditionalUnits}
+                  </dd>
+                </div>
+              </>
+            )}
 
             <div className='flex justify-between'>
               <dt className='text-xs text-amber-950/75'>Overhead clearance</dt>
@@ -325,6 +365,14 @@ export default function ProjectInfoCard({
           </ul>
         </details>
       )}
+      <details className='mt-3 rounded-lg border border-amber-900/15 bg-white/70 p-3'>
+        <summary className='cursor-pointer font-medium'>Thermal assembly notes</summary>
+        <ul className='mt-2 list-disc pl-4 text-sm text-amber-900/85'>
+          {output.thermalAssembly.notes.map((note) => (
+            <li key={note}>{note}</li>
+          ))}
+        </ul>
+      </details>
       {output.logistics.seatingAreaMaterials && (
         <details className='mt-3 rounded-lg border border-amber-900/15 bg-white/70 p-3'>
           <summary className='cursor-pointer font-medium'>

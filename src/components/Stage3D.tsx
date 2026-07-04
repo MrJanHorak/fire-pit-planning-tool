@@ -12,6 +12,7 @@ import {
   AdditiveBlending,
   BackSide,
   CanvasTexture,
+  Path,
   RepeatWrapping,
   SRGBColorSpace,
   Shape,
@@ -594,6 +595,59 @@ function CircularCapJointFiller({
       {showEdges && <Edges color='#4a3a28' lineWidth={1} scale={1.003} />}
     </mesh>
   );
+}
+
+function VerticalShell({
+    innerRadiusFt,
+    outerRadiusFt,
+    heightFt,
+    y,
+    color,
+    opacity,
+    wireframe,
+    showEdges,
+}: {
+    innerRadiusFt: number;
+    outerRadiusFt: number;
+    heightFt: number;
+    y: number;
+    color: string;
+    opacity: number;
+    wireframe: boolean;
+    showEdges: boolean;
+}) {
+    const shape = useMemo(() => {
+      const shellShape = new Shape();
+      shellShape.absarc(0, 0, outerRadiusFt, 0, Math.PI * 2, false);
+      const hole = new Path();
+      hole.absarc(0, 0, innerRadiusFt, 0, Math.PI * 2, true);
+      shellShape.holes.push(hole);
+      return shellShape;
+    }, [innerRadiusFt, outerRadiusFt]);
+
+    return (
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, y - heightFt / 2, 0]}>
+        <extrudeGeometry
+          args={[
+            shape,
+            {
+              depth: heightFt,
+              bevelEnabled: false,
+              steps: 1,
+              curveSegments: 96,
+            },
+          ]}
+        />
+        <meshStandardMaterial
+          color={color}
+          transparent={opacity < 1}
+          opacity={opacity}
+          roughness={0.86}
+          wireframe={wireframe}
+        />
+        {showEdges && <Edges color='#4a3a28' lineWidth={1} scale={1.003} />}
+      </mesh>
+    );
 }
 
 function rotateLocalOffset(x: number, z: number, rotationY: number): Point2D {
@@ -1782,6 +1836,7 @@ export default function Stage3D({
   );
   const capUnitWidthFt = output.resolvedCapUnit.widthIn / 12;
   const capBrickWidthFt = Math.max(0.05, capUnitWidthFt - mortarJointFt * 0.4);
+  const capBridgeRowStepFt = capUnitWidthFt + mortarJointFt;
   const isHalfRoundCap = isHalfRoundCapUnit(output.resolvedCapUnit.name);
   const wallRequiresTaperCut =
     output.planShape === 'circular' && output.cutPlan.requiresCutting;
@@ -1790,11 +1845,55 @@ export default function Stage3D({
     geometry.capRadiusFt - capBrickWidthFt / 2,
   );
   const renderedCapOuterRadiusFt = geometry.capRadiusFt + capBrickWidthFt / 2;
+  const capBridgeRowCount = output.thermalAssembly.mode === 'double-wall'
+    ? Math.max(1, output.thermalAssembly.capBridgeRows)
+    : 1;
+  const capBridgeRowUnitCounts =
+    output.thermalAssembly.mode === 'double-wall' &&
+    output.thermalAssembly.capBridgeCourseUnitCounts.length === capBridgeRowCount
+      ? output.thermalAssembly.capBridgeCourseUnitCounts
+      : Array.from(
+          { length: capBridgeRowCount },
+          (_, idx) =>
+            Math.max(
+              1,
+              output.capstone.capUnitsPerCourseRounded +
+                Math.round(
+                  (idx *
+                    output.capstone.capUnitsPerCourseRounded *
+                    capBridgeRowStepFt *
+                    2) /
+                    Math.max(0.001, geometry.capRadiusFt * 2),
+                ),
+            ),
+        );
+  const capBridgeOuterRadiusFt =
+    renderedCapOuterRadiusFt + (capBridgeRowCount - 1) * capBridgeRowStepFt;
+  const capBridgeSpanWidthFt =
+    geometry.capSpanWidthFt + (capBridgeRowCount - 1) * capBridgeRowStepFt * 2;
+  const capBridgeSpanDepthFt =
+    geometry.capSpanDepthFt + (capBridgeRowCount - 1) * capBridgeRowStepFt * 2;
   const renderedWallInnerRadiusFt = Math.max(
     0.01,
     geometry.wallRadiusFt - visBrickWidthFt / 2,
   );
   const renderedWallOuterRadiusFt = geometry.wallRadiusFt + visBrickWidthFt / 2;
+  const isDoubleWall = output.thermalAssembly.mode === 'double-wall';
+  const thermalCavityWidthFt = output.thermalAssembly.cavityWidthIn / 12;
+  const thermalOuterShellThicknessFt =
+    output.thermalAssembly.outerShellThicknessIn > 0
+      ? output.thermalAssembly.outerShellThicknessIn / 12
+      : visBrickWidthFt;
+  const thermalOuterShellInnerRadiusFt =
+    renderedWallOuterRadiusFt + thermalCavityWidthFt;
+  const thermalOuterShellOuterRadiusFt =
+    thermalOuterShellInnerRadiusFt + thermalOuterShellThicknessFt;
+  const thermalTieRenderCount = Math.max(
+    6,
+    Math.min(24, Math.round(output.thermalAssembly.estimatedTieCount / 2) || 6),
+  );
+  const thermalTieLengthFt = Math.max(0.08, thermalCavityWidthFt + 0.04);
+  const thermalTieY = Math.max(0.2, wallHeightFt * 0.52);
   const capRequiresTaperCut =
     output.planShape === 'circular' && output.capstone.requiresTaperCutting;
   const renderedWallBrickLengthFt =
@@ -1807,26 +1906,6 @@ export default function Stage3D({
           ),
         )
       : safeWallBrickLengthFt;
-  const renderedCapBrickLengthFt =
-    output.planShape === 'circular' && !capRequiresTaperCut
-      ? Math.max(
-          0.08,
-          Math.min(
-            safeCapBrickLengthFt,
-            arcToChordLengthFt(safeCapBrickLengthFt, geometry.capRadiusFt),
-          ),
-        )
-      : safeCapBrickLengthFt;
-  const renderedCapJointLengthFt =
-    output.planShape === 'circular' && !capRequiresTaperCut
-      ? Math.max(
-          0,
-          Math.min(
-            capJointLengthFt,
-            arcToChordLengthFt(capJointLengthFt, geometry.capRadiusFt),
-          ),
-        )
-      : capJointLengthFt;
   const capMortarBedHeightFt = Math.max(0.02, mortarJointFt * 0.55);
   const capMortarBedY = geometry.capRiseFt + capMortarBedHeightFt / 2;
   const capJointWidthFt = Math.max(0.03, capBrickWidthFt * 0.86);
@@ -2132,6 +2211,195 @@ export default function Stage3D({
   };
   const getBrickEmissiveIntensity = (brickId: string) =>
     isBrickSelected(brickId) ? 0.18 : isBrickHovered(brickId) ? 0.1 : 0;
+
+  const renderOuterWallUnitSurface = (
+    courseIndex: number,
+    brickIdx: number,
+    renderedLengthFt: number,
+    renderedHeightFt: number,
+    renderedWidthFt: number,
+    color: string,
+    brickId: string,
+  ) => {
+    if (isRockWallVisual) {
+      const seedBase = courseIndex * 1000 + brickIdx;
+      const styleScales =
+        rockVisualStyle === 'ledgestone'
+          ? {
+              lengthMin: 1.0,
+              lengthRange: 0.26,
+              heightMin: 0.72,
+              heightRange: 0.22,
+              widthMin: 0.98,
+              widthRange: 0.24,
+              jitterY: 0.16,
+              jitterX: 0.08,
+              jitterZ: 0.08,
+            }
+          : rockVisualStyle === 'mosaic'
+            ? {
+                lengthMin: 0.9,
+                lengthRange: 0.34,
+                heightMin: 0.84,
+                heightRange: 0.28,
+                widthMin: 0.9,
+                widthRange: 0.34,
+                jitterY: 0.22,
+                jitterX: 0.14,
+                jitterZ: 0.14,
+              }
+            : {
+                lengthMin: 0.94,
+                lengthRange: 0.32,
+                heightMin: 0.88,
+                heightRange: 0.26,
+                widthMin: 0.94,
+                widthRange: 0.32,
+                jitterY: 0.2,
+                jitterX: 0.12,
+                jitterZ: 0.12,
+              };
+      const tightnessLengthBoost = 0.11 * tightness;
+      const tightnessWidthBoost = 0.14 * tightness;
+      const tightnessHeightBoost = 0.08 * tightness;
+      const jitterScale = 1 - tightness * 0.55;
+      const lengthScale =
+        styleScales.lengthMin +
+        tightnessLengthBoost +
+        seededUnitVariation(seedBase + 11) * styleScales.lengthRange;
+      const heightScale =
+        styleScales.heightMin +
+        tightnessHeightBoost +
+        seededUnitVariation(seedBase + 23) * styleScales.heightRange;
+      const widthScale =
+        styleScales.widthMin +
+        tightnessWidthBoost +
+        seededUnitVariation(seedBase + 37) * styleScales.widthRange;
+      const rotationJitterY =
+        (seededUnitVariation(seedBase + 53) - 0.5) *
+        styleScales.jitterY *
+        jitterScale;
+      const rotationJitterX =
+        (seededUnitVariation(seedBase + 71) - 0.5) *
+        styleScales.jitterX *
+        jitterScale;
+      const rotationJitterZ =
+        (seededUnitVariation(seedBase + 89) - 0.5) *
+        styleScales.jitterZ *
+        jitterScale;
+      const colorIndex = Math.floor(
+        seededUnitVariation(seedBase + 101) * rockPalette.length,
+      );
+      const rockColor = rockPalette[colorIndex] ?? '#8f6a4a';
+      const archetypeIndex = getRockArchetypeIndex(
+        rockVisualStyle,
+        courseIndex,
+        brickIdx,
+        archetypePatternLength,
+      );
+      const archetypeScales =
+        rockVisualStyle === 'ledgestone'
+          ? [
+              [1.15, 0.8, 1.04],
+              [1.07, 0.86, 1.02],
+              [1.12, 0.74, 0.98],
+              [1.0, 0.9, 1.06],
+              [1.18, 0.78, 1.0],
+            ]
+          : rockVisualStyle === 'mosaic'
+            ? [
+                [0.96, 1.06, 1.0],
+                [1.02, 0.94, 0.96],
+                [0.92, 1.1, 1.08],
+                [1.08, 0.9, 1.02],
+                [1.0, 1.02, 0.92],
+              ]
+            : [
+                [1.0, 1.0, 1.0],
+                [1.08, 0.96, 1.04],
+                [0.94, 1.08, 0.98],
+                [1.04, 0.92, 1.1],
+                [0.98, 1.04, 0.94],
+              ];
+      const [archLength, archHeight, archWidth] =
+        archetypeScales[archetypeIndex] ?? [1, 1, 1];
+
+      return (
+        <mesh
+          rotation={[rotationJitterX, rotationJitterY, rotationJitterZ]}
+          scale={[
+            renderedLengthFt * lengthScale * archLength,
+            renderedHeightFt * heightScale * archHeight,
+            renderedWidthFt * widthScale * archWidth,
+          ]}
+        >
+          {rockVisualStyle === 'ledgestone' ? (
+            archetypeIndex % 2 === 0 ? (
+              <boxGeometry args={[1, 1, 1]} />
+            ) : (
+              <dodecahedronGeometry args={[0.56, 0]} />
+            )
+          ) : rockVisualStyle === 'mosaic' ? (
+            archetypeIndex % 3 === 0 ? (
+              <octahedronGeometry args={[0.62, 0]} />
+            ) : archetypeIndex % 3 === 1 ? (
+              <tetrahedronGeometry args={[0.68, 0]} />
+            ) : (
+              <icosahedronGeometry args={[0.56, 0]} />
+            )
+          ) : archetypeIndex % 4 === 0 ? (
+            <dodecahedronGeometry args={[0.5, 0]} />
+          ) : archetypeIndex % 4 === 1 ? (
+            <icosahedronGeometry args={[0.54, 0]} />
+          ) : archetypeIndex % 4 === 2 ? (
+            <octahedronGeometry args={[0.6, 0]} />
+          ) : (
+            <sphereGeometry args={[0.52, 9, 8]} />
+          )}
+          <meshStandardMaterial
+            color={rockColor}
+            emissive='#fbbf24'
+            emissiveIntensity={getBrickEmissiveIntensity(brickId)}
+            roughness={0.92}
+            metalness={0.01}
+            wireframe={effectiveWireframe}
+          />
+          {effectiveShowBrickOutlines && (
+            <Edges
+              color={getBrickEdgeColor(brickId, '#2d241c')}
+              lineWidth={1}
+              scale={1.01}
+            />
+          )}
+        </mesh>
+      );
+    }
+
+    return (
+      <>
+        <boxGeometry args={[renderedLengthFt, renderedHeightFt, renderedWidthFt]} />
+        <meshStandardMaterial
+          color={color}
+          emissive='#f59e0b'
+          emissiveIntensity={getBrickEmissiveIntensity(brickId)}
+          map={isPhotoreal ? (brickDiffuseMap ?? brickAlbedoTexture) : undefined}
+          bumpMap={isPhotoreal ? brickBumpMap : undefined}
+          bumpScale={isPhotoreal ? 0.05 : 1}
+          roughnessMap={isPhotoreal ? brickRoughnessMap : undefined}
+          roughness={isPhotoreal ? 0.76 : 0.82}
+          metalness={isPhotoreal ? 0.03 : 0}
+          wireframe={effectiveWireframe}
+        />
+        {effectiveShowBrickOutlines && (
+          <Edges
+            color={getBrickEdgeColor(brickId, '#2a1a10')}
+            lineWidth={1}
+            scale={1.003}
+          />
+        )}
+      </>
+    );
+  };
 
   const handleBrickPointerOver =
     (brickId: string) => (event: ThreeEvent<PointerEvent>) => {
@@ -3449,260 +3717,619 @@ export default function Stage3D({
               </group>
             ))}
 
+            {isDoubleWall &&
+              (() => {
+                // Outer shell centerline radius
+                const outerCenterlineRadiusFt =
+                  thermalOuterShellInnerRadiusFt + thermalOuterShellThicknessFt / 2;
+                const outerCenterlineRadiusIn = outerCenterlineRadiusFt * 12;
+                // Brick count for the outer shell (larger circumference)
+                const outerUnitCount = Math.max(
+                  4,
+                  Math.round(
+                    (2 * Math.PI * outerCenterlineRadiusFt * 12) /
+                      (safeWallBrickLengthFt * 12 + mortarJointFt * 12),
+                  ),
+                );
+                const outerRenderedBrickLengthFt =
+                  output.planShape === 'circular'
+                    ? Math.max(
+                        0.08,
+                        Math.min(
+                          safeWallBrickLengthFt,
+                          arcToChordLengthFt(
+                            safeWallBrickLengthFt,
+                            outerCenterlineRadiusFt,
+                          ),
+                        ),
+                      )
+                    : safeWallBrickLengthFt;
+
+                if (output.planShape === 'circular') {
+                  return (
+                    <>
+                      {/* Per-brick outer wall at high LOD */}
+                      {isLodHigh
+                        ? output.courses.map((course) => (
+                            <group key={`outer-course-${course.courseIndex}`}>
+                              {Array.from(
+                                { length: outerUnitCount },
+                                (_, brickIdx) => {
+                                  const placement = getCircularPlacement(
+                                    brickIdx,
+                                    outerUnitCount,
+                                    course.offsetIn,
+                                    outerCenterlineRadiusFt,
+                                    outerCenterlineRadiusIn,
+                                  );
+                                  if (!shouldRenderInCutaway(placement.x, placement.z)) {
+                                    return null;
+                                  }
+                                  const y =
+                                    visBrickHeightFt / 2 +
+                                    course.courseIndex * geometry.courseRiseFt +
+                                    mortarJointFt / 2;
+                                  const perBrickColor = getWallBrickColor(course, false);
+                                  return (
+                                    <mesh
+                                      key={`outer-${course.courseIndex}-${brickIdx}`}
+                                      position={[placement.x, y, placement.z]}
+                                      rotation={[0, placement.rotationY, 0]}
+                                    >
+                                      {renderOuterWallUnitSurface(
+                                        course.courseIndex,
+                                        brickIdx,
+                                        outerRenderedBrickLengthFt,
+                                        visBrickHeightFt,
+                                        visBrickWidthFt,
+                                        perBrickColor,
+                                        `outer-${course.courseIndex}-${brickIdx}`,
+                                      )}
+                                    </mesh>
+                                  );
+                                },
+                              )}
+                            </group>
+                          ))
+                        : /* Medium/low LOD: solid shell fallback */
+                          null}
+                      {!isLodHigh && (
+                        <VerticalShell
+                          innerRadiusFt={thermalOuterShellInnerRadiusFt}
+                          outerRadiusFt={thermalOuterShellOuterRadiusFt}
+                          heightFt={wallHeightFt}
+                          y={wallHeightFt / 2}
+                          color={palette.wallOddColor}
+                          opacity={1}
+                          wireframe={effectiveWireframe}
+                          showEdges={false}
+                        />
+                      )}
+                      {/* Cavity top cap ring */}
+                      <mesh
+                        rotation={[-Math.PI / 2, 0, 0]}
+                        position={[0, wallHeightFt + 0.01, 0]}
+                      >
+                        <ringGeometry
+                          args={[
+                            renderedWallOuterRadiusFt,
+                            thermalOuterShellOuterRadiusFt,
+                            Math.max(
+                              24,
+                              output.capstone.capUnitsPerCourseRounded * 2,
+                            ),
+                            1,
+                            cutawayThetaStartRad,
+                            cutawayThetaLengthRad,
+                          ]}
+                        />
+                        <meshStandardMaterial
+                          color={palette.capColor}
+                          map={isPhotoreal ? capAlbedoTexture : undefined}
+                          roughness={isPhotoreal ? 0.6 : 0.65}
+                          metalness={isPhotoreal ? 0.03 : 0}
+                          wireframe={effectiveWireframe}
+                        />
+                      </mesh>
+                      {/* Thermal tie connectors */}
+                      {isLodHigh &&
+                        Array.from(
+                          { length: thermalTieRenderCount },
+                          (_, tieIndex) => {
+                            const angle =
+                              (tieIndex / thermalTieRenderCount) * Math.PI * 2;
+                            const tieX =
+                              Math.cos(angle) *
+                              (renderedWallOuterRadiusFt + thermalCavityWidthFt / 2);
+                            const tieZ =
+                              Math.sin(angle) *
+                              (renderedWallOuterRadiusFt + thermalCavityWidthFt / 2);
+                            if (!shouldRenderInCutaway(tieX, tieZ)) {
+                              return null;
+                            }
+                            return (
+                              <mesh
+                                key={`thermal-tie-${tieIndex}`}
+                                position={[tieX, thermalTieY, tieZ]}
+                                rotation={[0, -angle, 0]}
+                              >
+                                <boxGeometry args={[0.05, 0.04, thermalTieLengthFt]} />
+                                <meshStandardMaterial
+                                  color='#6b7280'
+                                  metalness={0.7}
+                                  roughness={0.35}
+                                  wireframe={effectiveWireframe}
+                                />
+                              </mesh>
+                            );
+                          },
+                        )}
+                    </>
+                  );
+                }
+
+                // Rectangular outer shell — per-brick at high LOD, ring at lower LOD
+                const outerSpanWidthFt =
+                  geometry.wallSpanWidthFt + visBrickWidthFt + thermalCavityWidthFt * 2;
+                const outerSpanDepthFt =
+                  geometry.wallSpanDepthFt + visBrickWidthFt + thermalCavityWidthFt * 2;
+                const outerRectUnitCount = Math.max(
+                  4,
+                  Math.round(
+                    (2 * (outerSpanWidthFt + outerSpanDepthFt) * 12) /
+                      (safeWallBrickLengthFt * 12 + mortarJointFt * 12),
+                  ),
+                );
+
+                return (
+                  <>
+                    {isLodHigh
+                      ? output.courses.map((course) => (
+                          <group key={`outer-rect-course-${course.courseIndex}`}>
+                            {Array.from(
+                              { length: outerRectUnitCount },
+                              (_, brickIdx) => {
+                                const placement = getRectangularPlacement(
+                                  brickIdx,
+                                  outerRectUnitCount,
+                                  course.offsetIn,
+                                  outerSpanWidthFt,
+                                  outerSpanDepthFt,
+                                );
+                                if (!shouldRenderInCutaway(placement.x, placement.z)) {
+                                  return null;
+                                }
+                                const y =
+                                  visBrickHeightFt / 2 +
+                                  course.courseIndex * geometry.courseRiseFt +
+                                  mortarJointFt / 2;
+                                const perBrickColor = getWallBrickColor(course, false);
+                                return (
+                                  <mesh
+                                    key={`outer-rect-${course.courseIndex}-${brickIdx}`}
+                                    position={[placement.x, y, placement.z]}
+                                    rotation={[0, placement.rotationY, 0]}
+                                  >
+                                    {renderOuterWallUnitSurface(
+                                      course.courseIndex,
+                                      brickIdx,
+                                      outerRenderedBrickLengthFt,
+                                      visBrickHeightFt,
+                                      visBrickWidthFt,
+                                      perBrickColor,
+                                      `outer-rect-${course.courseIndex}-${brickIdx}`,
+                                    )}
+                                  </mesh>
+                                );
+                              },
+                            )}
+                          </group>
+                        ))
+                      : null}
+                    {!isLodHigh && (
+                      <RectangularRing
+                        widthFt={outerSpanWidthFt}
+                        depthFt={outerSpanDepthFt}
+                        thicknessFt={thermalOuterShellThicknessFt}
+                        heightFt={wallHeightFt}
+                        y={wallHeightFt / 2}
+                        color={palette.wallOddColor}
+                        wireframe={effectiveWireframe}
+                        opacity={1}
+                      />
+                    )}
+                  </>
+                );
+              })()}
+
             {isLodHigh &&
               (() => {
-              // For rectangular/square shapes with overhang, offset capstone placement to align corners with wall
-              let capstoneOffsetIn = 0;
-              if (output.planShape !== 'circular') {
-                // The capstone has larger dimensions due to overhang. To align it properly,
-                // we need to shift backward in the perimeter so corner bricks align.
-                // The perimeter of the capstone is 4*overhang larger than the wall perimeter.
-                const overhangPerimeterIn = output.capstone.overhangIn * 8;
-                // Offset by half to center the capstone over the wall
-                capstoneOffsetIn = -overhangPerimeterIn / 2;
-              }
-
-                return Array.from(
-                { length: output.capstone.capUnitsPerCourseRounded },
-                (_, capIdx) => {
-                  const placement = getPlacement(
-                    output,
-                    capIdx,
-                    output.capstone.capUnitsPerCourseRounded,
-                    capstoneOffsetIn,
-                    geometry.capSpanWidthFt,
-                    geometry.capSpanDepthFt,
-                    geometry.capRadiusFt,
+                const y =
+                  geometry.capRiseFt + capBrickHeightFt / 2 + mortarJointFt / 2;
+                return Array.from({ length: capBridgeRowCount }, (_, capRowIdx) => {
+                  const rowOffsetFt = capRowIdx * capBridgeRowStepFt;
+                  const rowRadiusFt = geometry.capRadiusFt + rowOffsetFt;
+                  const rowSpanWidthFt = geometry.capSpanWidthFt + rowOffsetFt * 2;
+                  const rowSpanDepthFt = geometry.capSpanDepthFt + rowOffsetFt * 2;
+                  const rowUnitCount =
+                    capBridgeRowUnitCounts[capRowIdx] ??
+                    output.capstone.capUnitsPerCourseRounded;
+                  const rowPerimeterIn =
+                    output.planShape === 'circular'
+                      ? Math.PI * rowRadiusFt * 2 * 12
+                      : 2 * (rowSpanWidthFt + rowSpanDepthFt) * 12;
+                  const rowActualModuleSpacingIn =
+                    rowPerimeterIn / Math.max(1, rowUnitCount);
+                  const rowRenderedCapInnerRadiusFt = Math.max(
+                    0.01,
+                    rowRadiusFt - capBrickWidthFt / 2,
                   );
-                  if (!shouldRenderInCutaway(placement.x, placement.z)) {
-                    return null;
+                  const rowRenderedCapOuterRadiusFt =
+                    rowRadiusFt + capBrickWidthFt / 2;
+                  const rowInnerRadiusIn = Math.max(
+                    0.001,
+                    rowRenderedCapInnerRadiusFt * 12,
+                  );
+                  const rowInnerModuleSpacingIn =
+                    (Math.PI * rowInnerRadiusIn * 2) / Math.max(1, rowUnitCount);
+                  const rowInnerJointIn =
+                    rowInnerModuleSpacingIn - output.resolvedCapUnit.lengthIn;
+                  const rowInnerChordIn =
+                    2 *
+                    rowInnerRadiusIn *
+                    Math.sin(
+                      rowActualModuleSpacingIn /
+                        (2 * Math.max(0.001, rowInnerRadiusIn)),
+                    );
+                  const rowCapRequiresTaper =
+                    output.planShape === 'circular' &&
+                    (rowInnerJointIn < 0 ||
+                      output.resolvedCapUnit.lengthIn >
+                        rowInnerChordIn - Math.max(0.036, output.mortarJointIn * 0.1));
+                  const rowRenderedCapBrickLengthFt =
+                    output.planShape === 'circular' && !rowCapRequiresTaper
+                      ? Math.max(
+                          0.08,
+                          Math.min(
+                            safeCapBrickLengthFt,
+                            arcToChordLengthFt(safeCapBrickLengthFt, rowRadiusFt),
+                          ),
+                        )
+                      : safeCapBrickLengthFt;
+                  let capstoneOffsetIn = 0;
+                  if (output.planShape !== 'circular') {
+                    const overhangPerimeterIn =
+                      (output.capstone.overhangIn + rowOffsetFt * 12) * 8;
+                    capstoneOffsetIn = -overhangPerimeterIn / 2;
                   }
-                  const y =
-                    geometry.capRiseFt +
-                    capBrickHeightFt / 2 +
-                    mortarJointFt / 2;
-                  const brickQuad = capRequiresTaperCut
-                    ? buildCircularCapBrickQuad({
-                        centerlineRadiusFt: geometry.capRadiusFt,
-                        innerRadiusFt: renderedCapInnerRadiusFt,
-                        outerRadiusFt: renderedCapOuterRadiusFt,
-                        brickLengthIn: renderedCapBrickLengthFt * 12,
-                      })
-                    : undefined;
 
-                  return (
-                    <mesh
-                      key={`cap-${capIdx}`}
-                      position={[placement.x, y, placement.z]}
-                      rotation={[0, placement.rotationY, 0]}
-                    >
-                      {capRequiresTaperCut && brickQuad ? (
-                        <CircularCapJointFiller
-                          polygonPoints={brickQuad.polygonPoints}
-                          heightFt={visCapBrickHeightFt}
-                          color={palette.capColor}
-                          wireframe={effectiveWireframe}
-                          showEdges={effectiveShowBrickOutlines}
-                        />
-                      ) : isHalfRoundCap ? (
-                        <>
-                          <mesh
-                            position={[
+                  return Array.from(
+                    { length: rowUnitCount },
+                    (_, capIdx) => {
+                      const placement =
+                        output.planShape === 'circular'
+                          ? getCircularPlacement(
+                              capIdx,
+                              rowUnitCount,
                               0,
-                              -visCapBrickHeightFt / 2 +
-                                halfRoundBaseHeightFt / 2,
-                              0,
-                            ]}
-                          >
-                            <boxGeometry
-                              args={[
-                                renderedCapBrickLengthFt,
-                                halfRoundBaseHeightFt,
-                                capBrickWidthFt,
-                              ]}
-                            />
-                            <meshStandardMaterial
+                              rowRadiusFt,
+                              rowRadiusFt * 12,
+                            )
+                          : getRectangularPlacement(
+                              capIdx,
+                              rowUnitCount,
+                              capstoneOffsetIn,
+                              rowSpanWidthFt,
+                              rowSpanDepthFt,
+                            );
+                      if (!shouldRenderInCutaway(placement.x, placement.z)) {
+                        return null;
+                      }
+                      const brickQuad = rowCapRequiresTaper
+                        ? buildCircularCapBrickQuad({
+                            centerlineRadiusFt: rowRadiusFt,
+                            innerRadiusFt: rowRenderedCapInnerRadiusFt,
+                            outerRadiusFt: rowRenderedCapOuterRadiusFt,
+                            brickLengthIn: rowRenderedCapBrickLengthFt * 12,
+                          })
+                        : undefined;
+
+                      return (
+                        <mesh
+                          key={`cap-row-${capRowIdx}-${capIdx}`}
+                          position={[placement.x, y, placement.z]}
+                          rotation={[0, placement.rotationY, 0]}
+                        >
+                          {rowCapRequiresTaper && brickQuad ? (
+                            <CircularCapJointFiller
+                              polygonPoints={brickQuad.polygonPoints}
+                              heightFt={visCapBrickHeightFt}
                               color={palette.capColor}
-                              map={isPhotoreal ? capAlbedoTexture : undefined}
-                              roughness={isPhotoreal ? 0.6 : 0.65}
-                              metalness={isPhotoreal ? 0.03 : 0}
                               wireframe={effectiveWireframe}
+                              showEdges={effectiveShowBrickOutlines}
                             />
-                            {effectiveShowBrickOutlines && (
-                              <Edges
-                                color='#3b2d1f'
-                                lineWidth={1}
-                                scale={1.003}
+                          ) : isHalfRoundCap ? (
+                            <>
+                              <mesh
+                                position={[
+                                  0,
+                                  -visCapBrickHeightFt / 2 +
+                                    halfRoundBaseHeightFt / 2,
+                                  0,
+                                ]}
+                              >
+                                <boxGeometry
+                                  args={[
+                                    rowRenderedCapBrickLengthFt,
+                                    halfRoundBaseHeightFt,
+                                    capBrickWidthFt,
+                                  ]}
+                                />
+                                <meshStandardMaterial
+                                  color={palette.capColor}
+                                  map={isPhotoreal ? capAlbedoTexture : undefined}
+                                  roughness={isPhotoreal ? 0.6 : 0.65}
+                                  metalness={isPhotoreal ? 0.03 : 0}
+                                  wireframe={effectiveWireframe}
+                                />
+                                {effectiveShowBrickOutlines && (
+                                  <Edges
+                                    color='#3b2d1f'
+                                    lineWidth={1}
+                                    scale={1.003}
+                                  />
+                                )}
+                              </mesh>
+                              <mesh
+                                position={[
+                                  0,
+                                  -visCapBrickHeightFt / 2 +
+                                    halfRoundBaseHeightFt,
+                                  0,
+                                ]}
+                                rotation={[0, 0, Math.PI / 2]}
+                              >
+                                <cylinderGeometry
+                                  args={[
+                                    halfRoundCrownRadiusFt,
+                                    halfRoundCrownRadiusFt,
+                                    rowRenderedCapBrickLengthFt,
+                                    20,
+                                  ]}
+                                />
+                                <meshStandardMaterial
+                                  color={palette.capCrownColor}
+                                  map={isPhotoreal ? capAlbedoTexture : undefined}
+                                  roughness={isPhotoreal ? 0.54 : 0.58}
+                                  metalness={isPhotoreal ? 0.03 : 0}
+                                  wireframe={effectiveWireframe}
+                                />
+                              </mesh>
+                            </>
+                          ) : (
+                            <>
+                              <boxGeometry
+                                args={[
+                                  rowRenderedCapBrickLengthFt,
+                                  visCapBrickHeightFt,
+                                  capBrickWidthFt,
+                                ]}
                               />
-                            )}
-                          </mesh>
-                          <mesh
-                            position={[
-                              0,
-                              -visCapBrickHeightFt / 2 + halfRoundBaseHeightFt,
-                              0,
-                            ]}
-                            rotation={[0, 0, Math.PI / 2]}
-                          >
-                            <cylinderGeometry
-                              args={[
-                                halfRoundCrownRadiusFt,
-                                halfRoundCrownRadiusFt,
-                                renderedCapBrickLengthFt,
-                                20,
-                              ]}
-                            />
-                            <meshStandardMaterial
-                              color={palette.capCrownColor}
-                              map={isPhotoreal ? capAlbedoTexture : undefined}
-                              roughness={isPhotoreal ? 0.54 : 0.58}
-                              metalness={isPhotoreal ? 0.03 : 0}
-                              wireframe={effectiveWireframe}
-                            />
-                          </mesh>
-                        </>
-                      ) : (
-                        <>
-                          <boxGeometry
-                            args={[
-                              renderedCapBrickLengthFt,
-                              visCapBrickHeightFt,
-                              capBrickWidthFt,
-                            ]}
-                          />
-                          <meshStandardMaterial
-                            color={palette.capColor}
-                            map={isPhotoreal ? capAlbedoTexture : undefined}
-                            roughness={isPhotoreal ? 0.6 : 0.65}
-                            metalness={isPhotoreal ? 0.03 : 0}
-                            wireframe={effectiveWireframe}
-                          />
-                          {effectiveShowBrickOutlines && (
-                            <Edges
-                              color='#3b2d1f'
-                              lineWidth={1}
-                              scale={1.003}
-                            />
+                              <meshStandardMaterial
+                                color={palette.capColor}
+                                map={isPhotoreal ? capAlbedoTexture : undefined}
+                                roughness={isPhotoreal ? 0.6 : 0.65}
+                                metalness={isPhotoreal ? 0.03 : 0}
+                                wireframe={effectiveWireframe}
+                              />
+                              {effectiveShowBrickOutlines && (
+                                <Edges
+                                  color='#3b2d1f'
+                                  lineWidth={1}
+                                  scale={1.003}
+                                />
+                              )}
+                            </>
                           )}
-                        </>
-                      )}
-                    </mesh>
+                        </mesh>
+                      );
+                    },
                   );
-                },
-                );
+                });
               })()}
 
             {isLodHigh &&
               showMortar &&
               capJointLengthFt > 0.02 &&
               (() => {
-                let capstoneOffsetIn = 0;
-                if (output.planShape !== 'circular') {
-                  const overhangPerimeterIn = output.capstone.overhangIn * 8;
-                  capstoneOffsetIn = -overhangPerimeterIn / 2;
-                }
+                const jointY =
+                  geometry.capRiseFt + capBrickHeightFt / 2 + mortarJointFt / 2;
+                return Array.from({ length: capBridgeRowCount }, (_, capRowIdx) => {
+                  const rowOffsetFt = capRowIdx * capBridgeRowStepFt;
+                  const rowRadiusFt = geometry.capRadiusFt + rowOffsetFt;
+                  const rowSpanWidthFt = geometry.capSpanWidthFt + rowOffsetFt * 2;
+                  const rowSpanDepthFt = geometry.capSpanDepthFt + rowOffsetFt * 2;
+                  const rowUnitCount =
+                    capBridgeRowUnitCounts[capRowIdx] ??
+                    output.capstone.capUnitsPerCourseRounded;
+                  const rowPerimeterIn =
+                    output.planShape === 'circular'
+                      ? Math.PI * rowRadiusFt * 2 * 12
+                      : 2 * (rowSpanWidthFt + rowSpanDepthFt) * 12;
+                  const rowActualModuleSpacingIn =
+                    rowPerimeterIn / Math.max(1, rowUnitCount);
+                  const rowRenderedCapInnerRadiusFt = Math.max(
+                    0.01,
+                    rowRadiusFt - capBrickWidthFt / 2,
+                  );
+                  const rowRenderedCapOuterRadiusFt =
+                    rowRadiusFt + capBrickWidthFt / 2;
+                  const rowInnerRadiusIn = Math.max(
+                    0.001,
+                    rowRenderedCapInnerRadiusFt * 12,
+                  );
+                  const rowInnerModuleSpacingIn =
+                    (Math.PI * rowInnerRadiusIn * 2) / Math.max(1, rowUnitCount);
+                  const rowInnerJointIn =
+                    rowInnerModuleSpacingIn - output.resolvedCapUnit.lengthIn;
+                  const rowInnerChordIn =
+                    2 *
+                    rowInnerRadiusIn *
+                    Math.sin(
+                      rowActualModuleSpacingIn /
+                        (2 * Math.max(0.001, rowInnerRadiusIn)),
+                    );
+                  const rowCapRequiresTaper =
+                    output.planShape === 'circular' &&
+                    (rowInnerJointIn < 0 ||
+                      output.resolvedCapUnit.lengthIn >
+                        rowInnerChordIn - Math.max(0.036, output.mortarJointIn * 0.1));
+                  const rowRenderedCapBrickLengthFt =
+                    output.planShape === 'circular' && !rowCapRequiresTaper
+                      ? Math.max(
+                          0.08,
+                          Math.min(
+                            safeCapBrickLengthFt,
+                            arcToChordLengthFt(safeCapBrickLengthFt, rowRadiusFt),
+                          ),
+                        )
+                      : safeCapBrickLengthFt;
+                  const rowRenderedCapJointLengthFt =
+                    output.planShape === 'circular' && !rowCapRequiresTaper
+                      ? Math.max(
+                          0,
+                          Math.min(
+                            capJointLengthFt,
+                            arcToChordLengthFt(capJointLengthFt, rowRadiusFt),
+                          ),
+                        )
+                      : capJointLengthFt;
+                  let capstoneOffsetIn = 0;
+                  if (output.planShape !== 'circular') {
+                    const overhangPerimeterIn =
+                      (output.capstone.overhangIn + rowOffsetFt * 12) * 8;
+                    capstoneOffsetIn = -overhangPerimeterIn / 2;
+                  }
 
-                return Array.from(
-                  { length: output.capstone.capUnitsPerCourseRounded },
-                  (_, capIdx) => {
-                    const jointPlacement = getPlacement(
-                      output,
-                      capIdx + 0.5,
-                      output.capstone.capUnitsPerCourseRounded,
-                      capstoneOffsetIn,
-                      geometry.capSpanWidthFt,
-                      geometry.capSpanDepthFt,
-                      geometry.capRadiusFt,
-                    );
-                    if (
-                      !shouldRenderInCutaway(
-                        jointPlacement.x,
-                        jointPlacement.z,
-                      )
-                    ) {
-                      return null;
-                    }
-                    const leftPlacement = getPlacement(
-                      output,
-                      capIdx,
-                      output.capstone.capUnitsPerCourseRounded,
-                      capstoneOffsetIn,
-                      geometry.capSpanWidthFt,
-                      geometry.capSpanDepthFt,
-                      geometry.capRadiusFt,
-                    );
-                    const rightPlacement = getPlacement(
-                      output,
-                      (capIdx + 1) % output.capstone.capUnitsPerCourseRounded,
-                      output.capstone.capUnitsPerCourseRounded,
-                      capstoneOffsetIn,
-                      geometry.capSpanWidthFt,
-                      geometry.capSpanDepthFt,
-                      geometry.capRadiusFt,
-                    );
-                    const jointQuad =
-                      output.planShape === 'circular' && capRequiresTaperCut
-                        ? buildCircularCapJointQuad({
-                            centerlineRadiusFt: geometry.capRadiusFt,
-                            innerRadiusFt: renderedCapInnerRadiusFt,
-                            outerRadiusFt: renderedCapOuterRadiusFt,
-                            actualJointIn: output.capstone.joint.actualJointIn,
-                          })
-                        : output.planShape !== 'circular'
-                          ? buildRectangularJointQuad(
-                              leftPlacement,
-                              rightPlacement,
-                              jointPlacement,
-                              renderedCapBrickLengthFt,
-                              capBrickWidthFt,
+                  return Array.from(
+                    { length: rowUnitCount },
+                    (_, capIdx) => {
+                      const jointPlacement =
+                        output.planShape === 'circular'
+                          ? getCircularPlacement(
+                              capIdx + 0.5,
+                              rowUnitCount,
+                              0,
+                              rowRadiusFt,
+                              rowRadiusFt * 12,
                             )
-                          : undefined;
-                    const jointY =
-                      geometry.capRiseFt +
-                      capBrickHeightFt / 2 +
-                      mortarJointFt / 2;
+                          : getRectangularPlacement(
+                              capIdx + 0.5,
+                              rowUnitCount,
+                              capstoneOffsetIn,
+                              rowSpanWidthFt,
+                              rowSpanDepthFt,
+                            );
+                      if (
+                        !shouldRenderInCutaway(
+                          jointPlacement.x,
+                          jointPlacement.z,
+                        )
+                      ) {
+                        return null;
+                      }
+                      const leftPlacement =
+                        output.planShape === 'circular'
+                          ? getCircularPlacement(
+                              capIdx,
+                              rowUnitCount,
+                              0,
+                              rowRadiusFt,
+                              rowRadiusFt * 12,
+                            )
+                          : getRectangularPlacement(
+                              capIdx,
+                              rowUnitCount,
+                              capstoneOffsetIn,
+                              rowSpanWidthFt,
+                              rowSpanDepthFt,
+                            );
+                      const rightPlacement =
+                        output.planShape === 'circular'
+                          ? getCircularPlacement(
+                              (capIdx + 1) % rowUnitCount,
+                              rowUnitCount,
+                              0,
+                              rowRadiusFt,
+                              rowRadiusFt * 12,
+                            )
+                          : getRectangularPlacement(
+                              (capIdx + 1) % rowUnitCount,
+                              rowUnitCount,
+                              capstoneOffsetIn,
+                              rowSpanWidthFt,
+                              rowSpanDepthFt,
+                            );
+                      const jointQuad =
+                        output.planShape === 'circular' && rowCapRequiresTaper
+                          ? buildCircularCapJointQuad({
+                              centerlineRadiusFt: rowRadiusFt,
+                              innerRadiusFt: rowRenderedCapInnerRadiusFt,
+                              outerRadiusFt: rowRenderedCapOuterRadiusFt,
+                              actualJointIn: output.capstone.joint.actualJointIn,
+                            })
+                          : output.planShape !== 'circular'
+                            ? buildRectangularJointQuad(
+                                leftPlacement,
+                                rightPlacement,
+                                jointPlacement,
+                                rowRenderedCapBrickLengthFt,
+                                capBrickWidthFt,
+                              )
+                            : undefined;
 
-                    return (
-                      <mesh
-                        key={`cap-joint-${capIdx}-${mortarMode}`}
-                        position={[jointPlacement.x, jointY, jointPlacement.z]}
-                        rotation={[0, jointPlacement.rotationY, 0]}
-                      >
-                        {output.planShape === 'circular' &&
-                        capRequiresTaperCut &&
-                        jointQuad ? (
-                          <CircularCapJointFiller
-                            polygonPoints={jointQuad.polygonPoints}
-                            heightFt={capJointHeightFt}
-                            color={palette.mortarColor}
-                            opacity={mortarOpacity}
-                            wireframe={effectiveWireframe}
-                            showEdges={effectiveShowBrickOutlines}
-                          />
-                        ) : (
-                          <>
-                            <boxGeometry
-                              args={[
-                                renderedCapJointLengthFt,
-                                capJointHeightFt,
-                                capJointWidthFt,
-                              ]}
-                            />
-                            <meshStandardMaterial
+                      return (
+                        <mesh
+                          key={`cap-joint-${capRowIdx}-${capIdx}-${mortarMode}`}
+                          position={[jointPlacement.x, jointY, jointPlacement.z]}
+                          rotation={[0, jointPlacement.rotationY, 0]}
+                        >
+                          {output.planShape === 'circular' &&
+                          rowCapRequiresTaper &&
+                          jointQuad ? (
+                            <CircularCapJointFiller
+                              polygonPoints={jointQuad.polygonPoints}
+                              heightFt={capJointHeightFt}
                               color={palette.mortarColor}
-                              map={isPhotoreal ? mortarTexture : undefined}
-                              roughness={isPhotoreal ? 0.88 : 0.93}
-                              transparent
                               opacity={mortarOpacity}
-                              depthWrite={mortarDepthWrite}
                               wireframe={effectiveWireframe}
+                              showEdges={effectiveShowBrickOutlines}
                             />
-                          </>
-                        )}
-                      </mesh>
-                    );
-                  },
-                );
+                          ) : (
+                            <>
+                              <boxGeometry
+                                args={[
+                                  rowRenderedCapJointLengthFt,
+                                  capJointHeightFt,
+                                  capJointWidthFt,
+                                ]}
+                              />
+                              <meshStandardMaterial
+                                color={palette.mortarColor}
+                                map={isPhotoreal ? mortarTexture : undefined}
+                                roughness={isPhotoreal ? 0.88 : 0.93}
+                                transparent
+                                opacity={mortarOpacity}
+                                depthWrite={mortarDepthWrite}
+                                wireframe={effectiveWireframe}
+                              />
+                            </>
+                          )}
+                        </mesh>
+                      );
+                    },
+                  );
+                });
               })()}
 
             {isLodHigh &&
@@ -3833,44 +4460,52 @@ export default function Stage3D({
                   />
                 )}
 
-                {output.planShape === 'circular' ? (
-                  <mesh
-                    position={[
-                      0,
-                      geometry.capRiseFt + visCapBrickHeightFt / 2 + mortarJointFt / 2,
-                      0,
-                    ]}
-                  >
-                    <cylinderGeometry
-                      args={[
-                        renderedCapOuterRadiusFt,
-                        renderedCapOuterRadiusFt,
-                        visCapBrickHeightFt,
-                        64,
-                        1,
-                        true,
-                        cutawayThetaStartRad,
-                        cutawayThetaLengthRad,
-                      ]}
-                    />
-                    <meshStandardMaterial
-                      color={palette.capColor}
-                      roughness={isPhotoreal ? 0.62 : 0.68}
-                      metalness={0.02}
-                      wireframe={effectiveWireframe}
-                    />
-                  </mesh>
-                ) : (
-                  <RectangularRing
-                    widthFt={geometry.capSpanWidthFt}
-                    depthFt={geometry.capSpanDepthFt}
-                    thicknessFt={capBrickWidthFt}
-                    heightFt={visCapBrickHeightFt}
-                    y={geometry.capRiseFt + visCapBrickHeightFt / 2 + mortarJointFt / 2}
-                    color={palette.capColor}
-                    wireframe={effectiveWireframe}
-                  />
-                )}
+                {output.planShape === 'circular'
+                  ? Array.from({ length: capBridgeRowCount }, (_, capRowIdx) => (
+                      <mesh
+                        key={`lod-cap-row-${capRowIdx}`}
+                        position={[
+                          0,
+                          geometry.capRiseFt + visCapBrickHeightFt / 2 + mortarJointFt / 2,
+                          0,
+                        ]}
+                      >
+                        <cylinderGeometry
+                          args={[
+                            renderedCapOuterRadiusFt + capRowIdx * capBridgeRowStepFt,
+                            renderedCapOuterRadiusFt + capRowIdx * capBridgeRowStepFt,
+                            visCapBrickHeightFt,
+                            64,
+                            1,
+                            true,
+                            cutawayThetaStartRad,
+                            cutawayThetaLengthRad,
+                          ]}
+                        />
+                        <meshStandardMaterial
+                          color={palette.capColor}
+                          roughness={isPhotoreal ? 0.62 : 0.68}
+                          metalness={0.02}
+                          wireframe={effectiveWireframe}
+                        />
+                      </mesh>
+                    ))
+                  : Array.from({ length: capBridgeRowCount }, (_, capRowIdx) => (
+                      <RectangularRing
+                        key={`lod-cap-rect-row-${capRowIdx}`}
+                        widthFt={
+                          geometry.capSpanWidthFt + capRowIdx * capBridgeRowStepFt * 2
+                        }
+                        depthFt={
+                          geometry.capSpanDepthFt + capRowIdx * capBridgeRowStepFt * 2
+                        }
+                        thicknessFt={capBrickWidthFt}
+                        heightFt={visCapBrickHeightFt}
+                        y={geometry.capRiseFt + visCapBrickHeightFt / 2 + mortarJointFt / 2}
+                        color={palette.capColor}
+                        wireframe={effectiveWireframe}
+                      />
+                    ))}
               </>
             )}
 
@@ -3883,7 +4518,7 @@ export default function Stage3D({
                 <ringGeometry
                   args={[
                     renderedCapInnerRadiusFt,
-                    renderedCapOuterRadiusFt,
+                    capBridgeOuterRadiusFt,
                     128,
                     1,
                     cutawayThetaStartRad,
@@ -3903,8 +4538,8 @@ export default function Stage3D({
             ) : showMortar ? (
               <RectangularRing
                 key={`cap-bed-rect-${mortarMode}`}
-                widthFt={geometry.capSpanWidthFt}
-                depthFt={geometry.capSpanDepthFt}
+                widthFt={capBridgeSpanWidthFt}
+                depthFt={capBridgeSpanDepthFt}
                 thicknessFt={capBrickWidthFt}
                 heightFt={capMortarBedHeightFt}
                 y={capMortarBedY}
