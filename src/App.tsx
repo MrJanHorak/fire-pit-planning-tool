@@ -1351,8 +1351,9 @@ export default function App() {
                     Name, import/export, autosave, and snapshot controls.
                   </p>
                 </div>
-                <span className='rounded-full border border-amber-900/20 bg-amber-50/70 px-3 py-1 text-xs font-semibold text-amber-900'>
+                <span className='inline-flex items-center gap-1 rounded-full border border-amber-900/20 bg-amber-50/70 px-3 py-1 text-xs font-semibold text-amber-900'>
                   Collapse
+                  <svg aria-hidden='true' viewBox='0 0 10 6' className='h-2.5 w-2.5 rotate-180' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><path d='M1 1l4 4 4-4'/></svg>
                 </span>
               </div>
             </summary>
@@ -1710,8 +1711,9 @@ export default function App() {
                   <p className='text-xs font-semibold uppercase tracking-[0.15em] text-amber-900/90'>
                     Optional Insights
                   </p>
-                  <span className='rounded-full border border-amber-900/20 bg-white px-3 py-1 text-xs font-semibold text-amber-950'>
+                  <span className='inline-flex items-center gap-1 rounded-full border border-amber-900/20 bg-white px-3 py-1 text-xs font-semibold text-amber-950'>
                     {showOptionalInsights ? 'Hide' : 'Show'}
+                    <svg aria-hidden='true' viewBox='0 0 10 6' className={`h-2.5 w-2.5 transition-transform ${showOptionalInsights ? 'rotate-180' : ''}`} fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><path d='M1 1l4 4 4-4'/></svg>
                   </span>
                 </div>
               </summary>
@@ -1772,8 +1774,9 @@ export default function App() {
                       <p className='text-xs font-semibold uppercase tracking-[0.15em] text-amber-900/85'>
                         Field Toolkit
                       </p>
-                      <span className='rounded-full border border-amber-900/20 bg-white px-3 py-1 text-xs font-semibold text-amber-950'>
+                      <span className='inline-flex items-center gap-1 rounded-full border border-amber-900/20 bg-white px-3 py-1 text-xs font-semibold text-amber-950'>
                         {showFieldToolkit ? 'Hide' : 'Show'}
+                        <svg aria-hidden='true' viewBox='0 0 10 6' className={`h-2.5 w-2.5 transition-transform ${showFieldToolkit ? 'rotate-180' : ''}`} fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><path d='M1 1l4 4 4-4'/></svg>
                       </span>
                     </div>
                   </summary>
@@ -1814,8 +1817,9 @@ export default function App() {
                         ? 'Address safety items first'
                         : 'Ready to plan build'}
                     </span>
-                    <span className='rounded-full border border-amber-900/20 bg-white px-2.5 py-1 text-xs font-semibold text-amber-950'>
+                    <span className='inline-flex items-center gap-1 rounded-full border border-amber-900/20 bg-white px-2.5 py-1 text-xs font-semibold text-amber-950'>
                       {showNextSteps ? 'Hide' : 'Show'}
+                      <svg aria-hidden='true' viewBox='0 0 10 6' className={`h-2.5 w-2.5 transition-transform ${showNextSteps ? 'rotate-180' : ''}`} fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><path d='M1 1l4 4 4-4'/></svg>
                     </span>
                   </div>
                 </div>

@@ -83,14 +83,16 @@ function CostInput({
   return (
     <label className='flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-900/75'>
       {label && <span>{label}</span>}
+      <span className='text-amber-700/60' aria-hidden='true'>✏</span>
       <input
         type='number'
         min='0'
         step='0.01'
-        placeholder='0.00'
+        placeholder='Enter price'
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className='w-24 rounded-md border border-amber-300 bg-white px-2 py-1 text-xs font-semibold text-amber-950 outline-none focus:border-amber-500'
+        className='w-28 rounded-md border border-amber-300 bg-white px-2 py-1 text-xs font-semibold text-amber-950 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-400/50'
+        aria-label={label ? `Unit price for ${label}` : 'Unit price'}
       />
     </label>
   );
@@ -481,11 +483,11 @@ export default function BillOfMaterials({ output }: Props) {
       <div className='overflow-x-auto rounded-xl border border-amber-900/15 bg-white/60'>
         <table className='w-full text-sm'>
           <thead>
-            <tr className='border-b border-amber-900/15 bg-amber-100/45'>
+            <tr className='border-b border-amber-900/20 bg-amber-100/70'>
               {['Item', 'Qty', 'Unit', '$/Unit', 'Total'].map((heading, index) => (
                 <th
                   key={heading}
-                  className={`px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-amber-900/80 ${index === 0 ? 'text-left' : 'text-right'}`}
+                  className={`px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-amber-950 ${index === 0 ? 'text-left' : 'text-right'}`}
                 >
                   {heading}
                 </th>

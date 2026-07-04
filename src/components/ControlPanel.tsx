@@ -36,11 +36,36 @@ function SectionHeading({
   title,
   description,
   showDivider = true,
+  collapsible = false,
+  isOpen = true,
+  onToggle,
 }: {
   title: string;
   description: string;
   showDivider?: boolean;
+  collapsible?: boolean;
+  isOpen?: boolean;
+  onToggle?: () => void;
 }) {
+  if (collapsible) {
+    return (
+      <div className={`sm:col-span-2 ${showDivider ? 'mt-1 border-t border-amber-900/15 pt-3' : ''}`}>
+        <button
+          type="button"
+          className="flex w-full items-center justify-between gap-2 text-left"
+          onClick={onToggle}
+          aria-expanded={isOpen}
+        >
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-900/70">{title}</h3>
+            {isOpen && <p className="mt-1 text-xs leading-5 text-amber-900/70">{description}</p>}
+          </div>
+          <svg aria-hidden="true" viewBox="0 0 10 6" className={`h-3 w-3 flex-shrink-0 transition-transform text-amber-900/60 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 1l4 4 4-4"/></svg>
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`sm:col-span-2 ${
@@ -85,6 +110,9 @@ export default function ControlPanel({
 }: ControlPanelProps) {
   const [showNoCutDetails, setShowNoCutDetails] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showMaterials, setShowMaterials] = useState(false);
+  const [showFuelSafety, setShowFuelSafety] = useState(false);
+  const [showSeating, setShowSeating] = useState(false);
   const usingCustomBrick =
     input.brickPresetKey === 'custom' ||
     input.brickPresetKey === 'custom-radial';
@@ -330,8 +358,13 @@ export default function ControlPanel({
         <SectionHeading
           title='2 Materials'
           description='Select wall and cap units, then tune orientation details.'
+          collapsible
+          isOpen={showMaterials}
+          onToggle={() => setShowMaterials((v) => !v)}
         />
 
+        {showMaterials && (
+          <div className='contents'>
         <label className='flex flex-col gap-1 sm:col-span-2'>
           <FieldLabel
             label='Wall Unit Type'
@@ -1184,11 +1217,19 @@ export default function ControlPanel({
           </div>
         </label>
 
+          </div>
+        )}
+
         <SectionHeading
           title='3 Fuel + Safety'
           description='Set setback, site context, and fuel behavior.'
+          collapsible
+          isOpen={showFuelSafety}
+          onToggle={() => setShowFuelSafety((v) => !v)}
         />
 
+        {showFuelSafety && (
+          <div className='contents'>
         <label className='flex flex-col gap-1 sm:col-span-2'>
           <FieldLabel
             label='Soil Type (Site Context)'
@@ -1459,11 +1500,19 @@ export default function ControlPanel({
           />
         </label>
 
+          </div>
+        )}
+
         <SectionHeading
           title='4 Seating Area'
           description='Plan the ground surface around your firepit and calculate material quantities.'
+          collapsible
+          isOpen={showSeating}
+          onToggle={() => setShowSeating((v) => !v)}
         />
 
+        {showSeating && (
+          <div className='contents'>
         <label className='flex flex-col gap-1'>
           <FieldLabel
             label='Seating Shape'
@@ -1655,6 +1704,8 @@ export default function ControlPanel({
             }
           />
         </label>
+          </div>
+        )}
 
         <div className='sm:col-span-2 rounded-xl border border-amber-900/15 bg-white/65 px-3 py-2'>
           <div className='flex flex-wrap items-center justify-between gap-2'>
