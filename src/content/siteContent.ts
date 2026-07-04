@@ -21,7 +21,7 @@ export const quickStartSteps: ContentSection[] = [
       'Use the inner size as the main driver. The layout updates the outer wall, centerline, and course count from that value.',
       'A 36 in circular opening is a solid starting point for a medium gathering pit.',
       'Stick with modular brick and a 3/8 in joint if you want counts that align with common masonry references.',
-      'Natural stone presets (ledgestone, fieldstone, mosaic) offer an alternative to modular brick. Stone is heavier, weathers differently, and requires careful stone type selection because some minerals absorb water and can explode under heat. See the stone type selector and safety warnings for blocked types.',
+      'Natural stone presets (ledgestone, fieldstone, mosaic) offer an alternative to modular brick. Stone is heavier, weathers differently, and requires careful stone type selection because some minerals absorb water and can explode under heat. See the stone type selector and safety warnings for high-risk types.',
     ],
   },
   {
@@ -76,7 +76,7 @@ export const designBestPractices: ContentSection[] = [
       'Use actual masonry dimensions, not nominal dimensions, when checking counts or ordering units.',
       'A 1 to 2 in cap overhang helps with water shedding and gives the finished pit a more intentional profile.',
       'Custom radial units are worth using when the visual goal is a tight, refined curve with fewer wedge cuts.',
-      'Natural stone selection is critical: granite, basalt, and marble are safe choices; river-rock, sandstone, limestone, and shale are blocked because they absorb moisture and can fail catastrophically under repeated heating.',
+      'Natural stone selection is critical: granite, basalt, and marble are safe choices; river-rock, sandstone, limestone, and shale are high-risk because they absorb moisture and can fail catastrophically under repeated heating.',
       'For stone, the face-foot estimate tells you how many linear feet of stone face area will be exposed in the finished wall. The tool calculates tonnage at 8 in and 4 in depths with 10–15% waste buffers so you can order the right quantity.',
       'Dry-stack stone has a rustic aesthetic and no curing time, but relies on gravity and friction. Mortared stone offers more security and allows tighter joints, but requires 28-day curing before the first fire and is more vulnerable to joint cracking in wet or freeze-thaw climates unless drainage is detailed carefully.',
     ],
@@ -190,7 +190,7 @@ export const researchHighlights: ContentSection[] = [
       'Natural stone brings beauty and durability to a firepit, but geology matters. Some stones are inherently safe; others carry explosion risk from trapped moisture.',
     bullets: [
       'Safe stone types: Granite and basalt are dense, non-porous, and absorb minimal water. Marble is also safe, though softer than granite. All three perform well under repeated heating.',
-      'Blocked stone types: River-rock is rounded and porous. Sandstone, limestone, and shale are sedimentary and absorb water readily. When pore water trapped in these stones heats, steam pressure can build until the stone explodes. This is not a rare failure mode—it is a predictable risk that design rules eliminate.',
+      'High-risk stone types: River-rock is rounded and porous. Sandstone, limestone, and shale are sedimentary and absorb water readily. When pore water trapped in these stones heats, steam pressure can build until the stone explodes. This is not a rare failure mode—it is a predictable risk that design rules eliminate.',
       'Why geology matters in fire: The danger zone is the interior surface where repeated heating occurs. Even a small amount of trapped moisture can accumulate over multiple fires. Stone selection is your primary control. A thermal liner (refractory or steel ring) provides secondary protection for the outer shell.',
       'Mortared stone considerations: Mortar joints can also trap water. In wet climates or freeze-thaw zones, mortared natural stone needs explicit drainage detail (foundation perimeter drain, sloped ground surface, or base moisture barrier) to stay healthy for 20+ years.',
       'Dry-stacking is an alternative: Gravity and friction alone hold dry-stacked stone. There is no mortar to trap water, and the assembly is inherently more forgiving of minor settling. The trade-off is that tight, symmetrical courses are harder to achieve without cutting, and the walls require more careful initial layout.',
@@ -225,7 +225,7 @@ export const faqItems: FaqItem[] = [
       "In most builds, venting is handled by the wall vent gaps, not separate holes cut through the liner. The liner's job is thermal protection. Keep the annular space and vent path unobstructed, align vented courses with cavity airflow, and always follow burner or ring manufacturer instructions for any dedicated vent or drain requirements.",
   },
   {
-    question: 'Why are some stone types blocked?',
+    question: 'Why are some stone types flagged high-risk?',
     answer:
       'River-rock, sandstone, limestone, and shale are porous sedimentary or rounded stones that absorb and retain water. When trapped pore water heats during firing, pressure builds until the stone fails explosively. This is a predictable, high-risk failure mode. Granite, basalt, and marble are dense and non-porous, so they do not absorb significant water and are safe for fire-pit applications.',
   },

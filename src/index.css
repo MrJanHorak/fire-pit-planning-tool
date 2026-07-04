@@ -32,6 +32,16 @@ summary::-webkit-details-marker {
   display: none;
 }
 
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible {
+  outline: 2px solid #92400e;
+  outline-offset: 2px;
+}
+
 @keyframes rise-in {
   from {
     opacity: 0;

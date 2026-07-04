@@ -585,6 +585,7 @@ export default function ControlPanel({
                       capOrientation: option.value,
                     }))
                   }
+                  aria-pressed={selected}
                 >
                   <span className='block text-sm font-semibold leading-tight'>
                     {option.label}
@@ -665,6 +666,7 @@ export default function ControlPanel({
                 type='button'
                 className='rounded-full border border-amber-900/25 bg-white px-2 py-0.5 font-semibold text-amber-950'
                 onClick={() => setShowNoCutDetails((value) => !value)}
+                aria-expanded={showNoCutDetails}
               >
                 {showNoCutDetails ? 'Hide No-Cut Sizes' : 'Show No-Cut Sizes'}
               </button>
@@ -1318,6 +1320,8 @@ export default function ControlPanel({
               type='button'
               className='rounded-full border border-amber-900/25 bg-white px-3 py-1 text-xs font-semibold text-amber-950 hover:bg-amber-50'
               onClick={() => setShowAdvanced((value) => !value)}
+              aria-expanded={showAdvanced}
+              aria-controls='advanced-options-panel'
             >
               {showAdvanced ? 'Hide Advanced Options' : 'Show Advanced Options'}
             </button>
@@ -1325,7 +1329,7 @@ export default function ControlPanel({
         </div>
 
         {showAdvanced && (
-          <>
+          <div id='advanced-options-panel' className='contents'>
             <SectionHeading
               title='5 Advanced'
               description='Use practical presets for shim spacers or vent-heavy accent courses while keeping running bond behavior.'
@@ -1673,7 +1677,7 @@ export default function ControlPanel({
                 />
               </label>
             )}
-          </>
+          </div>
         )}
       </div>
     </section>

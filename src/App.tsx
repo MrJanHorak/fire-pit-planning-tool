@@ -331,8 +331,11 @@ export default function App() {
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('');
   const [pendingSnapshotAction, setPendingSnapshotAction] =
     useState<PendingSnapshotAction>(null);
+  const [showClearBrowserDataConfirm, setShowClearBrowserDataConfirm] =
+    useState(false);
   const [showWorkspaceTools, setShowWorkspaceTools] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const cookieBannerPrimaryActionRef = useRef<HTMLButtonElement | null>(null);
   const hasInitializedAutosave = useRef(false);
   const hasConfiguredAnalytics = useRef(false);
   const [referencesOpen, setReferencesOpen] = useState<boolean>(() => {
@@ -351,7 +354,7 @@ export default function App() {
     () => {
       if (typeof window === 'undefined') return false;
       const stored = window.localStorage.getItem(SHOW_OPTIONAL_INSIGHTS_KEY);
-      return stored === null ? true : stored === 'true';
+      return stored === null ? false : stored === 'true';
     },
   );
   const [showNextSteps, setShowNextSteps] = useState<boolean>(() => {
@@ -534,6 +537,31 @@ export default function App() {
   useEffect(() => {
     updateAnalyticsConsent(analyticsConsent);
   }, [analyticsConsent]);
+
+  useEffect(() => {
+    if (!showCookieBanner) {
+      return;
+    }
+
+    cookieBannerPrimaryActionRef.current?.focus();
+  }, [showCookieBanner]);
+
+  useEffect(() => {
+    if (!showCookieBanner) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && analyticsConsent !== 'unknown') {
+        setShowCookieBanner(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [analyticsConsent, showCookieBanner]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -1097,6 +1125,18 @@ export default function App() {
         onConfirm={handleConfirmSnapshotAction}
         onCancel={handleCancelSnapshotAction}
       />
+      <ConfirmDialog
+        open={showClearBrowserDataConfirm}
+        title='Clear Local Browser Data'
+        message='Delete autosaved project data and all browser snapshots for this app on this device? This cannot be undone.'
+        confirmLabel='Clear Data'
+        tone='danger'
+        onConfirm={() => {
+          handleClearBrowserData();
+          setShowClearBrowserDataConfirm(false);
+        }}
+        onCancel={() => setShowClearBrowserDataConfirm(false)}
+      />
 
       <header className='mb-5 card-rise rounded-2xl border border-amber-900/20 bg-amber-100/70 p-4 shadow-lg backdrop-blur'>
         <div className='flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between'>
@@ -1132,6 +1172,7 @@ export default function App() {
                         : 'bg-white/70 text-amber-900 hover:bg-white'
                     }`}
                     onClick={() => handleOpenSiteView(tab.value)}
+                    aria-current={selected ? 'page' : undefined}
                   >
                     {tab.label}
                   </button>
@@ -1146,6 +1187,7 @@ export default function App() {
                   className='rounded-full border border-amber-900/20 bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-amber-900 hover:bg-white'
                   onClick={() => setShowWorkspaceTools(true)}
                   aria-controls='project-workspace-panel'
+                  aria-expanded={showWorkspaceTools}
                 >
                   Project File
                 </button>
@@ -1386,6 +1428,7 @@ export default function App() {
                       onClick={() => setQuickPresetGroup(group.key)}
                       aria-label={`Show ${group.label} presets`}
                       title={`Show ${group.label} presets`}
+                      aria-pressed={selected}
                     >
                       {group.label}
                     </button>
@@ -1409,6 +1452,7 @@ export default function App() {
                       onClick={() => applyQuickPreset(presetKey)}
                       aria-label={`Apply ${preset.label} quick start preset`}
                       title={`Apply ${preset.label} quick start`}
+                      aria-pressed={selected}
                     >
                       <span className='block text-xs font-semibold'>
                         {preset.label}
@@ -1484,14 +1528,22 @@ export default function App() {
               </div>
             </div>
 
-            <div className='flex gap-2'>
+            <div className='flex gap-2' role='tablist' aria-label='View mode'>
               <button
+                id='visualization-tab-3d'
+                role='tab'
+                aria-selected={view === '3d'}
+                aria-controls='visualization-panel'
                 className={`rounded-full px-4 py-2 text-sm font-semibold ${view === '3d' ? 'bg-amber-900 text-amber-50' : 'bg-amber-100 text-amber-900'}`}
                 onClick={() => setView('3d')}
               >
                 3D Preview
               </button>
               <button
+                id='visualization-tab-construction'
+                role='tab'
+                aria-selected={view === 'construction'}
+                aria-controls='visualization-panel'
                 className={`rounded-full px-4 py-2 text-sm font-semibold ${view === 'construction' ? 'bg-amber-900 text-amber-50' : 'bg-amber-100 text-amber-900'}`}
                 onClick={() => setView('construction')}
               >
@@ -1525,27 +1577,37 @@ export default function App() {
               </p>
             )} */}
 
-            <Suspense
-              fallback={
-                <div className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-6 text-sm font-medium text-amber-900/80 shadow-lg'>
-                  Loading visualization...
-                </div>
+            <div
+              id='visualization-panel'
+              role='tabpanel'
+              aria-labelledby={
+                view === '3d'
+                  ? 'visualization-tab-3d'
+                  : 'visualization-tab-construction'
               }
             >
-              {view === '3d' && (
-                <Stage3D
-                  output={output}
-                  seatingFurnitureCount={input.seatingFurnitureCount}
-                  captureSignal={stakeholderRenderSignal}
-                  glbExportSignal={glbExportSignal}
-                  onStakeholderRenderComplete={handleStakeholderRenderComplete}
-                  onModelExportComplete={handleGlbExportComplete}
-                />
-              )}
-              {view === 'construction' && (
-                <ConstructionMode input={input} output={output} />
-              )}
-            </Suspense>
+              <Suspense
+                fallback={
+                  <div className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-6 text-sm font-medium text-amber-900/80 shadow-lg'>
+                    Loading visualization...
+                  </div>
+                }
+              >
+                {view === '3d' && (
+                  <Stage3D
+                    output={output}
+                    seatingFurnitureCount={input.seatingFurnitureCount}
+                    captureSignal={stakeholderRenderSignal}
+                    glbExportSignal={glbExportSignal}
+                    onStakeholderRenderComplete={handleStakeholderRenderComplete}
+                    onModelExportComplete={handleGlbExportComplete}
+                  />
+                )}
+                {view === 'construction' && (
+                  <ConstructionMode input={input} output={output} />
+                )}
+              </Suspense>
+            </div>
 
             <BillOfMaterials output={output} />
 
@@ -1564,7 +1626,7 @@ export default function App() {
               <summary className='cursor-pointer list-none'>
                 <div className='flex flex-wrap items-center justify-between gap-2'>
                   <p className='text-xs font-semibold uppercase tracking-[0.15em] text-amber-900/90'>
-                    Design Insights
+                    Optional Insights
                   </p>
                   <span className='rounded-full border border-amber-900/20 bg-white px-3 py-1 text-xs font-semibold text-amber-950'>
                     {showOptionalInsights ? 'Hide' : 'Show'}
@@ -1590,6 +1652,7 @@ export default function App() {
                         return next;
                       });
                     }}
+                    aria-pressed={showVariantComparison}
                   >
                     {showVariantComparison
                       ? 'Hide Variant Comparison'
@@ -1819,7 +1882,7 @@ export default function App() {
               <button
                 type='button'
                 className='rounded-full border border-amber-900/25 bg-white px-3 py-1.5 text-xs font-semibold text-amber-950 hover:bg-amber-50'
-                onClick={handleClearBrowserData}
+                onClick={() => setShowClearBrowserDataConfirm(true)}
               >
                 Clear Local Browser Data
               </button>
@@ -1842,42 +1905,67 @@ export default function App() {
       </footer>
 
       {showCookieBanner && (
-        <section className='fixed bottom-4 left-1/2 z-50 w-[min(760px,calc(100vw-2rem))] -translate-x-1/2 rounded-2xl border border-amber-900/25 bg-amber-50/95 p-4 shadow-2xl backdrop-blur'>
-          <h2 className='text-sm font-semibold uppercase tracking-[0.15em] text-amber-900/85'>
-            Analytics Consent
-          </h2>
-          <p className='mt-2 text-sm leading-6 text-amber-950/90'>
-            We use Google Analytics only after opt-in consent to understand
-            aggregate usage and improve the site. For stricter compliance across
-            regions, analytics is disabled by default worldwide until you
-            choose.
-          </p>
-          <div className='mt-3 flex flex-wrap gap-2'>
-            <button
-              type='button'
-              className='rounded-full border border-emerald-700/30 bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700'
-              onClick={() => handleAnalyticsConsentChoice('granted')}
+        <div
+          className='fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-4'
+          onClick={(event) => {
+            if (
+              event.target === event.currentTarget &&
+              analyticsConsent !== 'unknown'
+            ) {
+              setShowCookieBanner(false);
+            }
+          }}
+        >
+          <section
+            role='dialog'
+            aria-modal='true'
+            aria-labelledby='analytics-consent-title'
+            aria-describedby='analytics-consent-description'
+            className='w-[min(760px,calc(100vw-2rem))] rounded-2xl border border-amber-900/25 bg-amber-50/95 p-4 shadow-2xl backdrop-blur'
+          >
+            <h2
+              id='analytics-consent-title'
+              className='text-sm font-semibold uppercase tracking-[0.15em] text-amber-900/85'
             >
-              Accept Analytics
-            </button>
-            <button
-              type='button'
-              className='rounded-full border border-amber-900/25 bg-white px-4 py-2 text-xs font-semibold text-amber-950 hover:bg-amber-100'
-              onClick={() => handleAnalyticsConsentChoice('denied')}
+              Analytics Consent
+            </h2>
+            <p
+              id='analytics-consent-description'
+              className='mt-2 text-sm leading-6 text-amber-950/90'
             >
-              Decline Analytics
-            </button>
-            {analyticsConsent !== 'unknown' && (
+              We use Google Analytics only after opt-in consent to understand
+              aggregate usage and improve the site. For stricter compliance
+              across regions, analytics is disabled by default worldwide until
+              you choose.
+            </p>
+            <div className='mt-3 flex flex-wrap gap-2'>
+              <button
+                ref={cookieBannerPrimaryActionRef}
+                type='button'
+                className='rounded-full border border-emerald-700/30 bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700'
+                onClick={() => handleAnalyticsConsentChoice('granted')}
+              >
+                Accept Analytics
+              </button>
               <button
                 type='button'
-                className='rounded-full border border-amber-900/25 bg-transparent px-4 py-2 text-xs font-semibold text-amber-950 hover:bg-amber-100/60'
-                onClick={() => setShowCookieBanner(false)}
+                className='rounded-full border border-amber-900/25 bg-white px-4 py-2 text-xs font-semibold text-amber-950 hover:bg-amber-100'
+                onClick={() => handleAnalyticsConsentChoice('denied')}
               >
-                Close
+                Decline Analytics
               </button>
-            )}
-          </div>
-        </section>
+              {analyticsConsent !== 'unknown' && (
+                <button
+                  type='button'
+                  className='rounded-full border border-amber-900/25 bg-transparent px-4 py-2 text-xs font-semibold text-amber-950 hover:bg-amber-100/60'
+                  onClick={() => setShowCookieBanner(false)}
+                >
+                  Close
+                </button>
+              )}
+            </div>
+          </section>
+        </div>
       )}
     </main>
   );

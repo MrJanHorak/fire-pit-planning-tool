@@ -206,7 +206,7 @@ Status key:
 - Explicit corner-overlap pattern guidance for rectangular corner interlock details.
 - Dedicated soldier-course cap behavior.
 - Vertical exclusion-zone visualization.
-- Persistence via local storage or URL state.
+- Shareable URL-state persistence for portable links (local browser persistence is implemented).
 - Manufacturer-specific material presets and exact per-unit weight models.
 
 ## Open Gaps in the Current Code Implementation
@@ -253,6 +253,6 @@ The exported packet now includes quantities, warnings, course SVG output, liner 
 1. Add vertical clearance and exclusion-zone output to safety visualization and warnings.
 2. Add rectangular corner-overlap/interlock guidance with explicit corner detailing in packet output.
 3. Extend thermal modeling toward double-wall cavity rules and higher-fidelity liner assembly guidance.
-4. Add local persistence (local storage and/or URL-state share links).
+4. Add URL-state share links for portable design handoff.
 5. Expand manufacturer-specific material presets and per-unit weight fidelity.
 6. Add richer cap style instruction variants (including soldier-course specific guidance) in packet output.

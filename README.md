@@ -35,6 +35,24 @@ Instead of using rough napkin math, I built a tool that turns engineering formul
 - Regional advisory checks (setback, venting, frost-line/HOA context) and material/cost optimization suggestions.
 - GLB model export for downstream Blender/Fusion-style workflows.
 
+## Requirements
+
+- Node.js 20+ recommended.
+- npm 10+ recommended.
+- Modern browser with WebGL support for 3D view and GLB export.
+
+## Known Limitations
+
+- Vertical clearance is advisory content only; the live safety diagram currently models horizontal clearance.
+- Corner-overlap detailing for rectangular course interlock is still lighter than circular guidance.
+- Double-wall cavity thermal assemblies are not yet modeled.
+
+## Troubleshooting
+
+- If the 3D scene does not render, verify WebGL is enabled and use the latest Chrome, Edge, or Firefox.
+- If local autosave/snapshots appear missing, check browser storage settings and privacy extensions that block local storage.
+- If tests fail after dependency updates, remove `node_modules` and lockfile cache, reinstall, then rerun `npm run test`.
+
 ## Recent UX Improvements
 
 - Optional advanced tooling is now grouped under **Optional Insights** so the default designer view stays cleaner.
