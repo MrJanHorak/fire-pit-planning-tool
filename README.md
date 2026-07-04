@@ -53,6 +53,44 @@ Instead of using rough napkin math, I built a tool that turns engineering formul
 - If local autosave/snapshots appear missing, check browser storage settings and privacy extensions that block local storage.
 - If tests fail after dependency updates, remove `node_modules` and lockfile cache, reinstall, then rerun `npm run test`.
 
+## Build Workflow (Design To First Fire)
+
+1. Define geometry: plan shape, inner size, wall height, wall/cap units, and mortar settings.
+2. Set fuel + thermal strategy: wood, propane, or natural gas with liner/ring selection.
+3. Validate safety + site context: horizontal setback, vent area/placement, and soil/drainage/frost advisory output.
+4. Review quantities: units, waste-adjusted purchase count, mortar, cap count, and base stone volume.
+5. Review Construction Mode and course output before any field layout starts.
+6. Build foundation and wall system, then follow cure and first-fire guidance (28-day cure for mortared assemblies).
+
+## Before You Build (Quick Checklist)
+
+- Confirm local code/permit requirements and HOA constraints.
+- Call utility locate services before excavation.
+- Verify setbacks from combustibles and overhead hazards.
+- Confirm fuel hardware requirements (burner/pan venting and cavity instructions for gas builds).
+- Gather tools/PPE for measuring, layout, cutting, compaction, and masonry work.
+- Plan weather window, drainage strategy, and curing time before first ignition.
+
+## Limits And Assumptions
+
+| Topic | Current behavior |
+|---|---|
+| Core sizing math | Engineering-based and enforced (unit geometry, joints, running bond, counts). |
+| Horizontal clearance | Enforced warning when below 10 ft baseline. |
+| Vertical clearance | Advisory only (not fully modeled in live diagram output). |
+| Foundation sizing | Baseline quantity model fixed; soil/drainage/frost context is advisory. |
+| Gas venting | Rule-based guidance and warnings; confirm exact manufacturer requirements. |
+| Thermal assembly depth | Liner/ring modeled; advanced double-wall cavity behavior not yet modeled. |
+
+## Field Validation Steps (On Site)
+
+1. Dry-lay the first course and confirm fit before mortar or adhesive.
+2. Verify vent positions/open area and keep vent paths unobstructed.
+3. Re-check clearances in real site conditions (structures + overhead hazards).
+4. Confirm liner/ring spacing and gas-line entry routing before final assembly.
+5. Reconcile purchased materials against planned quantities before installation starts.
+6. Complete curing and pre-ignition safety checks before first full fire.
+
 ## Recent UX Improvements
 
 - Optional advanced tooling is now grouped under **Optional Insights** so the default designer view stays cleaner.
