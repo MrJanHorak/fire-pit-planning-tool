@@ -70,7 +70,8 @@ describe('construction packet export', () => {
     expect(html).toContain('Minimum horizontal clearance is 10 ft');
     expect(html).toContain('print-break-before');
     expect(html).toContain('10 ft Clearance Ring Diagram');
-    expect(html).toContain('Status = FAIL');
+    expect(html).toContain('Horizontal status = FAIL');
+    expect(html).toContain('Permit + Inspection Checklist');
     expect(html).toContain('Capstone Overhang');
     expect(html).toContain('Cap Units per Course');
     expect(html).toContain('Venting And Heat Protection');
@@ -202,7 +203,7 @@ describe('construction packet export', () => {
     );
 
     expect(svg).toContain('10 ft Clearance Ring Diagram');
-    expect(svg).toContain('Status = PASS');
+    expect(svg).toContain('Horizontal status = PASS');
   });
 
   it('changes clearance marker position when proximity changes', () => {

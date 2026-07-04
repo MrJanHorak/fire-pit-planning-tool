@@ -1,5 +1,6 @@
 import type { MasonryInput, MasonryOutput } from '../types';
 import { buildFoundationAdvisory } from './foundationAdvisory';
+import { buildRegionalCodeReview } from './regionalCodeReview';
 
 function formatFuelName(fuelType: MasonryInput['fuelType']): string {
   if (fuelType === 'natural-gas') {
@@ -158,6 +159,28 @@ function buildKeyValueTable(
       </tr>
     </thead>
     <tbody>${body}</tbody>
+  </table>`;
+}
+
+function buildPermitChecklistTable(
+  rows: Array<{ item: string; status: string; detail: string }>,
+): string {
+  return `<table>
+    <thead>
+      <tr>
+        <th>Permit / Inspection Item</th>
+        <th>Status</th>
+        <th>Detail</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rows
+        .map(
+          (row) =>
+            `<tr><td>${row.item}</td><td>${row.status}</td><td>${row.detail}</td></tr>`,
+        )
+        .join('')}
+    </tbody>
   </table>`;
 }
 
@@ -567,7 +590,9 @@ export function buildSafetyClearanceSvg(
   output: MasonryOutput,
 ): string {
   const requiredClearanceIn = 120;
+  const requiredOverheadFt = 15;
   const actualClearanceIn = input.proximityToStructuresFt * 12;
+  const actualOverheadFt = input.overheadClearanceFt ?? 20;
   const pitOuterWidthIn = output.outerSpanWidthIn;
   const pitOuterDepthIn = output.outerSpanDepthIn;
 
@@ -587,6 +612,7 @@ export function buildSafetyClearanceSvg(
   const actualRadiusPx = Math.max(0, actualClearanceIn * ringScale);
   const structureX = centerX + actualRadiusPx;
   const safetyPass = input.proximityToStructuresFt >= 10;
+  const overheadPass = actualOverheadFt >= requiredOverheadFt;
   const maxDisplayFt = maxExtentIn / 12;
   const safeZoneFill = safetyPass ? '#2f6d3f14' : '#a01d1d14';
   const isCircular = output.planShape === 'circular';
@@ -605,6 +631,16 @@ export function buildSafetyClearanceSvg(
     ? `<circle cx="${centerX}" cy="${centerY}" r="${pitRadiusPx}" fill="#9d5a2b" opacity="0.85" />`
     : `<rect x="${centerX - pitWidthPx / 2}" y="${centerY - pitDepthPx / 2}" width="${pitWidthPx}" height="${pitDepthPx}" rx="${output.planShape === 'square' ? 4 : 2}" fill="#9d5a2b" opacity="0.85" />`;
 
+  const overheadInsetBottom = 320;
+  const overheadInsetTop = 120;
+  const overheadScale = (overheadInsetBottom - overheadInsetTop) / 25;
+  const requiredOverheadY = overheadInsetBottom - requiredOverheadFt * overheadScale;
+  const actualOverheadY = overheadInsetBottom - actualOverheadFt * overheadScale;
+  const clampedActualOverheadY = Math.max(
+    overheadInsetTop,
+    Math.min(overheadInsetBottom, actualOverheadY),
+  );
+
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" width="640" height="380">
     <rect x="0" y="0" width="640" height="380" fill="#fffdf7" />
     <text x="18" y="28" font-size="15" fill="#2f2110" font-weight="700">10 ft Clearance ${isCircular ? 'Ring' : 'Offset'} Diagram</text>
@@ -621,7 +657,16 @@ export function buildSafetyClearanceSvg(
     <text x="390" y="160" font-size="12" fill="#4a3720">Actual distance = ${input.proximityToStructuresFt.toFixed(2)} ft</text>
     <text x="390" y="182" font-size="12" fill="#4a3720">${footprintLabel}</text>
     <text x="390" y="204" font-size="12" fill="#4a3720">Plan shape = ${output.planShape}</text>
-    <text x="390" y="226" font-size="12" fill="${safetyPass ? '#2f6d3f' : '#a01d1d'}">Status = ${safetyPass ? 'PASS' : 'FAIL'}</text>
+    <text x="390" y="226" font-size="12" fill="${safetyPass ? '#2f6d3f' : '#a01d1d'}">Horizontal status = ${safetyPass ? 'PASS' : 'FAIL'}</text>
+
+    <rect x="392" y="${overheadInsetTop}" width="226" height="${overheadInsetBottom - overheadInsetTop}" fill="#fff8ea" stroke="#c9a87a" stroke-width="1" rx="6" />
+    <line x1="430" y1="${overheadInsetTop + 12}" x2="430" y2="${overheadInsetBottom}" stroke="#7a5a34" stroke-width="2" />
+    <line x1="430" y1="${requiredOverheadY}" x2="610" y2="${requiredOverheadY}" stroke="#a94d24" stroke-width="2" stroke-dasharray="6 4" />
+    <line x1="430" y1="${clampedActualOverheadY}" x2="610" y2="${clampedActualOverheadY}" stroke="${overheadPass ? '#2f6d3f' : '#a01d1d'}" stroke-width="2.5" />
+    <text x="438" y="${overheadInsetTop + 24}" font-size="11" fill="#4a3720" font-weight="700">Overhead clearance inset</text>
+    <text x="438" y="${requiredOverheadY - 4}" font-size="10" fill="#a94d24">Recommended minimum: ${requiredOverheadFt.toFixed(0)} ft</text>
+    <text x="438" y="${Math.min(overheadInsetBottom - 4, clampedActualOverheadY + 14)}" font-size="10" fill="${overheadPass ? '#2f6d3f' : '#a01d1d'}">Configured: ${actualOverheadFt.toFixed(1)} ft</text>
+    <text x="438" y="${overheadInsetBottom - 8}" font-size="10" fill="${overheadPass ? '#2f6d3f' : '#a01d1d'}">Vertical status: ${overheadPass ? 'PASS' : 'REVIEW'}</text>
   </svg>`;
 }
 
@@ -631,6 +676,7 @@ export function buildConstructionPacketHtml(
 ): string {
   const capCut = getCapstoneCutMetrics(output);
   const foundationAdvisory = buildFoundationAdvisory(input, output);
+  const regionalCodeReview = buildRegionalCodeReview(input, output);
   const svg = buildCoursePlanSvg(output);
   const clearanceSvg = buildSafetyClearanceSvg(input, output);
   const warnings =
@@ -659,6 +705,10 @@ export function buildConstructionPacketHtml(
     [
       'Clearance To Structures',
       `${input.proximityToStructuresFt.toFixed(2)} ft`,
+    ],
+    [
+      'Overhead Clearance',
+      `${(input.overheadClearanceFt ?? 20).toFixed(2)} ft`,
     ],
     ['Capstone Overhang', `${input.capstoneOverhangIn.toFixed(2)} in`],
     ['Cap Placement', input.capPlacementMode],
@@ -709,6 +759,10 @@ export function buildConstructionPacketHtml(
     ],
   ];
   const ventRows: Array<[string, string]> = [
+    [
+      'Gas Hardware Template',
+      output.ventSpec.gasHardwareTemplateLabel ?? 'Generic firepit cavity',
+    ],
     ['Vent Pattern', output.ventSpec.layout],
     ['Vent Zone', output.ventSpec.placement],
     ['Vent Count', `${output.ventSpec.ventCount}`],
@@ -718,6 +772,34 @@ export function buildConstructionPacketHtml(
     ],
     ['Typical Gas Vent Range', `${ventRange} sq in`],
     ['Vent Unit Positions', output.ventSpec.ventBrickIndexes.join(', ')],
+  ];
+  const cornerRows: Array<[string, string]> = [
+    ['Corner interlock required', output.cornerGuidance?.required ? 'Yes' : 'No'],
+    [
+      'Recommended corner overlap',
+      `${(output.cornerGuidance?.recommendedOverlapIn ?? 0).toFixed(2)} in`,
+    ],
+    [
+      'Estimated closure trim per side',
+      `${(output.cornerGuidance?.cornerCutPerSideIn ?? 0).toFixed(2)} in`,
+    ],
+  ];
+  const permitChecklistRows = [
+    {
+      item: 'Combustible setback (10 ft minimum)',
+      status: input.proximityToStructuresFt >= 10 ? 'PASS' : 'FAIL',
+      detail: `Configured at ${input.proximityToStructuresFt.toFixed(1)} ft.`,
+    },
+    {
+      item: 'Overhead combustible clearance (15 ft recommended)',
+      status: (input.overheadClearanceFt ?? 20) >= 15 ? 'PASS' : 'REVIEW',
+      detail: `Configured at ${(input.overheadClearanceFt ?? 20).toFixed(1)} ft.`,
+    },
+    ...regionalCodeReview.checks.map((check) => ({
+      item: check.title,
+      status: check.status.toUpperCase(),
+      detail: check.detail,
+    })),
   ];
   const cuttingRows: Array<[string, string]> = [
     [
@@ -795,6 +877,12 @@ export function buildConstructionPacketHtml(
     </section>
 
     <section class="block avoid-break">
+      <h2>Permit + Inspection Checklist</h2>
+      <p>Use this table as a pre-permit and pre-ignition review record. Final acceptance still depends on local authority and fuel hardware documentation.</p>
+      ${buildPermitChecklistTable(permitChecklistRows)}
+    </section>
+
+    <section class="block avoid-break">
       <h2>Cap Layout</h2>
       ${buildKeyValueTable(capRows, 'Cap Parameter', 'Value')}
       <p>${output.planShape === 'circular' ? (capCut.requiresCutting ? `Capstone inner-edge overlap detected. Taper each cap unit by about ${capCut.recommendedCutPerSideIn.toFixed(3)} in per side at ${capCut.recommendedCutAngleDeg.toFixed(2)} deg.` : 'Capstone joints are buildable without taper cuts at this current diameter.') : 'Cap joints are shown at their resolved installed width.'}</p>
@@ -811,6 +899,16 @@ export function buildConstructionPacketHtml(
       <p>Liner venting note: wall vent gaps provide the primary vent path in this model. Do not block the cavity or expansion gap, and verify any dedicated vent or drain requirements from the liner, burner, or ring manufacturer.</p>
       ${output.linerSpec.enabled ? `<p>Liner outside diameter: ${output.linerSpec.linerOuterDiameterIn.toFixed(2)} in. Liner inside diameter: ${output.linerSpec.linerInnerDiameterIn.toFixed(2)} in.</p>` : ''}
     </section>
+
+    ${
+      output.planShape === 'rectangular' || output.planShape === 'square'
+        ? `<section class="block avoid-break">
+      <h2>Rectangular Corner Interlock Guidance</h2>
+      ${buildKeyValueTable(cornerRows, 'Corner Parameter', 'Value')}
+      <ul>${(output.cornerGuidance?.notes ?? []).map((note) => `<li>${note}</li>`).join('')}</ul>
+    </section>`
+        : ''
+    }
 
     <section class="block avoid-break">
       <h2>Cutting Notes</h2>
@@ -902,6 +1000,16 @@ export function buildEngineeringReportHtml(
       input.fuelType === 'wood'
         ? 'N/A for wood fuel mode'
         : `${output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in (typical range ${ventRange} sq in)`,
+    ],
+    [
+      'Gas hardware template',
+      input.fuelType === 'wood'
+        ? 'N/A'
+        : (output.ventSpec.gasHardwareTemplateLabel ?? 'Generic firepit cavity'),
+    ],
+    [
+      'Overhead clearance',
+      `${(input.overheadClearanceFt ?? 20).toFixed(1)} ft (recommended baseline: 15 ft)`,
     ],
     [
       'Site/foundation context',

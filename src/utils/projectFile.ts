@@ -114,6 +114,10 @@ export function normalizeMasonryInput(
       value.frostLineDepthIn,
       defaults.frostLineDepthIn ?? 0,
     ),
+    overheadClearanceFt: coerceNumber(
+      value.overheadClearanceFt,
+      defaults.overheadClearanceFt ?? 20,
+    ),
     regionalCodeProfile: coerceString(
       value.regionalCodeProfile,
       defaults.regionalCodeProfile ?? 'ibc-general',
@@ -122,6 +126,10 @@ export function normalizeMasonryInput(
       value.hoaConstraintLevel,
       defaults.hoaConstraintLevel ?? 'unknown',
     ) as MasonryInput['hoaConstraintLevel'],
+    gasHardwareTemplate: coerceString(
+      value.gasHardwareTemplate,
+      defaults.gasHardwareTemplate ?? 'generic-firepit',
+    ) as MasonryInput['gasHardwareTemplate'],
     capstonePresetKey: coerceString(
       value.capstonePresetKey,
       defaults.capstonePresetKey ?? 'matching',

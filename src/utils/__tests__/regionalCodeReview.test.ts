@@ -59,4 +59,15 @@ describe('regional code review', () => {
     expect(frostCheck?.status).toBe('review');
     expect(frostCheck?.detail).toContain('exceeds modeled stone depth');
   });
+
+  it('adds overhead clearance review when overhead spacing is tight', () => {
+    const input = { ...baseInput, overheadClearanceFt: 10 };
+    const output = new MasonryEngine().calculateDesign(input);
+    const review = buildRegionalCodeReview(input, output);
+
+    const overheadCheck = review.checks.find(
+      (check) => check.key === 'vertical-clearance',
+    );
+    expect(overheadCheck?.status).toBe('review');
+  });
 });

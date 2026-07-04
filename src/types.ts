@@ -43,6 +43,11 @@ export type RegionalCodeProfile =
   | 'irc-residential'
   | 'wui-high-risk';
 export type HoaConstraintLevel = 'unknown' | 'none' | 'typical' | 'strict';
+export type GasHardwareTemplate =
+  | 'generic-firepit'
+  | 'drop-in-pan'
+  | 'linear-burner'
+  | 'high-btu-bowl';
 
 export interface MasonryUnit {
   name: string;
@@ -74,8 +79,10 @@ export interface MasonryInput {
   drainageCondition?: DrainageCondition;
   frostClimate?: boolean;
   frostLineDepthIn?: number;
+  overheadClearanceFt?: number;
   regionalCodeProfile?: RegionalCodeProfile;
   hoaConstraintLevel?: HoaConstraintLevel;
+  gasHardwareTemplate?: GasHardwareTemplate;
   capstonePresetKey?: string;
   brickPresetKey?: string;
   customBrickLengthIn?: number;
@@ -122,7 +129,8 @@ export interface SafetyWarning {
     | 'gas-vent-area-out-of-range'
     | 'gas-vent-layout-invalid'
     | 'gas-line-near-vent'
-    | 'course-bearing-risk';
+    | 'course-bearing-risk'
+    | 'vertical-clearance-low';
   message: string;
   actualValue?: number;
   requiredValue?: number;
@@ -155,6 +163,15 @@ export interface VentSpec {
   gasLineEntryBrickIndex?: number;
   gasLineEntryClear: boolean;
   gasLineAutoAdjusted: boolean;
+  gasHardwareTemplate: GasHardwareTemplate;
+  gasHardwareTemplateLabel?: string;
+}
+
+export interface CornerInterlockGuidance {
+  required: boolean;
+  recommendedOverlapIn: number;
+  cornerCutPerSideIn: number;
+  notes: string[];
 }
 
 export interface LinerSpec {
@@ -301,4 +318,5 @@ export interface MasonryOutput {
   capstone: CapstoneSpec;
   logistics: LogisticsSpec;
   warnings: SafetyWarning[];
+  cornerGuidance?: CornerInterlockGuidance;
 }

@@ -79,6 +79,7 @@ html[data-theme='dark'] .control-panel {
 html[data-theme='dark'] .bg-white,
 html[data-theme='dark'] .bg-white\/35,
 html[data-theme='dark'] .bg-white\/60,
+html[data-theme='dark'] .bg-white\/65,
 html[data-theme='dark'] .bg-white\/70,
 html[data-theme='dark'] .bg-white\/80,
 html[data-theme='dark'] .bg-white\/85,
@@ -166,4 +167,23 @@ html[data-theme='dark'] .stage3d-shell .stage3d-controls-panel [class*='bg-amber
 
 html[data-theme='dark'] .stage3d-shell .stage3d-controls-panel [class*='bg-amber-300'] {
   background-color: rgba(146, 105, 67, 0.9) !important;
+}
+
+html[data-theme='dark'] .analytics-consent-dialog {
+  background-color: rgba(35, 23, 15, 0.96) !important;
+  border-color: rgba(186, 128, 78, 0.5) !important;
+}
+
+html[data-theme='dark'] .analytics-consent-title {
+  color: #f1ddc3 !important;
+}
+
+html[data-theme='dark'] .analytics-consent-body {
+  color: #efdac1 !important;
+}
+
+html[data-theme='dark'] .analytics-consent-secondary {
+  background-color: rgba(58, 39, 25, 0.95) !important;
+  border-color: rgba(186, 128, 78, 0.45) !important;
+  color: #f3e2cb !important;
 }

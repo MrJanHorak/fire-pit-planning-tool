@@ -1,9 +1,11 @@
 import type {
+  CornerInterlockGuidance,
   CapstoneSpec,
   CoursePlan,
   CourseStrategySummary,
   CutPlanSpec,
   FoundationSpec,
+  GasHardwareTemplate,
   LinerSpec,
   LogisticsSpec,
   MasonryInput,
@@ -38,6 +40,32 @@ const WALL_UNIT_WEIGHT_OVERRIDES_LB: Record<string, number> = {
   rockLedgestone: 32,
   rockFieldstone: 45,
   rockMosaic: 28,
+};
+
+const GAS_HARDWARE_TEMPLATES: Record<
+  GasHardwareTemplate,
+  { label: string; recommendedAreaMinSqIn: number; recommendedAreaMaxSqIn: number }
+> = {
+  'generic-firepit': {
+    label: 'Generic firepit cavity',
+    recommendedAreaMinSqIn: 18,
+    recommendedAreaMaxSqIn: 36,
+  },
+  'drop-in-pan': {
+    label: 'Drop-in burner pan',
+    recommendedAreaMinSqIn: 18,
+    recommendedAreaMaxSqIn: 40,
+  },
+  'linear-burner': {
+    label: 'Linear burner tray',
+    recommendedAreaMinSqIn: 24,
+    recommendedAreaMaxSqIn: 48,
+  },
+  'high-btu-bowl': {
+    label: 'High-BTU bowl / ring',
+    recommendedAreaMinSqIn: 36,
+    recommendedAreaMaxSqIn: 60,
+  },
 };
 
 interface CapstonePreset {
@@ -300,6 +328,11 @@ export class MasonryEngine {
       input.capstoneOverhangIn,
       input.capPlacementMode,
     );
+    const cornerGuidance = this.calculateCornerInterlockGuidance(
+      planMetrics,
+      oriented.lengthIn,
+      input.mortarJointIn,
+    );
     const warnings = this.computeSafetyWarnings(
       input,
       ventSpec,
@@ -346,6 +379,7 @@ export class MasonryEngine {
         input,
       ),
       warnings,
+      cornerGuidance,
     };
   }
 
@@ -967,6 +1001,7 @@ export class MasonryEngine {
     courseCount: number,
     unitCount: number,
   ): VentSpec {
+    const gasTemplate = this.resolveGasHardwareTemplate(input);
     const ventCount =
       input.fuelType === 'wood'
         ? Math.max(4, input.ventCount)
@@ -1011,8 +1046,8 @@ export class MasonryEngine {
         targetCourseIndexes: [0],
         totalOpenAreaSqIn,
         openingAreaSqIn: input.ventOpeningAreaSqIn,
-        recommendedAreaMinSqIn: 18,
-        recommendedAreaMaxSqIn: 36,
+        recommendedAreaMinSqIn: gasTemplate.recommendedAreaMinSqIn,
+        recommendedAreaMaxSqIn: gasTemplate.recommendedAreaMaxSqIn,
         layout,
         crossVentilationValid,
         ventAnglesDeg,
@@ -1021,6 +1056,8 @@ export class MasonryEngine {
         gasLineEntryBrickIndex,
         gasLineEntryClear,
         gasLineAutoAdjusted,
+        gasHardwareTemplate: gasTemplate.key,
+        gasHardwareTemplateLabel: gasTemplate.label,
       };
     }
 
@@ -1031,8 +1068,8 @@ export class MasonryEngine {
         targetCourseIndexes: [Math.max(0, courseCount - 1)],
         totalOpenAreaSqIn,
         openingAreaSqIn: input.ventOpeningAreaSqIn,
-        recommendedAreaMinSqIn: 18,
-        recommendedAreaMaxSqIn: 36,
+        recommendedAreaMinSqIn: gasTemplate.recommendedAreaMinSqIn,
+        recommendedAreaMaxSqIn: gasTemplate.recommendedAreaMaxSqIn,
         layout,
         crossVentilationValid,
         ventAnglesDeg,
@@ -1041,6 +1078,8 @@ export class MasonryEngine {
         gasLineEntryBrickIndex,
         gasLineEntryClear,
         gasLineAutoAdjusted,
+        gasHardwareTemplate: gasTemplate.key,
+        gasHardwareTemplateLabel: gasTemplate.label,
       };
     }
 
@@ -1057,6 +1096,71 @@ export class MasonryEngine {
       ventBrickIndexes,
       gasLineEntryClear: true,
       gasLineAutoAdjusted: false,
+      gasHardwareTemplate: gasTemplate.key,
+      gasHardwareTemplateLabel: gasTemplate.label,
+    };
+  }
+
+  private resolveGasHardwareTemplate(input: MasonryInput): {
+    key: GasHardwareTemplate;
+    label: string;
+    recommendedAreaMinSqIn: number;
+    recommendedAreaMaxSqIn: number;
+  } {
+    const key = input.gasHardwareTemplate ?? 'generic-firepit';
+    const template = GAS_HARDWARE_TEMPLATES[key];
+    if (!template) {
+      return {
+        key: 'generic-firepit',
+        label: GAS_HARDWARE_TEMPLATES['generic-firepit'].label,
+        recommendedAreaMinSqIn:
+          GAS_HARDWARE_TEMPLATES['generic-firepit'].recommendedAreaMinSqIn,
+        recommendedAreaMaxSqIn:
+          GAS_HARDWARE_TEMPLATES['generic-firepit'].recommendedAreaMaxSqIn,
+      };
+    }
+
+    return {
+      key,
+      label: template.label,
+      recommendedAreaMinSqIn: template.recommendedAreaMinSqIn,
+      recommendedAreaMaxSqIn: template.recommendedAreaMaxSqIn,
+    };
+  }
+
+  private calculateCornerInterlockGuidance(
+    planMetrics: PlanMetrics,
+    unitLengthIn: number,
+    jointIn: number,
+  ): CornerInterlockGuidance {
+    if (planMetrics.planShape === 'circular') {
+      return {
+        required: false,
+        recommendedOverlapIn: 0,
+        cornerCutPerSideIn: 0,
+        notes: ['Circular layouts do not use corner interlock details.'],
+      };
+    }
+
+    const effectiveModuleIn = unitLengthIn + jointIn;
+    const recommendedOverlapIn = effectiveModuleIn / 2;
+    const remainderWidth = planMetrics.centerlineWidthIn % effectiveModuleIn;
+    const remainderDepth = planMetrics.centerlineDepthIn % effectiveModuleIn;
+    const cornerTrimIn =
+      Math.max(0, Math.min(remainderWidth, remainderDepth, effectiveModuleIn)) /
+      2;
+
+    return {
+      required: true,
+      recommendedOverlapIn,
+      cornerCutPerSideIn: cornerTrimIn,
+      notes: [
+        `Alternate corner starters by approximately ${recommendedOverlapIn.toFixed(2)} in every other course to maintain running-bond interlock.`,
+        cornerTrimIn > 0
+          ? `Rectangular corner closure units may need up to ${cornerTrimIn.toFixed(2)} in trim per side for clean bond closure.`
+          : 'Corner closure trims are minimal at this module spacing.',
+        'Avoid stacking vertical corner joints on successive courses.',
+      ],
     };
   }
 
@@ -1329,6 +1433,17 @@ export class MasonryEngine {
           'Minimum horizontal clearance is 10 ft from combustible structures.',
         actualValue: input.proximityToStructuresFt,
         requiredValue: 10,
+      });
+    }
+
+    const overheadClearanceFt = input.overheadClearanceFt ?? 20;
+    if (overheadClearanceFt < 15) {
+      warnings.push({
+        code: 'vertical-clearance-low',
+        message:
+          'Overhead clearance is below the recommended 15 ft baseline for branches, soffits, and overhead combustible structures.',
+        actualValue: overheadClearanceFt,
+        requiredValue: 15,
       });
     }
 

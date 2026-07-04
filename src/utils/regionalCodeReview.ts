@@ -36,6 +36,17 @@ export function buildRegionalCodeReview(
         : `Configured at ${input.proximityToStructuresFt.toFixed(1)} ft. Increase to at least 10 ft.`,
   });
 
+  const overheadClearanceFt = input.overheadClearanceFt ?? 20;
+  checks.push({
+    key: 'vertical-clearance',
+    title: 'Overhead clearance to combustibles',
+    status: overheadClearanceFt >= 15 ? 'pass' : 'review',
+    detail:
+      overheadClearanceFt >= 15
+        ? `Configured at ${overheadClearanceFt.toFixed(1)} ft (recommended baseline: 15 ft).`
+        : `Configured at ${overheadClearanceFt.toFixed(1)} ft. Increase overhead clearance where possible and confirm local authority requirements.`,
+  });
+
   if (input.fuelType !== 'wood') {
     const min = output.ventSpec.recommendedAreaMinSqIn;
     const max = output.ventSpec.recommendedAreaMaxSqIn;

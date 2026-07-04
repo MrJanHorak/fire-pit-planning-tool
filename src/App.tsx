@@ -8,6 +8,7 @@ import BillOfMaterials from './components/BillOfMaterials';
 import RegionalCodeChecker from './components/RegionalCodeChecker';
 import MaterialOptimizationSuggestions from './components/MaterialOptimizationSuggestions';
 import ProjectComparisonPanel from './components/ProjectComparisonPanel';
+import FieldPlannerPanel from './components/FieldPlannerPanel';
 import { MasonryEngine } from './engine/MasonryEngine';
 import type { MasonryInput } from './types';
 import { DEFAULT_MASONRY_INPUT } from './utils/defaultInput';
@@ -23,6 +24,10 @@ import {
   writeStoredProject,
   writeStoredProjectSnapshot,
 } from './utils/projectFile';
+import {
+  decodeCompactSharedProjectFromParams,
+  decodeSharedProject,
+} from './utils/shareLink';
 
 const engine = new MasonryEngine();
 const PROJECT_STORAGE_KEY = 'firepit-parametric-masonry-designer-project';
@@ -42,6 +47,8 @@ const SHOW_VARIANT_COMPARISON_KEY =
 const SHOW_OPTIONAL_INSIGHTS_KEY =
   'firepit-parametric-masonry-designer-show-optional-insights';
 const SHOW_NEXT_STEPS_KEY = 'firepit-parametric-masonry-designer-show-next-steps';
+const SHOW_FIELD_TOOLKIT_KEY =
+  'firepit-parametric-masonry-designer-show-field-toolkit';
 const THEME_MODE_STORAGE_KEY = 'firepit-parametric-masonry-designer-theme-mode';
 
 const Stage3D = lazy(() => import('./components/Stage3D'));
@@ -361,6 +368,10 @@ export default function App() {
     if (typeof window === 'undefined') return false;
     return window.localStorage.getItem(SHOW_NEXT_STEPS_KEY) === 'true';
   });
+  const [showFieldToolkit, setShowFieldToolkit] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem(SHOW_FIELD_TOOLKIT_KEY) === 'true';
+  });
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     if (typeof window === 'undefined') return 'light';
     const stored = window.localStorage.getItem(THEME_MODE_STORAGE_KEY);
@@ -566,6 +577,53 @@ export default function App() {
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const compactSharedProject = decodeCompactSharedProjectFromParams(
+      params,
+      DEFAULT_MASONRY_INPUT,
+    );
+    const projectToken = params.get('project');
+
+    if (compactSharedProject) {
+      try {
+        const shared = compactSharedProject;
+        setInput(shared.input);
+        if (shared.projectName) {
+          setProjectName(shared.projectName);
+        }
+        setSiteView('designer');
+        setView('3d');
+        setProjectNotice(
+          `Loaded shared project${shared.projectName ? `: ${shared.projectName}` : '.'}`,
+        );
+      } catch (error) {
+        setProjectNotice(
+          error instanceof Error
+            ? `Could not load shared project: ${error.message}`
+            : 'Could not load shared project.',
+        );
+      }
+    } else if (projectToken) {
+      try {
+        const shared = decodeSharedProject(projectToken, DEFAULT_MASONRY_INPUT);
+        setInput(shared.input);
+        if (shared.projectName) {
+          setProjectName(shared.projectName);
+        }
+        setSiteView('designer');
+        setView('3d');
+        setProjectNotice(
+          `Loaded shared project${shared.projectName ? `: ${shared.projectName}` : '.'}`,
+        );
+      } catch (error) {
+        setProjectNotice(
+          error instanceof Error
+            ? `Could not load shared project: ${error.message}`
+            : 'Could not load shared project.',
+        );
+      }
     }
 
     const hash = window.location.hash.toLowerCase();
@@ -946,9 +1004,23 @@ export default function App() {
         status: input.proximityToStructuresFt >= 10 ? 'done' : 'todo',
       },
       {
+        key: 'overhead-clearance',
+        label: 'Keep overhead combustible clearance at or above 15 ft.',
+        status: (input.overheadClearanceFt ?? 20) >= 15 ? 'done' : 'todo',
+      },
+      {
         key: 'venting',
-        label: 'Keep venting at 18 sq in or more total open area.',
-        status: output.ventSpec.totalOpenAreaSqIn >= 18 ? 'done' : 'todo',
+        label:
+          input.fuelType === 'wood'
+            ? 'Keep venting at 18 sq in or more total open area.'
+            : `Keep venting within ${output.ventSpec.recommendedAreaMinSqIn.toFixed(0)}-${(output.ventSpec.recommendedAreaMaxSqIn ?? output.ventSpec.recommendedAreaMinSqIn).toFixed(0)} sq in for the selected gas hardware.`,
+        status:
+          output.ventSpec.totalOpenAreaSqIn >= output.ventSpec.recommendedAreaMinSqIn &&
+          (output.ventSpec.recommendedAreaMaxSqIn === undefined ||
+            output.ventSpec.totalOpenAreaSqIn <=
+              output.ventSpec.recommendedAreaMaxSqIn)
+            ? 'done'
+            : 'todo',
       },
       {
         key: 'cuts',
@@ -968,7 +1040,12 @@ export default function App() {
     }
 
     return steps;
-  }, [input.mortarJointIn, input.proximityToStructuresFt, output]);
+  }, [
+    input.mortarJointIn,
+    input.overheadClearanceFt,
+    input.proximityToStructuresFt,
+    output,
+  ]);
 
   const applyQuickPreset = (preset: QuickPresetKey) => {
     if (preset === 'classic-propane') {
@@ -1672,6 +1749,37 @@ export default function App() {
                 <RegionalCodeChecker input={input} output={output} />
 
                 <MaterialOptimizationSuggestions input={input} output={output} />
+
+                <details
+                  className='rounded-2xl border border-amber-900/15 bg-white/70 p-3'
+                  open={showFieldToolkit}
+                  onToggle={(event) => {
+                    const next = event.currentTarget.open;
+                    setShowFieldToolkit(next);
+                    window.localStorage.setItem(
+                      SHOW_FIELD_TOOLKIT_KEY,
+                      String(next),
+                    );
+                  }}
+                >
+                  <summary className='cursor-pointer list-none'>
+                    <div className='flex flex-wrap items-center justify-between gap-2'>
+                      <p className='text-xs font-semibold uppercase tracking-[0.15em] text-amber-900/85'>
+                        Field Toolkit
+                      </p>
+                      <span className='rounded-full border border-amber-900/20 bg-white px-3 py-1 text-xs font-semibold text-amber-950'>
+                        {showFieldToolkit ? 'Hide' : 'Show'}
+                      </span>
+                    </div>
+                  </summary>
+                  <div className='mt-3'>
+                    <FieldPlannerPanel
+                      input={input}
+                      output={output}
+                      projectName={projectName}
+                    />
+                  </div>
+                </details>
               </div>
             </details>
 
@@ -1921,17 +2029,17 @@ export default function App() {
             aria-modal='true'
             aria-labelledby='analytics-consent-title'
             aria-describedby='analytics-consent-description'
-            className='w-[min(760px,calc(100vw-2rem))] rounded-2xl border border-amber-900/25 bg-amber-50/95 p-4 shadow-2xl backdrop-blur'
+            className='analytics-consent-dialog w-[min(760px,calc(100vw-2rem))] rounded-2xl border border-amber-900/25 bg-amber-50/95 p-4 shadow-2xl backdrop-blur'
           >
             <h2
               id='analytics-consent-title'
-              className='text-sm font-semibold uppercase tracking-[0.15em] text-amber-900/85'
+              className='analytics-consent-title text-sm font-semibold uppercase tracking-[0.15em] text-amber-900/85'
             >
               Analytics Consent
             </h2>
             <p
               id='analytics-consent-description'
-              className='mt-2 text-sm leading-6 text-amber-950/90'
+              className='analytics-consent-body mt-2 text-sm leading-6 text-amber-950/90'
             >
               We use Google Analytics only after opt-in consent to understand
               aggregate usage and improve the site. For stricter compliance
@@ -1949,7 +2057,7 @@ export default function App() {
               </button>
               <button
                 type='button'
-                className='rounded-full border border-amber-900/25 bg-white px-4 py-2 text-xs font-semibold text-amber-950 hover:bg-amber-100'
+                className='analytics-consent-secondary rounded-full border border-amber-900/25 bg-white px-4 py-2 text-xs font-semibold text-amber-950 hover:bg-amber-100'
                 onClick={() => handleAnalyticsConsentChoice('denied')}
               >
                 Decline Analytics
@@ -1957,7 +2065,7 @@ export default function App() {
               {analyticsConsent !== 'unknown' && (
                 <button
                   type='button'
-                  className='rounded-full border border-amber-900/25 bg-transparent px-4 py-2 text-xs font-semibold text-amber-950 hover:bg-amber-100/60'
+                  className='analytics-consent-secondary rounded-full border border-amber-900/25 bg-transparent px-4 py-2 text-xs font-semibold text-amber-950 hover:bg-amber-100/60'
                   onClick={() => setShowCookieBanner(false)}
                 >
                   Close

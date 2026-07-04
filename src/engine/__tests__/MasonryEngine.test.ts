@@ -139,6 +139,20 @@ describe('MasonryEngine', () => {
     ).toBe(true);
   });
 
+  it('warns when overhead clearance is below the recommended baseline', () => {
+    const engine = new MasonryEngine();
+    const output = engine.calculateDesign({
+      ...baseInput,
+      overheadClearanceFt: 12,
+    });
+
+    expect(
+      output.warnings.some(
+        (warning) => warning.code === 'vertical-clearance-low',
+      ),
+    ).toBe(true);
+  });
+
   it('adds shim spacer units when shim spacer strategy is selected', () => {
     const engine = new MasonryEngine();
     const uniform = engine.calculateDesign(baseInput);
@@ -331,6 +345,35 @@ describe('MasonryEngine', () => {
     );
     expect(output.unitsPerCourseRounded).toBeGreaterThan(0);
     expect(output.cutPlan.requiresCutting).toBe(false);
+  });
+
+  it('provides rectangular corner interlock guidance for non-circular plans', () => {
+    const engine = new MasonryEngine();
+    const output = engine.calculateDesign({
+      ...baseInput,
+      planShape: 'rectangular',
+      innerWidthIn: 48,
+      innerDepthIn: 30,
+    });
+
+    expect(output.cornerGuidance?.required).toBe(true);
+    expect(output.cornerGuidance?.recommendedOverlapIn).toBeGreaterThan(0);
+    expect(output.cornerGuidance?.notes.length).toBeGreaterThan(0);
+  });
+
+  it('applies gas hardware template vent ranges', () => {
+    const engine = new MasonryEngine();
+    const output = engine.calculateDesign({
+      ...baseInput,
+      fuelType: 'natural-gas',
+      gasHardwareTemplate: 'high-btu-bowl',
+      ventCount: 4,
+      ventOpeningAreaSqIn: 8,
+    });
+
+    expect(output.ventSpec.gasHardwareTemplate).toBe('high-btu-bowl');
+    expect(output.ventSpec.recommendedAreaMinSqIn).toBe(36);
+    expect(output.ventSpec.recommendedAreaMaxSqIn).toBe(60);
   });
 
   it('anchors rectangular vents at side midpoints instead of corners', () => {

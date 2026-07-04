@@ -42,7 +42,7 @@ export default function RegionalCodeChecker({
         </span>
       </div>
       <p className='mt-2 text-xs text-amber-900/70'>
-        Covers IBC-style setbacks and venting, HOA constraints, and frost-line context.
+        Covers IBC-style setbacks, overhead clearance, venting, HOA constraints, and frost-line context.
       </p>
       <div className='mt-3 space-y-2'>
         {report.checks.map((check) => (

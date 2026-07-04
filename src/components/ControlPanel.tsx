@@ -129,6 +129,15 @@ export default function ControlPanel({
     });
   };
 
+  const updatePlanShape = (planShape: MasonryInput['planShape']) => {
+    setInput((prev) => ({
+      ...prev,
+      planShape,
+      innerDepthIn:
+        planShape === 'rectangular' ? prev.innerDepthIn : prev.innerWidthIn,
+    }));
+  };
+
   return (
     <section className='control-panel card-rise relative z-30 rounded-2xl border border-amber-900/20 bg-amber-50/70 p-5 shadow-lg backdrop-blur'>
       <div className='mb-4 flex items-start justify-between gap-3'>
@@ -154,30 +163,66 @@ export default function ControlPanel({
             label='Plan Shape'
             tip='Circular layouts are common for masonry fire pits and keep coursing, vent spacing, and cap layout easy to read at a glance.'
           />
-          <select
-            className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+          <div
+            className='grid grid-cols-3 gap-1 rounded-lg border border-amber-700/25 bg-white p-1'
+            role='group'
             aria-label='Plan Shape'
-            title='Plan Shape'
-            value={input.planShape}
-            onChange={(event) =>
-              setInput((prev) => {
-                const planShape = event.target
-                  .value as MasonryInput['planShape'];
-                return {
-                  ...prev,
-                  planShape,
-                  innerDepthIn:
-                    planShape === 'rectangular'
-                      ? prev.innerDepthIn
-                      : prev.innerWidthIn,
-                };
-              })
-            }
           >
-            <option value='circular'>Circular</option>
-            <option value='square'>Square</option>
-            <option value='rectangular'>Rectangular</option>
-          </select>
+            {[
+              {
+                value: 'circular' as const,
+                label: 'Circular',
+                hint: 'Round pit',
+                icon: (
+                  <span className='inline-block h-3.5 w-3.5 rounded-full border-2 border-current' />
+                ),
+              },
+              {
+                value: 'square' as const,
+                label: 'Square',
+                hint: 'Equal sides',
+                icon: (
+                  <span className='inline-block h-3.5 w-3.5 rounded-[2px] border-2 border-current' />
+                ),
+              },
+              {
+                value: 'rectangular' as const,
+                label: 'Rectangular',
+                hint: 'Long + short',
+                icon: (
+                  <span className='inline-block h-2.5 w-4.5 rounded-[2px] border-2 border-current' />
+                ),
+              },
+            ].map((option) => {
+              const selected = input.planShape === option.value;
+
+              return (
+                <button
+                  key={option.value}
+                  type='button'
+                  className={`rounded-md px-2 py-2 text-left transition-colors ${
+                    selected
+                      ? 'bg-amber-900 text-amber-50 shadow-sm'
+                      : 'bg-white text-amber-900 hover:bg-amber-100/80'
+                  }`}
+                  onClick={() => updatePlanShape(option.value)}
+                  aria-pressed={selected}
+                >
+                  <span className='mb-1 inline-flex items-center gap-2 text-xs'>
+                    {option.icon}
+                    <span>{option.label}</span>
+                  </span>
+                  <span
+                    className={`block text-xs leading-tight ${
+                      selected ? 'text-amber-100/90' : 'text-amber-700/80'
+                    }`}
+                  >
+                    {option.hint}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </label>
 
         <SectionHeading
@@ -1069,6 +1114,33 @@ export default function ControlPanel({
           </select>
         </label>
 
+        {input.fuelType !== 'wood' && (
+          <label className='flex flex-col gap-1'>
+            <FieldLabel
+              label='Gas Hardware Template'
+              tip='Select the closest burner or pan class to tune vent-area guidance ranges. Always follow your exact hardware documentation.'
+            />
+            <select
+              className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+              aria-label='Gas hardware template'
+              title='Gas hardware template'
+              value={input.gasHardwareTemplate ?? 'generic-firepit'}
+              onChange={(event) =>
+                setInput((prev) => ({
+                  ...prev,
+                  gasHardwareTemplate: event.target
+                    .value as MasonryInput['gasHardwareTemplate'],
+                }))
+              }
+            >
+              <option value='generic-firepit'>Generic firepit cavity</option>
+              <option value='drop-in-pan'>Drop-in burner pan</option>
+              <option value='linear-burner'>Linear burner tray</option>
+              <option value='high-btu-bowl'>High-BTU bowl / ring</option>
+            </select>
+          </label>
+        )}
+
         <label className='flex flex-col gap-1'>
           <FieldLabel
             label='Thermal Liner'
@@ -1112,6 +1184,29 @@ export default function ControlPanel({
             <option value='stretcher'>Stretcher</option>
             <option value='header'>Header</option>
           </select>
+        </label>
+
+        <label className='flex flex-col gap-1'>
+          <FieldLabel
+            label='Overhead Clearance (ft)'
+            tip='Planning value for vertical clearance to branches, pergolas, soffits, and other overhead combustibles.'
+          />
+          <input
+            className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            aria-label='Overhead clearance in feet'
+            title='Overhead clearance in feet'
+            type='number'
+            min={1}
+            max={40}
+            step={0.5}
+            value={input.overheadClearanceFt ?? 20}
+            onChange={(event) =>
+              setInput((prev) => ({
+                ...prev,
+                overheadClearanceFt: Number(event.target.value),
+              }))
+            }
+          />
         </label>
 
         <SectionHeading

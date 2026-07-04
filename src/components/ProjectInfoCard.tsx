@@ -153,6 +153,16 @@ export default function ProjectInfoCard({
               </dd>
             </div>
 
+            {input.fuelType !== 'wood' && (
+              <div className='flex justify-between'>
+                <dt className='text-xs text-amber-950/75'>Gas template</dt>
+                <dd className='font-semibold'>
+                  {output.ventSpec.gasHardwareTemplateLabel ??
+                    'Generic firepit cavity'}
+                </dd>
+              </div>
+            )}
+
             <div className='flex justify-between items-center'>
               <dt className='text-xs text-amber-950/75'>Vent locations</dt>
               <dd className='flex items-center gap-2 font-semibold'>
@@ -227,6 +237,13 @@ export default function ProjectInfoCard({
             </div>
 
             <div className='flex justify-between'>
+              <dt className='text-xs text-amber-950/75'>Overhead clearance</dt>
+              <dd className='font-semibold'>
+                {(input.overheadClearanceFt ?? 20).toFixed(1)} ft
+              </dd>
+            </div>
+
+            <div className='flex justify-between'>
               <dt className='text-xs text-amber-950/75'>Capstone type</dt>
               <dd className='font-semibold'>
                 {output.resolvedCapUnit.name} ({input.capPlacementMode})
@@ -241,6 +258,18 @@ export default function ProjectInfoCard({
                   : 'No taper cuts required at this diameter'}
               </dd>
             </div>
+
+            {output.cornerGuidance?.required && (
+              <div className='flex justify-between'>
+                <dt className='text-xs text-amber-950/75'>Corner interlock</dt>
+                <dd className='font-semibold'>
+                  {output.cornerGuidance.recommendedOverlapIn.toFixed(2)} in
+                  overlap, up to{' '}
+                  {output.cornerGuidance.cornerCutPerSideIn.toFixed(2)} in trim
+                  per side
+                </dd>
+              </div>
+            )}
           </dl>
         </div>
       </div>
@@ -284,6 +313,18 @@ export default function ProjectInfoCard({
           )}
         </div>
       </details>
+      {output.cornerGuidance?.required && (
+        <details className='mt-3 rounded-lg border border-amber-900/15 bg-white/70 p-3'>
+          <summary className='cursor-pointer font-medium'>
+            Corner interlock notes
+          </summary>
+          <ul className='mt-2 list-disc pl-4 text-sm text-amber-900/85'>
+            {output.cornerGuidance.notes.map((note) => (
+              <li key={note}>{note}</li>
+            ))}
+          </ul>
+        </details>
+      )}
       {output.logistics.seatingAreaMaterials && (
         <details className='mt-3 rounded-lg border border-amber-900/15 bg-white/70 p-3'>
           <summary className='cursor-pointer font-medium'>
