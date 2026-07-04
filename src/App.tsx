@@ -41,6 +41,8 @@ const SHOW_VARIANT_COMPARISON_KEY =
   'firepit-parametric-masonry-designer-show-variant-comparison';
 const SHOW_OPTIONAL_INSIGHTS_KEY =
   'firepit-parametric-masonry-designer-show-optional-insights';
+const SHOW_NEXT_STEPS_KEY = 'firepit-parametric-masonry-designer-show-next-steps';
+const THEME_MODE_STORAGE_KEY = 'firepit-parametric-masonry-designer-theme-mode';
 
 const Stage3D = lazy(() => import('./components/Stage3D'));
 const ConstructionMode = lazy(() => import('./components/ConstructionMode'));
@@ -284,6 +286,7 @@ function findNoCutDiameterIn(
 }
 
 type ViewMode = '3d' | 'construction';
+type ThemeMode = 'light' | 'dark';
 type SiteView =
   | 'designer'
   | 'guide'
@@ -347,11 +350,24 @@ export default function App() {
   const [showOptionalInsights, setShowOptionalInsights] = useState<boolean>(
     () => {
       if (typeof window === 'undefined') return false;
-      return (
-        window.localStorage.getItem(SHOW_OPTIONAL_INSIGHTS_KEY) === 'true'
-      );
+      const stored = window.localStorage.getItem(SHOW_OPTIONAL_INSIGHTS_KEY);
+      return stored === null ? true : stored === 'true';
     },
   );
+  const [showNextSteps, setShowNextSteps] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem(SHOW_NEXT_STEPS_KEY) === 'true';
+  });
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
+    if (typeof window === 'undefined') return 'light';
+    const stored = window.localStorage.getItem(THEME_MODE_STORAGE_KEY);
+    if (stored === 'light' || stored === 'dark') {
+      return stored;
+    }
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light';
+  });
   const [analyticsConsent, setAnalyticsConsent] = useState<AnalyticsConsent>(
     () => {
       if (typeof window === 'undefined') {
@@ -539,6 +555,15 @@ export default function App() {
       setSiteView('terms');
     }
   }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined' || typeof window === 'undefined') {
+      return;
+    }
+
+    document.documentElement.setAttribute('data-theme', themeMode);
+    window.localStorage.setItem(THEME_MODE_STORAGE_KEY, themeMode);
+  }, [themeMode]);
 
   useEffect(() => {
     if (initialProject) {
@@ -1082,6 +1107,9 @@ export default function App() {
             <h1 className='mt-1 text-2xl font-extrabold tracking-tight sm:text-[2.05rem]'>
               Parametric Masonry Designer
             </h1>
+            <p className='mt-1 inline-flex items-center rounded-full border border-amber-900/20 bg-white/60 px-2.5 py-1 text-xs font-semibold text-amber-950'>
+              Project: {projectName}
+            </p>
             <p className='mt-1.5 max-w-2xl text-sm leading-5 sm:text-[15px]'>
               Plan masonry fire pits with real unit dimensions, venting rules,
               safety checks, material estimates, and build-focused reference
@@ -1111,16 +1139,72 @@ export default function App() {
               })}
             </nav>
 
-            {!showWorkspaceTools && (
+            <div className='ml-auto flex items-center gap-2'>
+              {!showWorkspaceTools && (
+                <button
+                  type='button'
+                  className='rounded-full border border-amber-900/20 bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-amber-900 hover:bg-white'
+                  onClick={() => setShowWorkspaceTools(true)}
+                  aria-controls='project-workspace-panel'
+                >
+                  Project File
+                </button>
+              )}
+
               <button
                 type='button'
-                className='rounded-full border border-amber-900/20 bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-amber-900 hover:bg-white'
-                onClick={() => setShowWorkspaceTools(true)}
-                aria-controls='project-workspace-panel'
+                className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition-colors ${
+                  themeMode === 'dark'
+                    ? 'border-amber-700/45 bg-amber-900/45 text-amber-200 hover:bg-amber-900/60'
+                    : 'border-amber-900/20 bg-white/70 text-amber-900 hover:bg-white'
+                }`}
+                onClick={() =>
+                  setThemeMode((prev) => (prev === 'dark' ? 'light' : 'dark'))
+                }
+                aria-label={
+                  themeMode === 'dark'
+                    ? 'Switch to light mode'
+                    : 'Switch to dark mode'
+                }
+                title={
+                  themeMode === 'dark' ? 'Dark mode' : 'Light mode'
+                }
               >
-                Open Workspace Tools
+                {themeMode === 'dark' ? (
+                  <svg
+                    aria-hidden='true'
+                    viewBox='0 0 24 24'
+                    className='h-4 w-4'
+                    fill='none'
+                    stroke='currentColor'
+                    strokeWidth='1.7'
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                  >
+                    <path d='M6 16h12' />
+                    <path d='M7 16c.8 2 2.5 3 5 3s4.2-1 5-3' />
+                    <path d='M9.6 16 11 14.6m3.4 1.4L13 14.6' />
+                    <path d='M12 6.2c1.5 1.3 2.4 2.6 2.4 4a2.4 2.4 0 1 1-4.8 0c0-1.1.6-2.3 1.8-3.7' />
+                  </svg>
+                ) : (
+                  <svg
+                    aria-hidden='true'
+                    viewBox='0 0 24 24'
+                    className='h-4 w-4'
+                    fill='none'
+                    stroke='currentColor'
+                    strokeWidth='1.7'
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                  >
+                    <path d='M6 16h12' />
+                    <path d='M7 16c.8 2 2.5 3 5 3s4.2-1 5-3' />
+                    <path d='M9.6 16 11 14.6m3.4 1.4L13 14.6' />
+                    <path d='M12 11.7c.9.9 1.3 1.7 1.3 2.4a1.3 1.3 0 0 1-2.6 0c0-.6.3-1.3 1-2.2' />
+                  </svg>
+                )}
               </button>
-            )}
+            </div>
           </div>
         </div>
 
@@ -1137,7 +1221,7 @@ export default function App() {
               <div className='flex items-center justify-between gap-3'>
                 <div>
                   <p className='text-xs font-semibold uppercase tracking-[0.2em] text-amber-900/70'>
-                    Project Workspace
+                    Project File
                   </p>
                   <p className='mt-1 text-sm text-amber-900/80'>
                     Name, import/export, autosave, and snapshot controls.
@@ -1273,7 +1357,7 @@ export default function App() {
 
       {siteView === 'designer' ? (
         <div className='grid gap-4 lg:grid-cols-[360px_1fr]'>
-          <div className='space-y-4'>
+          <div className='order-2 space-y-4 lg:order-1'>
             <section className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg'>
               <p className='text-xs font-semibold uppercase tracking-[0.15em] text-amber-900/75'>
                 Quick Start
@@ -1345,41 +1429,41 @@ export default function App() {
             />
           </div>
 
-          <section className='min-w-0 space-y-4'>
-            <div className='card-rise grid gap-3 rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg sm:grid-cols-3'>
-              <div>
-                <p className='text-xs uppercase tracking-wide text-amber-950/75'>
+          <section className='order-1 min-w-0 space-y-4 lg:order-2'>
+            <div className='card-rise grid gap-2 rounded-2xl border border-amber-900/20 bg-amber-50/75 p-3 shadow-lg sm:grid-cols-3'>
+              <div className='rounded-xl border border-amber-900/15 border-t-2 border-t-amber-700/70 bg-white/70 px-3 py-2'>
+                <p className='text-[11px] uppercase tracking-wide text-amber-950/90'>
                   Units Per Layer
                 </p>
-                <p className='text-2xl font-bold'>
+                <p className='text-xl font-bold sm:text-2xl'>
                   {output.unitsPerCourseRounded}
                 </p>
               </div>
-              <div>
-                <p className='text-xs uppercase tracking-wide text-amber-950/75'>
+              <div className='rounded-xl border border-amber-900/15 border-t-2 border-t-amber-700/70 bg-white/70 px-3 py-2'>
+                <p className='text-[11px] uppercase tracking-wide text-amber-950/90'>
                   Total Units
                 </p>
-                <p className='text-2xl font-bold'>{output.totalUnits}</p>
+                <p className='text-xl font-bold sm:text-2xl'>{output.totalUnits}</p>
               </div>
-              <div>
-                <p className='text-xs uppercase tracking-wide text-amber-950/75'>
+              <div className='rounded-xl border border-amber-900/15 border-t-2 border-t-amber-700/70 bg-white/70 px-3 py-2'>
+                <p className='text-[11px] uppercase tracking-wide text-amber-950/90'>
                   Shape
                 </p>
-                <p className='text-2xl font-bold'>{output.planShape}</p>
+                <p className='text-xl font-bold sm:text-2xl'>{output.planShape}</p>
               </div>
-              <div>
-                <p className='text-xs uppercase tracking-wide text-amber-950/75'>
+              <div className='rounded-xl border border-amber-900/15 border-t-2 border-t-amber-700/70 bg-white/70 px-3 py-2'>
+                <p className='text-[11px] uppercase tracking-wide text-amber-950/90'>
                   Cap Units
                 </p>
-                <p className='text-2xl font-bold'>
+                <p className='text-xl font-bold sm:text-2xl'>
                   {output.capstone.capUnitsPerCourseRounded}
                 </p>
               </div>
-              <div>
-                <p className='text-xs uppercase tracking-wide text-amber-950/75'>
+              <div className='rounded-xl border border-amber-900/15 border-t-2 border-t-amber-700/70 bg-white/70 px-3 py-2'>
+                <p className='text-[11px] uppercase tracking-wide text-amber-950/90'>
                   Liner
                 </p>
-                <p className='text-lg font-bold'>
+                <p className='text-base font-bold sm:text-lg'>
                   {output.linerSpec.type === 'none'
                     ? 'None'
                     : output.linerSpec.type === 'fire-brick'
@@ -1387,11 +1471,11 @@ export default function App() {
                       : 'Steel Ring'}
                 </p>
               </div>
-              <div>
-                <p className='text-xs uppercase tracking-wide text-amber-950/75'>
+              <div className='rounded-xl border border-amber-900/15 border-t-2 border-t-amber-700/70 bg-white/70 px-3 py-2'>
+                <p className='text-[11px] uppercase tracking-wide text-amber-950/90'>
                   Stone Base (yd3)
                 </p>
-                <p className='text-2xl font-bold'>
+                <p className='text-xl font-bold sm:text-2xl'>
                   {output.foundation.stoneVolumeCubicYards.toFixed(2)}
                 </p>
                 <p className='mt-1'>
@@ -1479,8 +1563,8 @@ export default function App() {
             >
               <summary className='cursor-pointer list-none'>
                 <div className='flex flex-wrap items-center justify-between gap-2'>
-                  <p className='text-xs font-semibold uppercase tracking-[0.15em] text-amber-900/75'>
-                    Optional Insights
+                  <p className='text-xs font-semibold uppercase tracking-[0.15em] text-amber-900/90'>
+                    Design Insights
                   </p>
                   <span className='rounded-full border border-amber-900/20 bg-white px-3 py-1 text-xs font-semibold text-amber-950'>
                     {showOptionalInsights ? 'Hide' : 'Show'}
@@ -1528,23 +1612,39 @@ export default function App() {
               </div>
             </details>
 
-            <div className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg'>
-              <div className='flex flex-wrap items-center justify-between gap-2'>
-                <p className='text-xs font-semibold uppercase tracking-[0.15em] text-amber-900/75'>
-                  What To Do Next
-                </p>
-                <span
-                  className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
-                    hasBlockingWarnings
-                      ? 'border-red-800/25 bg-red-100 text-red-900'
-                      : 'border-emerald-800/25 bg-emerald-100 text-emerald-900'
-                  }`}
-                >
-                  {hasBlockingWarnings
-                    ? 'Address safety items first'
-                    : 'Ready to plan build'}
-                </span>
-              </div>
+            <details
+              className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg'
+              open={showNextSteps}
+              onToggle={(event) => {
+                const next = event.currentTarget.open;
+                setShowNextSteps(next);
+                window.localStorage.setItem(SHOW_NEXT_STEPS_KEY, String(next));
+              }}
+            >
+              <summary className='cursor-pointer list-none'>
+                <div className='flex flex-wrap items-center justify-between gap-2'>
+                  <p className='text-xs font-semibold uppercase tracking-[0.15em] text-amber-900/90'>
+                    What To Do Next
+                  </p>
+                  <div className='flex items-center gap-2'>
+                    <span
+                      className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                        hasBlockingWarnings
+                          ? 'border-red-800/25 bg-red-100 text-red-900'
+                          : 'border-emerald-800/25 bg-emerald-100 text-emerald-900'
+                      }`}
+                    >
+                      {hasBlockingWarnings
+                        ? 'Address safety items first'
+                        : 'Ready to plan build'}
+                    </span>
+                    <span className='rounded-full border border-amber-900/20 bg-white px-2.5 py-1 text-xs font-semibold text-amber-950'>
+                      {showNextSteps ? 'Hide' : 'Show'}
+                    </span>
+                  </div>
+                </div>
+              </summary>
+
               <ul className='mt-3 space-y-2'>
                 {nextSteps.map((step) => (
                   <li
@@ -1570,7 +1670,7 @@ export default function App() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </details>
 
             <details
               className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg'

@@ -50,3 +50,77 @@ summary::-webkit-details-marker {
 .control-panel-grid > label {
   row-gap: 0.25rem;
 }
+
+html[data-theme='dark'] body {
+  color: #f2e4cf;
+  background:
+    radial-gradient(circle at 18% 10%, #2d1f15 0 34%, transparent 35%),
+    radial-gradient(circle at 84% 80%, #3a2a1a 0 24%, transparent 25%),
+    linear-gradient(145deg, #130d08, #1f140d 58%, #2a1b11);
+}
+
+html[data-theme='dark'] .card-rise,
+html[data-theme='dark'] .control-panel {
+  background: rgba(31, 19, 12, 0.88) !important;
+  border-color: rgba(186, 128, 78, 0.32) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme='dark'] .bg-white,
+html[data-theme='dark'] .bg-white\/35,
+html[data-theme='dark'] .bg-white\/60,
+html[data-theme='dark'] .bg-white\/70,
+html[data-theme='dark'] .bg-white\/80,
+html[data-theme='dark'] .bg-white\/85 {
+  background-color: rgba(45, 30, 20, 0.9) !important;
+}
+
+html[data-theme='dark'] input,
+html[data-theme='dark'] select,
+html[data-theme='dark'] textarea {
+  background-color: #2a1b12 !important;
+  border-color: rgba(186, 128, 78, 0.45) !important;
+  color: #f2e4cf !important;
+}
+
+html[data-theme='dark'] input::placeholder,
+html[data-theme='dark'] textarea::placeholder {
+  color: rgba(242, 228, 207, 0.6);
+}
+
+html[data-theme='dark'] [class*='text-amber-9'] {
+  color: #f2e4cf !important;
+}
+
+html[data-theme='dark'] [class*='text-amber-8'] {
+  color: #deb78d !important;
+}
+
+html[data-theme='dark'] [class*='border-amber-9'],
+html[data-theme='dark'] [class*='border-amber-8'],
+html[data-theme='dark'] [class*='border-amber-7'] {
+  border-color: rgba(186, 128, 78, 0.36) !important;
+}
+
+html[data-theme='dark'] [class*='bg-amber-100'] {
+  background-color: rgba(61, 41, 27, 0.92) !important;
+}
+
+html[data-theme='dark'] [class*='bg-amber-100'][class*='text-amber-900'] {
+  color: #f2e4cf !important;
+}
+
+html[data-theme='dark'] [class*='bg-amber-900'] {
+  background-color: #a9471e !important;
+}
+
+html[data-theme='dark'] [class*='bg-amber-900'][class*='text-amber-50'] {
+  color: #fff4e2 !important;
+}
+
+html[data-theme='dark'] button:disabled {
+  background-color: rgba(84, 62, 44, 0.92) !important;
+  color: #d8c1a1 !important;
+  border-color: rgba(186, 128, 78, 0.35) !important;
+  opacity: 0.9;
+}

@@ -76,13 +76,13 @@ function CostInput({
   value,
   onChange,
 }: {
-  label: string;
+  label?: string;
   value: string;
   onChange: (v: string) => void;
 }) {
   return (
-    <label className='flex items-center gap-1.5 text-[11px] text-amber-900/70'>
-      {label}
+    <label className='flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-900/75'>
+      {label && <span>{label}</span>}
       <input
         type='number'
         min='0'
@@ -90,71 +90,22 @@ function CostInput({
         placeholder='0.00'
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className='w-20 rounded border border-amber-200 bg-white px-1.5 py-0.5 text-[11px] text-amber-950 outline-none focus:border-amber-500'
+        className='w-24 rounded-md border border-amber-300 bg-white px-2 py-1 text-xs font-semibold text-amber-950 outline-none focus:border-amber-500'
       />
     </label>
   );
 }
 
-interface BomRowProps {
-  color: string;
-  icon: string;
-  category: string;
-  spec: string;
-  qty: string;
-  weight?: string;
-  notes?: string;
-  costInput?: React.ReactNode;
-  lineTotal?: string;
-}
-
-function BomRow({
-  color,
-  icon,
-  category,
-  spec,
-  qty,
-  weight,
-  notes,
-  costInput,
-  lineTotal,
-}: BomRowProps) {
-  return (
-    <div
-      className={`flex flex-col gap-1 rounded-lg border-l-4 bg-white/75 p-3 shadow-sm ${color}`}
-    >
-      <div className='flex items-start justify-between gap-2'>
-        <div className='flex items-center gap-2'>
-          <span className='text-base leading-none'>{icon}</span>
-          <div>
-            <p className='text-[11px] font-bold uppercase tracking-wide text-amber-950/70'>
-              {category}
-            </p>
-            <p className='text-xs font-semibold text-amber-950'>{spec}</p>
-          </div>
-        </div>
-        <div className='text-right'>
-          <p className='text-base font-bold text-amber-950'>{qty}</p>
-          {weight && (
-            <p className='text-[11px] text-amber-900/60'>{weight}</p>
-          )}
-        </div>
-      </div>
-      {notes && (
-        <p className='text-[11px] leading-4 text-amber-900/60'>{notes}</p>
-      )}
-      {(costInput || lineTotal) && (
-        <div className='mt-1 flex items-center justify-between gap-2 border-t border-amber-900/10 pt-1.5'>
-          {costInput}
-          {lineTotal && (
-            <p className='ml-auto text-xs font-bold text-emerald-800'>
-              {lineTotal}
-            </p>
-          )}
-        </div>
-      )}
-    </div>
-  );
+interface BomTableRow {
+  key: string;
+  item: string;
+  detail: string;
+  qty: number;
+  qtyDisplay?: string;
+  unit: string;
+  unitPrice: string;
+  onUnitPriceChange: (value: string) => void;
+  lineTotal: number;
 }
 
 interface Props {
@@ -162,7 +113,6 @@ interface Props {
 }
 
 export default function BillOfMaterials({ output }: Props) {
-  const [showCosts, setShowCosts] = useState(false);
   const [costs, setCosts] = useState<BomCosts>(loadCosts);
 
   const { logistics, resolvedUnit, resolvedCapUnit, linerSpec, foundation } =
@@ -231,10 +181,100 @@ export default function BillOfMaterials({ output }: Props) {
 
   const wallSpec = `${resolvedUnit.name} — ${resolvedUnit.lengthIn}"L × ${resolvedUnit.widthIn}"W × ${resolvedUnit.heightIn}"H`;
   const capSpec = `${resolvedCapUnit.name} — ${resolvedCapUnit.lengthIn}"L × ${resolvedCapUnit.widthIn}"W × ${resolvedCapUnit.heightIn}"H`;
+  const bomRows: BomTableRow[] = [
+    {
+      key: 'wall-units',
+      item: 'Wall Units',
+      detail: `${wallSpec} · ${logistics.wasteFactorPct}% waste included`,
+      qty: logistics.purchasedUnits,
+      unit: 'ea',
+      unitPrice: costs.wallUnit,
+      onUnitPriceChange: (value) => updateCost('wallUnit', value),
+      lineTotal: wallTotal,
+    },
+    {
+      key: 'capstones',
+      item: 'Capstones',
+      detail: `${capSpec} · ${logistics.wasteFactorPct}% waste included`,
+      qty: logistics.purchasedCapUnits,
+      unit: 'ea',
+      unitPrice: costs.capUnit,
+      onUnitPriceChange: (value) => updateCost('capUnit', value),
+      lineTotal: capTotal,
+    },
+    {
+      key: 'mortar',
+      item: 'Type S Mortar',
+      detail: `~${MORTAR_BAG_80LB_FT3} ft³ yield per bag · round up at the yard`,
+      qty: mortarBags,
+      qtyDisplay: `${mortarBags}`,
+      unit: 'bags',
+      unitPrice: costs.mortarBag,
+      onUnitPriceChange: (value) => updateCost('mortarBag', value),
+      lineTotal: mortarTotal,
+    },
+    {
+      key: 'gravel',
+      item: 'Compacted Gravel',
+      detail: `Footprint ${foundation.footprintAreaSquareFeet.toFixed(1)} ft² · ${foundation.stoneVolumeCubicYards.toFixed(2)} yd³`,
+      qty: foundation.stoneVolumeCubicFeet,
+      qtyDisplay: foundation.stoneVolumeCubicFeet.toFixed(1),
+      unit: 'cu ft',
+      unitPrice: costs.gravelTon,
+      onUnitPriceChange: (value) => updateCost('gravelTon', value),
+      lineTotal: gravelTotal,
+    },
+  ];
+
+  if (linerSpec.enabled) {
+    bomRows.push({
+      key: 'liner',
+      item:
+        linerSpec.type === 'fire-brick'
+          ? 'Thermal Liner (Fire Brick)'
+          : linerSpec.type === 'steel-ring'
+            ? 'Thermal Liner (Steel Ring)'
+            : 'Thermal Liner',
+      detail: `${linerSpec.thicknessIn}" thick · ${linerSpec.description}`,
+      qty: 1,
+      unit: 'job',
+      unitPrice: costs.linerUnit,
+      onUnitPriceChange: (value) => updateCost('linerUnit', value),
+      lineTotal: linerTotal,
+    });
+  }
+
+  if (logistics.naturalStoneEstimate) {
+    bomRows.push({
+      key: 'natural-stone',
+      item: 'Natural Stone Wall',
+      detail: `${logistics.naturalStoneEstimate.tonsAt8InDepthWithWaste10Pct.toFixed(2)}–${logistics.naturalStoneEstimate.tonsAt8InDepthWithWaste15Pct.toFixed(2)} tons · ${logistics.naturalStoneEstimate.faceAreaSquareFeet.toFixed(1)} ft² face area`,
+      qty: stoneAvgTons,
+      qtyDisplay: stoneAvgTons.toFixed(2),
+      unit: 'tons',
+      unitPrice: costs.stoneTon,
+      onUnitPriceChange: (value) => updateCost('stoneTon', value),
+      lineTotal: stoneTotal,
+    });
+  }
+
+  (logistics.seatingAreaMaterials?.materials ?? []).forEach((mat, i) => {
+    bomRows.push({
+      key: `seating-${mat.name}`,
+      item: `Seating Surface — ${mat.name}`,
+      detail: `${Math.round(logistics.seatingAreaMaterials!.areaSquareFeet)} ft² seating area`,
+      qty: mat.quantity,
+      qtyDisplay: mat.quantity.toFixed(1),
+      unit: mat.unit,
+      unitPrice: costs.seatingMats[mat.name] ?? '',
+      onUnitPriceChange: (value) => updateSeatingCost(mat.name, value),
+      lineTotal: seatingTotals[i] ?? 0,
+    });
+  });
 
   const handlePrint = () => {
     const allCostRows: string[] = [];
-    if (showCosts && hasCostData) {
+    if (hasCostData) {
       if (wallTotal > 0)
         allCostRows.push(`<tr><td>Wall Units (${logistics.purchasedUnits} × ${fmtDollar(wallUnitPrice)})</td><td>${fmtDollar(wallTotal)}</td></tr>`);
       if (capTotal > 0)
@@ -343,27 +383,16 @@ export default function BillOfMaterials({ output }: Props) {
   return (
     <div className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/80 p-4 shadow-lg'>
       {/* Header */}
-      <div className='mb-3 flex items-center justify-between gap-2'>
+      <div className='mb-3 flex flex-wrap items-center justify-between gap-2'>
         <div>
-          <h3 className='text-sm font-bold uppercase tracking-[0.12em] text-amber-950'>
+          <h3 className='text-xl font-bold uppercase tracking-[0.12em] text-amber-950'>
             Bill of Materials
           </h3>
-          <p className='text-xs text-amber-900/60'>
+          <p className='text-sm text-amber-900/70'>
             All quantities include {logistics.wasteFactorPct}% waste factor
           </p>
         </div>
         <div className='flex gap-2'>
-          <button
-            className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
-              showCosts
-                ? 'bg-emerald-700 text-white'
-                : 'border border-emerald-700/30 bg-white text-emerald-800 hover:bg-emerald-50'
-            }`}
-            onClick={() => setShowCosts((v) => !v)}
-            title='Toggle cost estimator'
-          >
-            $ Cost Est.
-          </button>
           <button
             className='rounded-full border border-amber-900/20 bg-white px-3 py-1.5 text-xs font-semibold text-amber-950 hover:bg-amber-50'
             onClick={handlePrint}
@@ -374,178 +403,58 @@ export default function BillOfMaterials({ output }: Props) {
         </div>
       </div>
 
-      {/* BOM rows */}
-      <div className='grid gap-2 sm:grid-cols-2'>
-        {/* Wall Units */}
-        <BomRow
-          color='border-orange-500'
-          icon='🧱'
-          category='Wall Units'
-          spec={wallSpec}
-          qty={`${logistics.purchasedUnits} units`}
-          weight={`${Math.round(logistics.estimatedBrickWeightLb).toLocaleString()} lb`}
-          notes={`${logistics.wasteFactorPct}% waste included · ${output.totalUnits} net required`}
-          costInput={
-            showCosts ? (
-              <CostInput
-                label='$/unit'
-                value={costs.wallUnit}
-                onChange={(v) => updateCost('wallUnit', v)}
-              />
-            ) : undefined
-          }
-          lineTotal={showCosts && wallTotal > 0 ? fmtDollar(wallTotal) : undefined}
-        />
-
-        {/* Capstones */}
-        <BomRow
-          color='border-amber-700'
-          icon='🏛️'
-          category='Capstones'
-          spec={capSpec}
-          qty={`${logistics.purchasedCapUnits} units`}
-          weight={`${Math.round(logistics.estimatedCapWeightLb).toLocaleString()} lb`}
-          notes={`${logistics.wasteFactorPct}% waste included`}
-          costInput={
-            showCosts ? (
-              <CostInput
-                label='$/unit'
-                value={costs.capUnit}
-                onChange={(v) => updateCost('capUnit', v)}
-              />
-            ) : undefined
-          }
-          lineTotal={showCosts && capTotal > 0 ? fmtDollar(capTotal) : undefined}
-        />
-
-        {/* Mortar */}
-        <BomRow
-          color='border-stone-500'
-          icon='🪣'
-          category='Mortar Mix'
-          spec='Type S / N premix (80-lb bags)'
-          qty={`~${mortarBags} bags`}
-          weight={`${logistics.estimatedMortarVolumeCubicFeet.toFixed(1)} ft³ volume`}
-          notes={`≈ ${MORTAR_BAG_80LB_FT3} ft³ yield per bag · round up at the yard`}
-          costInput={
-            showCosts ? (
-              <CostInput
-                label='$/bag'
-                value={costs.mortarBag}
-                onChange={(v) => updateCost('mortarBag', v)}
-              />
-            ) : undefined
-          }
-          lineTotal={showCosts && mortarTotal > 0 ? fmtDollar(mortarTotal) : undefined}
-        />
-
-        {/* Foundation Gravel */}
-        <BomRow
-          color='border-yellow-700'
-          icon='🪨'
-          category='Foundation Gravel'
-          spec={`${foundation.stoneDepthIn}" compacted base`}
-          qty={`${foundation.stoneVolumeCubicFeet.toFixed(1)} ft³`}
-          weight={`≈ ${gravelTons} tons`}
-          notes={`Footprint: ${foundation.footprintAreaSquareFeet.toFixed(1)} ft² · ${foundation.stoneVolumeCubicYards.toFixed(2)} yd³`}
-          costInput={
-            showCosts ? (
-              <CostInput
-                label='$/ton'
-                value={costs.gravelTon}
-                onChange={(v) => updateCost('gravelTon', v)}
-              />
-            ) : undefined
-          }
-          lineTotal={showCosts && gravelTotal > 0 ? fmtDollar(gravelTotal) : undefined}
-        />
-
-        {/* Thermal Liner — conditional */}
-        {linerSpec.enabled && (
-          <BomRow
-            color='border-red-700'
-            icon='🔥'
-            category='Thermal Liner'
-            spec={
-              linerSpec.type === 'fire-brick'
-                ? 'Fire Brick Liner'
-                : linerSpec.type === 'steel-ring'
-                  ? 'Steel Ring Insert'
-                  : linerSpec.type
-            }
-            qty={`${linerSpec.thicknessIn}" thick`}
-            notes={linerSpec.description}
-            costInput={
-              showCosts ? (
-                <CostInput
-                  label='$/job'
-                  value={costs.linerUnit}
-                  onChange={(v) => updateCost('linerUnit', v)}
-                />
-              ) : undefined
-            }
-            lineTotal={showCosts && linerTotal > 0 ? fmtDollar(linerTotal) : undefined}
-          />
-        )}
-
-        {/* Natural Stone wall estimate — conditional */}
-        {logistics.naturalStoneEstimate && (
-          <BomRow
-            color='border-slate-600'
-            icon='🪨'
-            category='Natural Stone Wall'
-            spec='Fieldstone / Ledgestone'
-            qty={`${logistics.naturalStoneEstimate.tonsAt8InDepthWithWaste10Pct.toFixed(2)}–${logistics.naturalStoneEstimate.tonsAt8InDepthWithWaste15Pct.toFixed(2)} tons`}
-            notes={`Face area: ${logistics.naturalStoneEstimate.faceAreaSquareFeet.toFixed(1)} ft² · Perimeter: ${logistics.naturalStoneEstimate.outerPerimeterFeet.toFixed(1)} ft · 8" depth with 10–15% waste`}
-            costInput={
-              showCosts ? (
-                <CostInput
-                  label='$/ton'
-                  value={costs.stoneTon}
-                  onChange={(v) => updateCost('stoneTon', v)}
-                />
-              ) : undefined
-            }
-            lineTotal={showCosts && stoneTotal > 0 ? `${fmtDollar(stoneTotal)} (mid-range est.)` : undefined}
-          />
-        )}
-
-        {/* Seating Surface materials — conditional, one card per material */}
-        {logistics.seatingAreaMaterials &&
-          logistics.seatingAreaMaterials.materials.map((mat, i) => (
-            <BomRow
-              key={mat.name}
-              color='border-green-600'
-              icon='🪑'
-              category='Seating Surface'
-              spec={mat.name}
-              qty={`${mat.quantity.toFixed(1)} ${mat.unit}`}
-              weight={
-                mat.estimatedWeightLb
-                  ? `${Math.round(mat.estimatedWeightLb).toLocaleString()} lb`
-                  : undefined
-              }
-              notes={`${Math.round(logistics.seatingAreaMaterials!.areaSquareFeet)} ft² seating area`}
-              costInput={
-                showCosts ? (
-                  <CostInput
-                    label={`$/${mat.unit}`}
-                    value={costs.seatingMats[mat.name] ?? ''}
-                    onChange={(v) => updateSeatingCost(mat.name, v)}
-                  />
-                ) : undefined
-              }
-              lineTotal={
-                showCosts && seatingTotals[i] > 0
-                  ? fmtDollar(seatingTotals[i])
-                  : undefined
-              }
-            />
-          ))}
+      <div className='overflow-x-auto rounded-xl border border-amber-900/15 bg-white/60'>
+        <table className='w-full text-sm'>
+          <thead>
+            <tr className='border-b border-amber-900/15 bg-amber-100/45'>
+              {['Item', 'Qty', 'Unit', '$/Unit', 'Total'].map((heading, index) => (
+                <th
+                  key={heading}
+                  className={`px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-amber-900/80 ${index === 0 ? 'text-left' : 'text-right'}`}
+                >
+                  {heading}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {bomRows.map((row) => (
+              <tr
+                key={row.key}
+                className='border-b border-amber-900/10 transition-colors hover:bg-amber-50/35'
+              >
+                <td className='px-4 py-3 align-top'>
+                  <p className='font-semibold text-amber-950'>{row.item}</p>
+                  <p className='mt-0.5 text-xs leading-5 text-amber-900/70'>
+                    {row.detail}
+                  </p>
+                </td>
+                <td className='px-4 py-3 text-right align-top font-mono font-semibold text-amber-950'>
+                  {row.qtyDisplay ?? row.qty.toLocaleString()}
+                </td>
+                <td className='px-4 py-3 text-right align-top text-xs text-amber-900/75'>
+                  {row.unit}
+                </td>
+                <td className='px-4 py-3 text-right align-top'>
+                  <div className='flex justify-end'>
+                    <CostInput
+                      label=''
+                      value={row.unitPrice}
+                      onChange={row.onUnitPriceChange}
+                    />
+                  </div>
+                </td>
+                <td className='px-4 py-3 text-right align-top font-mono font-semibold text-amber-950'>
+                  {fmtDollar(row.lineTotal)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {/* Grand Total */}
-      {showCosts && hasCostData && (
+      {hasCostData && (
         <div className='mt-3 flex items-center justify-between rounded-lg border border-emerald-700/25 bg-emerald-50/80 px-4 py-3'>
           <div>
             <p className='text-xs font-bold uppercase tracking-wide text-emerald-900/70'>
@@ -590,4 +499,3 @@ export default function BillOfMaterials({ output }: Props) {
     </div>
   );
 }
-

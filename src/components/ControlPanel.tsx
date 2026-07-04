@@ -35,12 +35,20 @@ function FieldLabel({ label, tip }: { label: string; tip?: string }) {
 function SectionHeading({
   title,
   description,
+  showDivider = true,
 }: {
   title: string;
   description: string;
+  showDivider?: boolean;
 }) {
   return (
-    <div className='sm:col-span-2'>
+    <div
+      className={`sm:col-span-2 ${
+        showDivider
+          ? 'mt-1 border-t border-amber-900/15 pt-3'
+          : ''
+      }`}
+    >
       <h3 className='text-xs font-semibold uppercase tracking-[0.2em] text-amber-900/70'>
         {title}
       </h3>
@@ -83,6 +91,43 @@ export default function ControlPanel({
     input.seatingFurnitureCount,
     maxSeatingFurnitureCount,
   );
+  const selectedWallPresetKey = input.brickPresetKey ?? 'modular';
+  const selectedWallPreset =
+    selectedWallPresetKey in BRICK_PRESETS
+      ? BRICK_PRESETS[selectedWallPresetKey as keyof typeof BRICK_PRESETS]
+      : null;
+  const selectedCapPresetKey = input.capstonePresetKey ?? 'matching';
+  const selectedCapPreset =
+    selectedCapPresetKey in CAPSTONE_PRESETS
+      ? CAPSTONE_PRESETS[selectedCapPresetKey as keyof typeof CAPSTONE_PRESETS]
+      : null;
+  const primaryDimensionValue =
+    input.planShape === 'circular' ? input.innerDiameterIn : input.innerWidthIn;
+  const primaryDimensionMin = 18;
+  const primaryDimensionMax = Math.max(180, Math.ceil(primaryDimensionValue));
+  const innerDepthMin = 18;
+  const innerDepthMax = Math.max(180, Math.ceil(input.innerDepthIn));
+  const wallHeightMin = 8;
+  const wallHeightMax = Math.max(48, Math.ceil(input.wallHeightIn));
+  const proximityMin = 1;
+  const proximityMax = Math.max(60, Math.ceil(input.proximityToStructuresFt));
+
+  const updatePrimaryDimension = (value: number) => {
+    setInput((prev) => {
+      if (prev.planShape === 'circular') {
+        return {
+          ...prev,
+          innerDiameterIn: value,
+        };
+      }
+
+      return {
+        ...prev,
+        innerWidthIn: value,
+        innerDepthIn: prev.planShape === 'rectangular' ? prev.innerDepthIn : value,
+      };
+    });
+  };
 
   return (
     <section className='control-panel card-rise relative z-30 rounded-2xl border border-amber-900/20 bg-amber-50/70 p-5 shadow-lg backdrop-blur'>
@@ -101,6 +146,7 @@ export default function ControlPanel({
         <SectionHeading
           title='1 Layout'
           description='Set the shape, opening size, and overall wall mass.'
+          showDivider={false}
         />
 
         <label className='flex flex-col gap-1 sm:col-span-2'>
@@ -154,20 +200,39 @@ export default function ControlPanel({
               }))
             }
           >
-            {Object.entries(BRICK_PRESETS).map(([key, preset]) => (
-              <option key={key} value={key}>
-                {preset.name} &mdash; {preset.lengthIn}&Prime; &times;{' '}
-                {preset.widthIn}&Prime; &times; {preset.heightIn}&Prime;
-              </option>
-            ))}
+            <optgroup label='Masonry Units'>
+              {Object.entries(BRICK_PRESETS)
+                .filter(([key]) => !key.startsWith('rock'))
+                .map(([key, preset]) => (
+                  <option key={key} value={key}>
+                    {preset.name}
+                  </option>
+                ))}
+            </optgroup>
+            <optgroup label='Natural Stone (Planning Averages)'>
+              {Object.entries(BRICK_PRESETS)
+                .filter(([key]) => key.startsWith('rock'))
+                .map(([key, preset]) => (
+                  <option key={key} value={key}>
+                    {preset.name}
+                  </option>
+                ))}
+            </optgroup>
             <option value='custom'>Custom Brick (Rectangular)</option>
             <option value='custom-radial'>Custom Brick (Radial)</option>
           </select>
-          {/* <span className='text-xs text-amber-700/70'>
-            L&nbsp;{currentPreset.lengthIn}&Prime; &times; W&nbsp;
-            {currentPreset.widthIn}&Prime; &times; H&nbsp;
-            {currentPreset.heightIn}&Prime; (actual dimensions)
-          </span> */}
+          {selectedWallPreset && (
+            <span className='text-xs text-amber-800/75'>
+              {selectedWallPreset.lengthIn}&Prime; L &times;{' '}
+              {selectedWallPreset.widthIn}&Prime; W &times;{' '}
+              {selectedWallPreset.heightIn}&Prime; H (actual dimensions)
+            </span>
+          )}
+          {!selectedWallPreset && usingCustomBrick && (
+            <span className='text-xs text-amber-800/75'>
+              Custom unit dimensions are set in the fields below.
+            </span>
+          )}
           {usingCustomBrick && (
             <div className='mt-2 grid gap-2 rounded-md border border-amber-700/20 bg-white/60 p-3 sm:grid-cols-3'>
               {usingCustomBrickRadial ? (
@@ -351,15 +416,33 @@ export default function ControlPanel({
               .filter(([key]) => key !== 'matching')
               .map(([key, preset]) => (
                 <option key={key} value={key}>
-                  {preset.unit.name} &mdash; {preset.unit.lengthIn}&Prime;
-                  &times; {preset.unit.widthIn}&Prime; &times;{' '}
-                  {preset.unit.heightIn}
-                  &Prime;
+                  {preset.unit.name}
                 </option>
               ))}
             <option value='custom'>Custom Cap Unit (Rectangular)</option>
             <option value='custom-radial'>Custom Cap Unit (Radial)</option>
           </select>
+          {selectedCapPresetKey === 'matching' && selectedWallPreset && (
+            <span className='text-xs text-amber-800/75'>
+              Matches wall unit: {selectedWallPreset.lengthIn}&Prime; L &times;{' '}
+              {selectedWallPreset.widthIn}&Prime; W &times;{' '}
+              {selectedWallPreset.heightIn}&Prime; H
+            </span>
+          )}
+          {selectedCapPresetKey !== 'matching' &&
+            selectedCapPreset &&
+            'unit' in selectedCapPreset && (
+              <span className='text-xs text-amber-800/75'>
+                {selectedCapPreset.unit.lengthIn}&Prime; L &times;{' '}
+                {selectedCapPreset.unit.widthIn}&Prime; W &times;{' '}
+                {selectedCapPreset.unit.heightIn}&Prime; H (actual dimensions)
+              </span>
+            )}
+          {!selectedCapPreset && usingCustomCap && (
+            <span className='text-xs text-amber-800/75'>
+              Custom cap dimensions are set in the fields below.
+            </span>
+          )}
           {usingCustomCap && (
             <div className='mt-2 grid gap-2 rounded-md border border-amber-700/20 bg-white/60 p-3 sm:grid-cols-3'>
               {usingCustomCapRadial ? (
@@ -528,44 +611,54 @@ export default function ControlPanel({
             }
             tip='Use the firebox opening as the primary dimension. The engine derives outer wall and centerline geometry from this value.'
           />
-          <input
-            className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
-            aria-label={
-              input.planShape === 'circular'
-                ? 'Inner Diameter in inches'
-                : 'Inner Width in inches'
-            }
-            title={
-              input.planShape === 'circular'
-                ? 'Inner Diameter in inches'
-                : 'Inner Width in inches'
-            }
-            type='number'
-            min={18}
-            value={
-              input.planShape === 'circular'
-                ? input.innerDiameterIn
-                : input.innerWidthIn
-            }
-            onChange={(event) =>
-              setInput((prev) => {
-                const value = Number(event.target.value);
-                return input.planShape === 'circular'
-                  ? {
-                      ...prev,
-                      innerDiameterIn: value,
-                    }
-                  : {
-                      ...prev,
-                      innerWidthIn: value,
-                      innerDepthIn:
-                        prev.planShape === 'rectangular'
-                          ? prev.innerDepthIn
-                          : value,
-                    };
-              })
-            }
-          />
+          <div className='space-y-2'>
+            <div className='grid grid-cols-[minmax(0,1fr)_4.5rem] items-center gap-2'>
+              <input
+                className='h-2.5 w-full cursor-pointer rounded-full bg-white accent-amber-700'
+                aria-label={
+                  input.planShape === 'circular'
+                    ? 'Inner Diameter in inches'
+                    : 'Inner Width in inches'
+                }
+                title={
+                  input.planShape === 'circular'
+                    ? 'Inner Diameter in inches'
+                    : 'Inner Width in inches'
+                }
+                type='range'
+                min={primaryDimensionMin}
+                max={primaryDimensionMax}
+                step={1}
+                value={primaryDimensionValue}
+                onChange={(event) =>
+                  updatePrimaryDimension(Number(event.target.value))
+                }
+              />
+              <input
+                className='w-[4.5rem] rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-right'
+                aria-label={
+                  input.planShape === 'circular'
+                    ? 'Inner Diameter in inches'
+                    : 'Inner Width in inches'
+                }
+                title={
+                  input.planShape === 'circular'
+                    ? 'Inner Diameter in inches'
+                    : 'Inner Width in inches'
+                }
+                type='number'
+                min={primaryDimensionMin}
+                value={primaryDimensionValue}
+                onChange={(event) =>
+                  updatePrimaryDimension(Number(event.target.value))
+                }
+              />
+            </div>
+            <div className='flex justify-between text-xs text-amber-900/70'>
+              <span>{primaryDimensionMin}"</span>
+              <span>{primaryDimensionMax}"</span>
+            </div>
+          </div>
           {input.planShape === 'circular' && noCutGuidance && (
             <div className='mt-1 rounded-md border border-amber-900/15 bg-amber-50/80 px-2 py-1.5 text-xs text-amber-900'>
               <button
@@ -577,7 +670,13 @@ export default function ControlPanel({
               </button>
 
               {showNoCutDetails && (
-                <div className='mt-2 flex flex-wrap gap-1'>
+                <div className='mt-2'>
+                  <p className='mb-1 text-[11px] font-medium text-amber-900/80'>
+                    <span className='text-amber-900'>● wall</span>{' '}
+                    <span className='text-blue-800'>● cap</span>{' '}
+                    <span className='text-emerald-800'>● both</span>
+                  </p>
+                  <div className='flex flex-wrap gap-1'>
                   <button
                     type='button'
                     className='rounded-full border border-amber-900/25 bg-white px-2 py-0.5 font-medium text-amber-950'
@@ -623,6 +722,7 @@ export default function ControlPanel({
                     in
                   </button>
                 </div>
+                </div>
               )}
             </div>
           )}
@@ -634,20 +734,44 @@ export default function ControlPanel({
               label='Inner Depth (in)'
               tip='Only used for rectangular plans. Square plans keep width and depth locked together.'
             />
-            <input
-              className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
-              aria-label='Inner Depth in inches'
-              title='Inner Depth in inches'
-              type='number'
-              min={18}
-              value={input.innerDepthIn}
-              onChange={(event) =>
-                setInput((prev) => ({
-                  ...prev,
-                  innerDepthIn: Number(event.target.value),
-                }))
-              }
-            />
+            <div className='space-y-2'>
+              <div className='grid grid-cols-[minmax(0,1fr)_4.5rem] items-center gap-2'>
+                <input
+                  className='h-2.5 w-full cursor-pointer rounded-full bg-white accent-amber-700'
+                  aria-label='Inner Depth in inches'
+                  title='Inner Depth in inches'
+                  type='range'
+                  min={innerDepthMin}
+                  max={innerDepthMax}
+                  step={1}
+                  value={input.innerDepthIn}
+                  onChange={(event) =>
+                    setInput((prev) => ({
+                      ...prev,
+                      innerDepthIn: Number(event.target.value),
+                    }))
+                  }
+                />
+                <input
+                  className='w-[4.5rem] rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-right'
+                  aria-label='Inner Depth in inches'
+                  title='Inner Depth in inches'
+                  type='number'
+                  min={innerDepthMin}
+                  value={input.innerDepthIn}
+                  onChange={(event) =>
+                    setInput((prev) => ({
+                      ...prev,
+                      innerDepthIn: Number(event.target.value),
+                    }))
+                  }
+                />
+              </div>
+              <div className='flex justify-between text-xs text-amber-900/70'>
+                <span>{innerDepthMin}"</span>
+                <span>{innerDepthMax}"</span>
+              </div>
+            </div>
           </label>
         )}
 
@@ -656,20 +780,44 @@ export default function ControlPanel({
             label='Wall Height (in)'
             tip='This controls course count. Very tall walls can reduce comfort and may call for heavier-looking cap proportions.'
           />
-          <input
-            className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
-            aria-label='Wall Height in inches'
-            title='Wall Height in inches'
-            type='number'
-            min={8}
-            value={input.wallHeightIn}
-            onChange={(event) =>
-              setInput((prev) => ({
-                ...prev,
-                wallHeightIn: Number(event.target.value),
-              }))
-            }
-          />
+          <div className='space-y-2'>
+            <div className='grid grid-cols-[minmax(0,1fr)_4.5rem] items-center gap-2'>
+              <input
+                className='h-2.5 w-full cursor-pointer rounded-full bg-white accent-amber-700'
+                aria-label='Wall Height in inches'
+                title='Wall Height in inches'
+                type='range'
+                min={wallHeightMin}
+                max={wallHeightMax}
+                step={1}
+                value={input.wallHeightIn}
+                onChange={(event) =>
+                  setInput((prev) => ({
+                    ...prev,
+                    wallHeightIn: Number(event.target.value),
+                  }))
+                }
+              />
+              <input
+                className='w-[4.5rem] rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-right'
+                aria-label='Wall Height in inches'
+                title='Wall Height in inches'
+                type='number'
+                min={wallHeightMin}
+                value={input.wallHeightIn}
+                onChange={(event) =>
+                  setInput((prev) => ({
+                    ...prev,
+                    wallHeightIn: Number(event.target.value),
+                  }))
+                }
+              />
+            </div>
+            <div className='flex justify-between text-xs text-amber-900/70'>
+              <span>{wallHeightMin}"</span>
+              <span>{wallHeightMax}"</span>
+            </div>
+          </div>
         </label>
 
         <label className='flex flex-col gap-1'>
@@ -699,20 +847,44 @@ export default function ControlPanel({
             label='Structure Proximity (ft)'
             tip='This is the horizontal setback to combustibles. Anything below 10 ft triggers a warning.'
           />
-          <input
-            className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
-            aria-label='Structure Proximity in feet'
-            title='Structure Proximity in feet'
-            type='number'
-            min={1}
-            value={input.proximityToStructuresFt}
-            onChange={(event) =>
-              setInput((prev) => ({
-                ...prev,
-                proximityToStructuresFt: Number(event.target.value),
-              }))
-            }
-          />
+          <div className='space-y-2'>
+            <div className='grid grid-cols-[minmax(0,1fr)_4.5rem] items-center gap-2'>
+              <input
+                className='h-2.5 w-full cursor-pointer rounded-full bg-white accent-amber-700'
+                aria-label='Structure Proximity in feet'
+                title='Structure Proximity in feet'
+                type='range'
+                min={proximityMin}
+                max={proximityMax}
+                step={1}
+                value={input.proximityToStructuresFt}
+                onChange={(event) =>
+                  setInput((prev) => ({
+                    ...prev,
+                    proximityToStructuresFt: Number(event.target.value),
+                  }))
+                }
+              />
+              <input
+                className='w-[4.5rem] rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-right'
+                aria-label='Structure Proximity in feet'
+                title='Structure Proximity in feet'
+                type='number'
+                min={proximityMin}
+                value={input.proximityToStructuresFt}
+                onChange={(event) =>
+                  setInput((prev) => ({
+                    ...prev,
+                    proximityToStructuresFt: Number(event.target.value),
+                  }))
+                }
+              />
+            </div>
+            <div className='flex justify-between text-xs text-amber-900/70'>
+              <span>{proximityMin} ft</span>
+              <span>{proximityMax} ft</span>
+            </div>
+          </div>
         </label>
 
         <SectionHeading
