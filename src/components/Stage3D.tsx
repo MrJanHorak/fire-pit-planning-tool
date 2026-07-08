@@ -2018,13 +2018,9 @@ export default function Stage3D({
   const capMortarBedY = geometry.capRiseFt + capMortarBedHeightFt / 2;
   const capJointWidthFt = Math.max(0.03, capBrickWidthFt * 0.86);
   const capJointHeightFt = Math.max(0.03, visCapBrickHeightFt * 0.94);
-  const capCornerJointSizeFt = Math.max(
-    0.04,
-    Math.min(
-      capBrickWidthFt * 0.42,
-      Math.max(capJointLengthFt, mortarJointFt * 0.7),
-    ),
-  );
+  // Corner box is sized to fully cover the radial brick-end overlap zone at
+  // each corner, and rendered last (renderOrder 2) so it overdraws brick ends.
+  const capCornerJointSizeFt = capBrickWidthFt;
   const halfRoundCrownRadiusFt = Math.min(
     capBrickWidthFt * 0.42,
     Math.max(0.04, visCapBrickHeightFt * 0.42),
@@ -4145,10 +4141,17 @@ export default function Stage3D({
                       : rowSafeCapBrickLengthFt;
                   let capstoneOffsetIn = 0;
                   if (!isRadialPlanShape(output.planShape)) {
-                    const overhangPerimeterIn =
-                      (output.capstone.overhangIn + rowOffsetFt * 12) * 8;
-                    capstoneOffsetIn = -overhangPerimeterIn / 2;
+                    // Half-module offset places the first brick center at
+                    // moduleSpacing/2 so that joints land at the perimeter
+                    // corners (k*moduleSpacing == corner distance).
+                    capstoneOffsetIn = rowActualModuleSpacingIn / 2;
                   }
+                  // Per-face polygon placement: each brick is centered within
+                  // its own face segment so no brick straddles a face corner.
+                  const polyBricksPerFace = rowUnitCount / wallRadialSegments;
+                  const polyFaceLen =
+                    2 * rowRadiusFt * Math.tan(Math.PI / wallRadialSegments);
+                  const polyFaceModSpacingFt = polyFaceLen / polyBricksPerFace;
 
                   return Array.from(
                     { length: rowUnitCount },
@@ -4163,13 +4166,28 @@ export default function Stage3D({
                               rowRadiusFt * 12,
                             )
                           : isRadialPlanShape(output.planShape)
-                            ? getPolygonPlacement(
-                                capIdx,
-                                rowUnitCount,
-                                0,
-                                rowRadiusFt,
-                                wallRadialSegments,
-                              )
+                            ? (() => {
+                                const faceIdx = Math.floor(
+                                  capIdx / polyBricksPerFace,
+                                );
+                                const posInFace =
+                                  capIdx - faceIdx * polyBricksPerFace;
+                                const faceAngle =
+                                  (faceIdx + 0.5) *
+                                  (2 * Math.PI / wallRadialSegments);
+                                const faceOffset =
+                                  (posInFace + 0.5) * polyFaceModSpacingFt -
+                                  polyFaceLen / 2;
+                                return {
+                                  x:
+                                    rowRadiusFt * Math.cos(faceAngle) -
+                                    faceOffset * Math.sin(faceAngle),
+                                  z:
+                                    rowRadiusFt * Math.sin(faceAngle) +
+                                    faceOffset * Math.cos(faceAngle),
+                                  rotationY: -(Math.PI / 2 + faceAngle),
+                                };
+                              })()
                             : getRectangularPlacement(
                                 capIdx,
                                 rowUnitCount,
@@ -4372,10 +4390,31 @@ export default function Stage3D({
                       : capJointLengthFt;
                   let capstoneOffsetIn = 0;
                   if (!isRadialPlanShape(output.planShape)) {
-                    const overhangPerimeterIn =
-                      (output.capstone.overhangIn + rowOffsetFt * 12) * 8;
-                    capstoneOffsetIn = -overhangPerimeterIn / 2;
+                    capstoneOffsetIn = rowActualModuleSpacingIn / 2;
                   }
+                  // Per-face polygon placement (mirrors brick loop logic).
+                  const polyBricksPerFace = rowUnitCount / wallRadialSegments;
+                  const polyFaceLen =
+                    2 * rowRadiusFt * Math.tan(Math.PI / wallRadialSegments);
+                  const polyFaceModSpacingFt = polyFaceLen / polyBricksPerFace;
+                  const polyCapPlacement = (idx: number) => {
+                    const faceIdx = Math.floor(idx / polyBricksPerFace);
+                    const posInFace = idx - faceIdx * polyBricksPerFace;
+                    const faceAngle =
+                      (faceIdx + 0.5) * (2 * Math.PI / wallRadialSegments);
+                    const faceOffset =
+                      (posInFace + 0.5) * polyFaceModSpacingFt -
+                      polyFaceLen / 2;
+                    return {
+                      x:
+                        rowRadiusFt * Math.cos(faceAngle) -
+                        faceOffset * Math.sin(faceAngle),
+                      z:
+                        rowRadiusFt * Math.sin(faceAngle) +
+                        faceOffset * Math.cos(faceAngle),
+                      rotationY: -(Math.PI / 2 + faceAngle),
+                    };
+                  };
 
                   return Array.from(
                     { length: rowUnitCount },
@@ -4390,13 +4429,7 @@ export default function Stage3D({
                               rowRadiusFt * 12,
                             )
                           : isRadialPlanShape(output.planShape)
-                            ? getPolygonPlacement(
-                                capIdx + 0.5,
-                                rowUnitCount,
-                                0,
-                                rowRadiusFt,
-                                wallRadialSegments,
-                              )
+                            ? polyCapPlacement(capIdx + 0.5)
                             : getRectangularPlacement(
                                 capIdx + 0.5,
                                 rowUnitCount,
@@ -4422,13 +4455,7 @@ export default function Stage3D({
                               rowRadiusFt * 12,
                             )
                           : isRadialPlanShape(output.planShape)
-                            ? getPolygonPlacement(
-                                capIdx,
-                                rowUnitCount,
-                                0,
-                                rowRadiusFt,
-                                wallRadialSegments,
-                              )
+                            ? polyCapPlacement(capIdx)
                             : getRectangularPlacement(
                                 capIdx,
                                 rowUnitCount,
@@ -4446,13 +4473,7 @@ export default function Stage3D({
                               rowRadiusFt * 12,
                             )
                           : isRadialPlanShape(output.planShape)
-                            ? getPolygonPlacement(
-                                (capIdx + 1) % rowUnitCount,
-                                rowUnitCount,
-                                0,
-                                rowRadiusFt,
-                                wallRadialSegments,
-                              )
+                            ? polyCapPlacement((capIdx + 1) % rowUnitCount)
                             : getRectangularPlacement(
                                 (capIdx + 1) % rowUnitCount,
                                 rowUnitCount,
@@ -4539,6 +4560,7 @@ export default function Stage3D({
                     shouldRenderInCutaway(x as number, z as number) ? (
                     <mesh
                       key={`cap-corner-joint-${index}-${mortarMode}`}
+                      renderOrder={2}
                       position={[
                         x as number,
                         geometry.capRiseFt +
@@ -4561,6 +4583,9 @@ export default function Stage3D({
                         transparent
                         opacity={mortarOpacity}
                         depthWrite={mortarDepthWrite}
+                        polygonOffset
+                        polygonOffsetFactor={-2}
+                        polygonOffsetUnits={-2}
                         wireframe={effectiveWireframe}
                       />
                     </mesh>
@@ -4568,6 +4593,63 @@ export default function Stage3D({
                   ))}
                 </>
               )}
+
+            {/* Polygon vertex corner fillers: mortar-colored squares at each
+                vertex that overdraw the brick-end gap between adjacent faces */}
+            {isLodHigh &&
+              showMortar &&
+              isRadialPlanShape(output.planShape) &&
+              output.planShape !== 'circular' &&
+              (() => {
+                const y =
+                  geometry.capRiseFt + capBrickHeightFt / 2 + mortarJointFt / 2;
+                return Array.from(
+                  { length: capBridgeRowCount },
+                  (_, capRowIdx) => {
+                    const rowOffsetFt = capRowIdx * capBridgeRowStepFt;
+                    const rowRadiusFt = geometry.capRadiusFt + rowOffsetFt;
+                    const circumradiusFt =
+                      rowRadiusFt / Math.cos(Math.PI / wallRadialSegments);
+                    return Array.from(
+                      { length: wallRadialSegments },
+                      (_, vIdx) => {
+                        const vertexAngle =
+                          vIdx * (2 * Math.PI / wallRadialSegments);
+                        const x = circumradiusFt * Math.cos(vertexAngle);
+                        const z = circumradiusFt * Math.sin(vertexAngle);
+                        if (!shouldRenderInCutaway(x, z)) return null;
+                        return (
+                          <mesh
+                            key={`cap-vertex-filler-${capRowIdx}-${vIdx}`}
+                            renderOrder={2}
+                            position={[x, y, z]}
+                          >
+                            <boxGeometry
+                              args={[
+                                capBrickWidthFt,
+                                capJointHeightFt,
+                                capBrickWidthFt,
+                              ]}
+                            />
+                            <meshStandardMaterial
+                              color={palette.mortarColor}
+                              map={isPhotoreal ? mortarTexture : undefined}
+                              roughness={isPhotoreal ? 0.88 : 0.93}
+                              transparent
+                              opacity={mortarOpacity}
+                              depthWrite={mortarDepthWrite}
+                              polygonOffset
+                              polygonOffsetFactor={-2}
+                              polygonOffsetUnits={-2}
+                              wireframe={effectiveWireframe}
+                            />
+                          </mesh>
+                        );
+                      },
+                    );
+                  },
+                );
+              })()}
 
             {!isLodHigh && (
               <>
