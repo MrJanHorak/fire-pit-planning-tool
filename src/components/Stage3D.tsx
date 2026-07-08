@@ -1131,9 +1131,11 @@ function getPolygonPlacement(
   const z = apothemFt * Math.sin(faceAngle) + faceOffset * Math.cos(faceAngle);
 
   // rotationY: align brick length (local X-axis) with face tangent direction.
-  // Face tangent: (-sin(faceAngle), 0, cos(faceAngle)).
-  // Rotating local X by (π/2 + faceAngle) yields exactly that direction.
-  return { x, z, rotationY: Math.PI / 2 + faceAngle };
+  // CCW tangent for this polygon convention: (-sin(faceAngle), 0, -cos(faceAngle)).
+  // To match getCircularPlacement (brick local-X → negative tangent):
+  //   R_y(θ)·(1,0,0) = (cos θ, 0, -sin θ) = (sin(faceAngle), 0, cos(faceAngle))
+  //   → cos θ = sin(faceAngle),  -sin θ = cos(faceAngle)  → θ = faceAngle - π/2
+  return { x, z, rotationY: faceAngle - Math.PI / 2 };
 }
 
 function getRectangularPlacement(
@@ -1926,12 +1928,15 @@ export default function Stage3D({
   const capModuleSpacingFt =
     output.capstone.capUnitsPerCourseRounded > 0
       ? (output.planShape === 'circular'
-          ? (Math.PI * output.capstone.capCenterlineDiameterIn) /
-            output.capstone.capUnitsPerCourseRounded
-          : (2 *
+          ? Math.PI * output.capstone.capCenterlineDiameterIn
+          : isRadialPlanShape(output.planShape)
+            ? getPolygonSegments(output.planShape) *
+              output.capstone.capCenterlineDiameterIn *
+              Math.tan(Math.PI / getPolygonSegments(output.planShape))
+            : 2 *
               (output.capstone.capCenterlineWidthIn +
                 output.capstone.capCenterlineDepthIn)) /
-            output.capstone.capUnitsPerCourseRounded) / 12
+        (output.capstone.capUnitsPerCourseRounded * 12)
       : visCapBrickLengthFt;
   const capJointLengthFt = Math.max(
     0,

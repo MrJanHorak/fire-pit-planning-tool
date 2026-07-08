@@ -1335,13 +1335,16 @@ export class MasonryEngine {
           capstone.capCenterlineWidthIn + rowOffsetIn * 2;
         const rowCenterlineDepthIn =
           capstone.capCenterlineDepthIn + rowOffsetIn * 2;
+        const nBridge = this.polygonSides(input.planShape as PlanShape);
         const rowPerimeterIn =
           input.planShape === 'circular'
             ? Math.PI * Math.max(rowCenterlineWidthIn, rowCenterlineDepthIn)
-            : this.calculateRectangularPerimeter(
-                rowCenterlineWidthIn,
-                rowCenterlineDepthIn,
-              );
+            : nBridge > 0
+              ? this.polygonPerimeter(nBridge, rowCenterlineWidthIn)
+              : this.calculateRectangularPerimeter(
+                  rowCenterlineWidthIn,
+                  rowCenterlineDepthIn,
+                );
         const rowUnitsRaw =
           rowPerimeterIn / (capUnit.lengthIn + capstone.joint.actualJointIn);
         return Math.max(1, Math.floor(rowUnitsRaw));
@@ -1711,13 +1714,16 @@ export class MasonryEngine {
     );
     const capCenterlineWidthIn = (capOuterWidthIn + capInnerWidthIn) / 2;
     const capCenterlineDepthIn = (capOuterDepthIn + capInnerDepthIn) / 2;
+    const n = this.polygonSides(planMetrics.planShape as PlanShape);
     const capPerimeterIn =
       planMetrics.planShape === 'circular'
         ? Math.PI * capCenterlineWidthIn
-        : this.calculateRectangularPerimeter(
-            capCenterlineWidthIn,
-            capCenterlineDepthIn,
-          );
+        : n > 0
+          ? this.polygonPerimeter(n, capCenterlineWidthIn)
+          : this.calculateRectangularPerimeter(
+              capCenterlineWidthIn,
+              capCenterlineDepthIn,
+            );
     const capUnitsPerCourseRaw = capPerimeterIn / (unitLengthIn + jointIn);
     const capUnitsPerCourseRounded = Math.max(
       1,
@@ -1728,11 +1734,15 @@ export class MasonryEngine {
     const innerPerimeterIn =
       planMetrics.planShape === 'circular'
         ? Math.PI * capInnerWidthIn
-        : this.calculateRectangularPerimeter(capInnerWidthIn, capInnerDepthIn);
+        : n > 0
+          ? this.polygonPerimeter(n, capInnerWidthIn)
+          : this.calculateRectangularPerimeter(capInnerWidthIn, capInnerDepthIn);
     const outerPerimeterIn =
       planMetrics.planShape === 'circular'
         ? Math.PI * capOuterWidthIn
-        : this.calculateRectangularPerimeter(capOuterWidthIn, capOuterDepthIn);
+        : n > 0
+          ? this.polygonPerimeter(n, capOuterWidthIn)
+          : this.calculateRectangularPerimeter(capOuterWidthIn, capOuterDepthIn);
     const innerModuleSpacingIn = innerPerimeterIn / capUnitsPerCourseRounded;
     const outerModuleSpacingIn = outerPerimeterIn / capUnitsPerCourseRounded;
     const innerJointIn = innerModuleSpacingIn - unitLengthIn;
