@@ -1913,7 +1913,6 @@ export default function Stage3D({
   const linerMidY = linerHeightFt / 2;
   const visBrickLengthFt = brickLengthFt - mortarJointFt * 0.55;
   const visBrickHeightFt = brickHeightFt - mortarJointFt * 0.6;
-  const visCapBrickLengthFt = capBrickLengthFt - mortarJointFt * 0.55;
   const visCapBrickHeightFt = capBrickHeightFt - mortarJointFt * 0.6;
   const overlapSafetyFt = Math.max(0.003, mortarJointFt * 0.1);
   const maxWallBrickLengthFt =
@@ -1924,29 +1923,9 @@ export default function Stage3D({
     0.08,
     Math.min(visBrickLengthFt, maxWallBrickLengthFt),
   );
-  const capModuleSpacingFt =
-    output.capstone.capUnitsPerCourseRounded > 0
-      ? (output.planShape === 'circular'
-          ? Math.PI * output.capstone.capCenterlineDiameterIn
-          : isRadialPlanShape(output.planShape)
-            ? getPolygonSegments(output.planShape) *
-              output.capstone.capCenterlineDiameterIn *
-              Math.tan(Math.PI / getPolygonSegments(output.planShape))
-            : 2 *
-              (output.capstone.capCenterlineWidthIn +
-                output.capstone.capCenterlineDepthIn)) /
-        (output.capstone.capUnitsPerCourseRounded * 12)
-      : visCapBrickLengthFt;
   const capJointLengthFt = Math.max(
     0,
     output.capstone.joint.actualJointIn / 12,
-  );
-  const safeCapBrickLengthFt = Math.max(
-    0.08,
-    Math.min(
-      capBrickLengthFt,
-      capModuleSpacingFt - capJointLengthFt - overlapSafetyFt,
-    ),
   );
   const visBrickWidthFt = brickWidthFt - mortarJointFt * 0.8;
   const ventAreaScale = Math.sqrt(
@@ -4145,32 +4124,67 @@ export default function Stage3D({
                     (rowInnerJointIn < 0 ||
                       output.resolvedCapUnit.lengthIn >
                         rowInnerChordIn - Math.max(0.036, output.mortarJointIn * 0.1));
-                  // For polygon plans, extend each brick by capBrickWidth*tan(π/n) so
-                  // the end bricks on each face reach the outer-wall corner triangles.
-                  const polygonCapCornerExtFt =
+                  // Per-row safe brick length: uses this row's actual module spacing so
+                  // outer bridge rows (larger perimeter / more bricks) never overlap.
+                  const rowSafeCapBrickLengthFt = Math.max(
+                    0.08,
+                    Math.min(
+                      capBrickLengthFt,
+                      rowActualModuleSpacingIn / 12 - capJointLengthFt - overlapSafetyFt,
+                    ),
+                  );
+                  // For polygon plans, only end bricks on each face get a corner extension
+                  // (to fill the triangular gap at polygon vertices), capped at the
+                  // available joint space so bricks never overlap their neighbors.
+                  const polygonBricksPerFace =
                     isRadialPlanShape(output.planShape) && output.planShape !== 'circular'
-                      ? capBrickWidthFt * Math.tan(Math.PI / wallRadialSegments)
+                      ? Math.max(1, Math.round(rowUnitCount / wallRadialSegments))
+                      : 1;
+                  const maxPolygonCornerExtFt = Math.max(
+                    0,
+                    (rowActualModuleSpacingIn / 12 - rowSafeCapBrickLengthFt - overlapSafetyFt) / 2,
+                  );
+                  const polygonHalfCornerExtFt =
+                    isRadialPlanShape(output.planShape) && output.planShape !== 'circular'
+                      ? Math.min(
+                          (capBrickWidthFt / 2) * Math.tan(Math.PI / wallRadialSegments),
+                          maxPolygonCornerExtFt,
+                        )
                       : 0;
                   const rowRenderedCapBrickLengthFt =
                     output.planShape === 'circular' && !rowCapRequiresTaper
                       ? Math.max(
                           0.08,
                           Math.min(
-                            safeCapBrickLengthFt,
-                            arcToChordLengthFt(safeCapBrickLengthFt, rowRadiusFt),
+                            rowSafeCapBrickLengthFt,
+                            arcToChordLengthFt(rowSafeCapBrickLengthFt, rowRadiusFt),
                           ),
                         )
-                      : safeCapBrickLengthFt + polygonCapCornerExtFt;
+                      : rowSafeCapBrickLengthFt;
                   let capstoneOffsetIn = 0;
                   if (!isRadialPlanShape(output.planShape)) {
                     const overhangPerimeterIn =
                       (output.capstone.overhangIn + rowOffsetFt * 12) * 8;
-                    capstoneOffsetIn = -overhangPerimeterIn / 2;
+                    // Half-module offset: centers bricks within each side segment so
+                    // mortar joints fall at the rectangle corners, not brick centers.
+                    capstoneOffsetIn =
+                      -overhangPerimeterIn / 2 + rowActualModuleSpacingIn / 2;
                   }
 
                   return Array.from(
                     { length: rowUnitCount },
                     (_, capIdx) => {
+                      // Extend end bricks on each polygon face toward the vertex corner.
+                      const posInFace = polygonBricksPerFace > 1
+                        ? capIdx % polygonBricksPerFace
+                        : 0;
+                      const brickCornerExt = polygonHalfCornerExtFt > 0
+                        ? polygonHalfCornerExtFt *
+                          ((posInFace === 0 ? 1 : 0) +
+                            (posInFace === polygonBricksPerFace - 1 ? 1 : 0))
+                        : 0;
+                      const brickRenderedLengthFt = rowRenderedCapBrickLengthFt + brickCornerExt;
+
                       const placement =
                         output.planShape === 'circular'
                           ? getCircularPlacement(
@@ -4203,7 +4217,7 @@ export default function Stage3D({
                             centerlineRadiusFt: rowRadiusFt,
                             innerRadiusFt: rowRenderedCapInnerRadiusFt,
                             outerRadiusFt: rowRenderedCapOuterRadiusFt,
-                            brickLengthIn: rowRenderedCapBrickLengthFt * 12,
+                            brickLengthIn: brickRenderedLengthFt * 12,
                           })
                         : undefined;
 
@@ -4233,7 +4247,7 @@ export default function Stage3D({
                               >
                                 <boxGeometry
                                   args={[
-                                    rowRenderedCapBrickLengthFt,
+                                    brickRenderedLengthFt,
                                     halfRoundBaseHeightFt,
                                     capBrickWidthFt,
                                   ]}
@@ -4266,7 +4280,7 @@ export default function Stage3D({
                                   args={[
                                     halfRoundCrownRadiusFt,
                                     halfRoundCrownRadiusFt,
-                                    rowRenderedCapBrickLengthFt,
+                                    brickRenderedLengthFt,
                                     20,
                                   ]}
                                 />
@@ -4283,7 +4297,7 @@ export default function Stage3D({
                             <>
                               <boxGeometry
                                 args={[
-                                  rowRenderedCapBrickLengthFt,
+                                  brickRenderedLengthFt,
                                   visCapBrickHeightFt,
                                   capBrickWidthFt,
                                 ]}
@@ -4359,21 +4373,25 @@ export default function Stage3D({
                     (rowInnerJointIn < 0 ||
                       output.resolvedCapUnit.lengthIn >
                         rowInnerChordIn - Math.max(0.036, output.mortarJointIn * 0.1));
-                  // For polygon plans, extend each mortar joint to match the brick corner extension.
-                  const polygonCapCornerExtFt2 =
-                    isRadialPlanShape(output.planShape) && output.planShape !== 'circular'
-                      ? capBrickWidthFt * Math.tan(Math.PI / wallRadialSegments)
-                      : 0;
+                  // Per-row safe brick length for joint placement (must match brick loop).
+                  const rowSafeCapBrickLengthFt = Math.max(
+                    0.08,
+                    Math.min(
+                      capBrickLengthFt,
+                      rowActualModuleSpacingIn / 12 - capJointLengthFt - overlapSafetyFt,
+                    ),
+                  );
+                  // rowRenderedCapBrickLengthFt here is only used for buildRectangularJointQuad.
                   const rowRenderedCapBrickLengthFt =
                     output.planShape === 'circular' && !rowCapRequiresTaper
                       ? Math.max(
                           0.08,
                           Math.min(
-                            safeCapBrickLengthFt,
-                            arcToChordLengthFt(safeCapBrickLengthFt, rowRadiusFt),
+                            rowSafeCapBrickLengthFt,
+                            arcToChordLengthFt(rowSafeCapBrickLengthFt, rowRadiusFt),
                           ),
                         )
-                      : safeCapBrickLengthFt + polygonCapCornerExtFt2;
+                      : rowSafeCapBrickLengthFt;
                   const rowRenderedCapJointLengthFt =
                     output.planShape === 'circular' && !rowCapRequiresTaper
                       ? Math.max(
@@ -4388,7 +4406,9 @@ export default function Stage3D({
                   if (!isRadialPlanShape(output.planShape)) {
                     const overhangPerimeterIn =
                       (output.capstone.overhangIn + rowOffsetFt * 12) * 8;
-                    capstoneOffsetIn = -overhangPerimeterIn / 2;
+                    // Match the half-module offset from the brick loop.
+                    capstoneOffsetIn =
+                      -overhangPerimeterIn / 2 + rowActualModuleSpacingIn / 2;
                   }
 
                   return Array.from(
