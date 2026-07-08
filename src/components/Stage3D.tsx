@@ -1130,12 +1130,11 @@ function getPolygonPlacement(
   const x = apothemFt * Math.cos(faceAngle) - faceOffset * Math.sin(faceAngle);
   const z = apothemFt * Math.sin(faceAngle) + faceOffset * Math.cos(faceAngle);
 
-  // rotationY: align brick length (local X-axis) with face tangent direction.
-  // CCW tangent for this polygon convention: (-sin(faceAngle), 0, -cos(faceAngle)).
-  // To match getCircularPlacement (brick local-X → negative tangent):
-  //   R_y(θ)·(1,0,0) = (cos θ, 0, -sin θ) = (sin(faceAngle), 0, cos(faceAngle))
-  //   → cos θ = sin(faceAngle),  -sin θ = cos(faceAngle)  → θ = faceAngle - π/2
-  return { x, z, rotationY: faceAngle - Math.PI / 2 };
+  // rotationY: align brick length (local X-axis) with the face tangent.
+  // The face tangent (direction of increasing faceOffset) is (-sin(fA), 0, cos(fA)).
+  // R_y(θ)·(1,0,0) = (cosθ, 0, −sinθ).  Setting equal to (-sin(fA), 0, cos(fA)):
+  //   cosθ = −sin(fA)  AND  −sinθ = cos(fA)  →  θ = −(π/2 + fA).
+  return { x, z, rotationY: -(Math.PI / 2 + faceAngle) };
 }
 
 function getRectangularPlacement(
@@ -3465,6 +3464,19 @@ export default function Stage3D({
                   />
                 </mesh>
               </group>
+            ) : showMortar && isRadialPlanShape(output.planShape) ? (
+              <VerticalShell
+                key={`wall-mortar-polygon-${mortarMode}`}
+                innerRadiusFt={geometry.wallRadiusFt - mortarInnerRadiusOffset}
+                outerRadiusFt={geometry.wallRadiusFt + mortarOuterRadiusOffset}
+                heightFt={wallHeightFt}
+                y={wallHeightFt / 2}
+                color={palette.mortarColor}
+                opacity={mortarOpacity}
+                wireframe={effectiveWireframe}
+                showEdges={false}
+                segments={wallRadialSegments}
+              />
             ) : showMortar ? (
               <RectangularRing
                 key={`wall-mortar-rect-${mortarMode}`}
@@ -3480,7 +3492,7 @@ export default function Stage3D({
             ) : null}
 
             {showMortar &&
-              output.planShape === 'circular' &&
+              isRadialPlanShape(output.planShape) &&
               output.courses.map(
                 (course) =>
                   course.courseIndex > 0 && (
@@ -3498,7 +3510,7 @@ export default function Stage3D({
                         args={[
                           geometry.wallRadiusFt - mortarInnerRadiusOffset,
                           geometry.wallRadiusFt + mortarOuterRadiusOffset,
-                          128,
+                          wallRadialSegments === 64 ? 128 : wallRadialSegments,
                           1,
                           cutawayThetaStartRad,
                           cutawayThetaLengthRad,
