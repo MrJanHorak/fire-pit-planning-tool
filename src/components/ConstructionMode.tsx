@@ -47,12 +47,15 @@ export default function ConstructionMode({
   const wallCutPerSideIn = output.cutPlan.recommendedCutPerSideIn;
   const wallCutAngleDeg = output.cutPlan.recommendedCutAngleDeg;
   const capCount = Math.max(1, output.capstone.capUnitsPerCourseRounded);
+  const n = output.planShape === 'hexagonal' ? 6 : output.planShape === 'octagonal' ? 8 : 0;
+  const isPolygonPlan = n > 0;
   const capInnerRadiusIn = Math.max(
     0.001,
     output.capstone.capInnerDiameterIn / 2,
   );
-  const capModuleSpacingIn =
-    (Math.PI * output.capstone.capCenterlineDiameterIn) / capCount;
+  const capModuleSpacingIn = isPolygonPlan
+    ? (n * output.capstone.capCenterlineDiameterIn * Math.tan(Math.PI / n)) / capCount
+    : (Math.PI * output.capstone.capCenterlineDiameterIn) / capCount;
   const capChordIn =
     capInnerRadiusIn > 0
       ? 2 *
@@ -293,31 +296,64 @@ export default function ConstructionMode({
             <h4 className='text-sm font-semibold text-amber-950'>
               Cut Marking And Saw Setup
             </h4>
-            <p className='mt-2 text-sm text-amber-950/85'>
-              Wall cuts:{' '}
-              {output.cutPlan.requiresCutting
-                ? `${wallCutPerSideIn.toFixed(3)} in per side at ${wallCutAngleDeg.toFixed(2)} deg off square.`
-                : `No taper cuts required; saw angle reference remains ${wallCutAngleDeg.toFixed(2)} deg.`}
-            </p>
-            <p className='mt-1 text-sm text-amber-950/85'>
-              Cap cuts:{' '}
-              {output.capstone.requiresTaperCutting
-                ? `${capCutPerSideIn.toFixed(3)} in per side at ${capCutAngleDeg.toFixed(2)} deg off square.`
-                : `No taper cuts required; cap angle reference is ${capCutAngleDeg.toFixed(2)} deg.`}
-            </p>
-            <ul className='mt-2 list-disc space-y-1 pl-5 text-sm text-amber-950/80'>
-              <li>
-                Manual marking: mark centerline first, then measure equal side
-                offsets from the inner edge using the per-side taper values.
-              </li>
-              <li>
-                Saw setup: set fence/miter to the listed angle off square, cut
-                one side, flip, and repeat on the opposite side.
-              </li>
-              <li>
-                Verify fit with 3 to 5 dry-fit units before batch cutting.
-              </li>
-            </ul>
+            {isPolygonPlan ? (
+              <>
+                <p className='mt-2 text-sm text-amber-950/85'>
+                  <strong>{n}-sided polygon plan — two cut types:</strong>
+                </p>
+                <ul className='mt-1 list-disc space-y-1 pl-5 text-sm text-amber-950/80'>
+                  <li>
+                    <strong>Straight cuts (middle of each face):</strong> No
+                    angle needed — square ends, full length.
+                  </li>
+                  <li>
+                    <strong>Corner miter cuts (first &amp; last brick per face):</strong>{' '}
+                    Set miter saw to{' '}
+                    <strong>{(180 / n).toFixed(1)}°</strong> off square. Cut one
+                    end of each corner brick at this angle to create a tight
+                    vertex joint with the adjacent face.
+                  </li>
+                  <li>
+                    Interior corner angle is{' '}
+                    {((n - 2) * 180 / n).toFixed(1)}° — each miter removes a
+                    triangle equal to half the{' '}
+                    {(360 / n).toFixed(1)}° exterior angle.
+                  </li>
+                  <li>
+                    Cap corner bricks: same {(180 / n).toFixed(1)}° miter on
+                    each end-brick of every capstone face ring.
+                  </li>
+                </ul>
+              </>
+            ) : (
+              <>
+                <p className='mt-2 text-sm text-amber-950/85'>
+                  Wall cuts:{' '}
+                  {output.cutPlan.requiresCutting
+                    ? `${wallCutPerSideIn.toFixed(3)} in per side at ${wallCutAngleDeg.toFixed(2)} deg off square.`
+                    : `No taper cuts required; saw angle reference remains ${wallCutAngleDeg.toFixed(2)} deg.`}
+                </p>
+                <p className='mt-1 text-sm text-amber-950/85'>
+                  Cap cuts:{' '}
+                  {output.capstone.requiresTaperCutting
+                    ? `${capCutPerSideIn.toFixed(3)} in per side at ${capCutAngleDeg.toFixed(2)} deg off square.`
+                    : `No taper cuts required; cap angle reference is ${capCutAngleDeg.toFixed(2)} deg.`}
+                </p>
+                <ul className='mt-2 list-disc space-y-1 pl-5 text-sm text-amber-950/80'>
+                  <li>
+                    Manual marking: mark centerline first, then measure equal side
+                    offsets from the inner edge using the per-side taper values.
+                  </li>
+                  <li>
+                    Saw setup: set fence/miter to the listed angle off square, cut
+                    one side, flip, and repeat on the opposite side.
+                  </li>
+                  <li>
+                    Verify fit with 3 to 5 dry-fit units before batch cutting.
+                  </li>
+                </ul>
+              </>
+            )}
           </div>
 
           <div className='rounded-lg border border-amber-900/20 bg-white p-3'>

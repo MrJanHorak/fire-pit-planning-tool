@@ -1347,7 +1347,9 @@ export class MasonryEngine {
                 );
         const rowUnitsRaw =
           rowPerimeterIn / (capUnit.lengthIn + capstone.joint.actualJointIn);
-        return Math.max(1, Math.floor(rowUnitsRaw));
+        return nBridge > 0
+          ? Math.max(nBridge, Math.round(rowUnitsRaw / nBridge) * nBridge)
+          : Math.max(1, Math.floor(rowUnitsRaw));
       },
     );
     const capBridgeAdditionalUnits = capBridgeCourseUnitCounts
@@ -1725,10 +1727,12 @@ export class MasonryEngine {
               capCenterlineDepthIn,
             );
     const capUnitsPerCourseRaw = capPerimeterIn / (unitLengthIn + jointIn);
-    const capUnitsPerCourseRounded = Math.max(
-      1,
-      Math.floor(capUnitsPerCourseRaw),
-    );
+    // For polygon plans, round to the nearest multiple of n so each face gets
+    // a whole number of bricks — prevents bricks from straddling face corners.
+    const capUnitsPerCourseRounded =
+      n > 0
+        ? Math.max(n, Math.round(capUnitsPerCourseRaw / n) * n)
+        : Math.max(1, Math.floor(capUnitsPerCourseRaw));
     const actualModuleSpacingIn = capPerimeterIn / capUnitsPerCourseRounded;
     const actualJointIn = Math.max(0, actualModuleSpacingIn - unitLengthIn);
     const innerPerimeterIn =

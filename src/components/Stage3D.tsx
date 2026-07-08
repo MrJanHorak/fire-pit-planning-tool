@@ -4527,7 +4527,7 @@ export default function Stage3D({
 
             {isLodHigh &&
               showMortar &&
-              output.planShape !== 'circular' &&
+              !isRadialPlanShape(output.planShape) &&
               capCornerJointSizeFt > 0.02 && (
                 <>
                   {[
