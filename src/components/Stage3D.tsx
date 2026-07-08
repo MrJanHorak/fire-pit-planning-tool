@@ -2018,9 +2018,8 @@ export default function Stage3D({
   const capMortarBedY = geometry.capRiseFt + capMortarBedHeightFt / 2;
   const capJointWidthFt = Math.max(0.03, capBrickWidthFt * 0.86);
   const capJointHeightFt = Math.max(0.03, visCapBrickHeightFt * 0.94);
-  // Corner box is sized to fully cover the radial brick-end overlap zone at
-  // each corner, and rendered last (renderOrder 2) so it overdraws brick ends.
-  const capCornerJointSizeFt = capBrickWidthFt;
+  // Corner mortar box: sized to fill the joint gap at each rectangle corner.
+  const capCornerJointSizeFt = Math.max(0.04, capJointLengthFt * 2);
   const halfRoundCrownRadiusFt = Math.min(
     capBrickWidthFt * 0.42,
     Math.max(0.04, visCapBrickHeightFt * 0.42),
@@ -4560,7 +4559,6 @@ export default function Stage3D({
                     shouldRenderInCutaway(x as number, z as number) ? (
                     <mesh
                       key={`cap-corner-joint-${index}-${mortarMode}`}
-                      renderOrder={2}
                       position={[
                         x as number,
                         geometry.capRiseFt +
@@ -4583,9 +4581,6 @@ export default function Stage3D({
                         transparent
                         opacity={mortarOpacity}
                         depthWrite={mortarDepthWrite}
-                        polygonOffset
-                        polygonOffsetFactor={-2}
-                        polygonOffsetUnits={-2}
                         wireframe={effectiveWireframe}
                       />
                     </mesh>
@@ -4593,63 +4588,6 @@ export default function Stage3D({
                   ))}
                 </>
               )}
-
-            {/* Polygon vertex corner fillers: mortar-colored squares at each
-                vertex that overdraw the brick-end gap between adjacent faces */}
-            {isLodHigh &&
-              showMortar &&
-              isRadialPlanShape(output.planShape) &&
-              output.planShape !== 'circular' &&
-              (() => {
-                const y =
-                  geometry.capRiseFt + capBrickHeightFt / 2 + mortarJointFt / 2;
-                return Array.from(
-                  { length: capBridgeRowCount },
-                  (_, capRowIdx) => {
-                    const rowOffsetFt = capRowIdx * capBridgeRowStepFt;
-                    const rowRadiusFt = geometry.capRadiusFt + rowOffsetFt;
-                    const circumradiusFt =
-                      rowRadiusFt / Math.cos(Math.PI / wallRadialSegments);
-                    return Array.from(
-                      { length: wallRadialSegments },
-                      (_, vIdx) => {
-                        const vertexAngle =
-                          vIdx * (2 * Math.PI / wallRadialSegments);
-                        const x = circumradiusFt * Math.cos(vertexAngle);
-                        const z = circumradiusFt * Math.sin(vertexAngle);
-                        if (!shouldRenderInCutaway(x, z)) return null;
-                        return (
-                          <mesh
-                            key={`cap-vertex-filler-${capRowIdx}-${vIdx}`}
-                            renderOrder={2}
-                            position={[x, y, z]}
-                          >
-                            <boxGeometry
-                              args={[
-                                capBrickWidthFt,
-                                capJointHeightFt,
-                                capBrickWidthFt,
-                              ]}
-                            />
-                            <meshStandardMaterial
-                              color={palette.mortarColor}
-                              map={isPhotoreal ? mortarTexture : undefined}
-                              roughness={isPhotoreal ? 0.88 : 0.93}
-                              transparent
-                              opacity={mortarOpacity}
-                              depthWrite={mortarDepthWrite}
-                              polygonOffset
-                              polygonOffsetFactor={-2}
-                              polygonOffsetUnits={-2}
-                              wireframe={effectiveWireframe}
-                            />
-                          </mesh>
-                        );
-                      },
-                    );
-                  },
-                );
-              })()}
 
             {!isLodHigh && (
               <>
