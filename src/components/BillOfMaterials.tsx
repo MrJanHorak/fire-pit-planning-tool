@@ -153,12 +153,8 @@ export default function BillOfMaterials({ output }: Props) {
     output.thermalAssembly.mode === 'double-wall'
       ? (logistics.thermalCapBridgePurchasedUnits ?? 0)
       : 0;
-  const totalWallUnitsPurchased =
-    logistics.purchasedUnits + thermalAssemblyPurchasedUnits;
-  const wallUnitsForPricing =
-    output.thermalAssembly.mode === 'double-wall'
-      ? totalWallUnitsPurchased
-      : logistics.purchasedUnits;
+  // In double-wall mode, inner and outer shells are separate BOM rows so pricing is split.
+  const wallUnitsForPricing = logistics.purchasedUnits;
   const wallTotal = wallUnitPrice * wallUnitsForPricing;
   const capTotal = capUnitPrice * logistics.purchasedCapUnits;
   const capBridgeTotal = capUnitPrice * thermalCapBridgePurchasedUnits;
@@ -201,6 +197,26 @@ export default function BillOfMaterials({ output }: Props) {
   };
 
   const wallSpec = `${resolvedUnit.name} — ${resolvedUnit.lengthIn}"L × ${resolvedUnit.widthIn}"W × ${resolvedUnit.heightIn}"H`;
+  const outerMaterialName = output.thermalAssembly.outerMaterialName;
+  const innerMaterialName = output.thermalAssembly.innerMaterialName;
+  const innerHeatRating = output.thermalAssembly.innerHeatRatingF;
+  const outerHeatRating = output.thermalAssembly.outerHeatRatingF;
+  const innerMortarLabel = output.thermalAssembly.innerMortarType === 'refractory'
+    ? 'Refractory mortar'
+    : output.thermalAssembly.innerMortarType === 'type-s'
+      ? 'Type S mortar'
+      : output.thermalAssembly.innerMortarType ?? 'mortar';
+  const outerMortarLabel = output.thermalAssembly.outerMortarType === 'type-n'
+    ? 'Type N mortar'
+    : output.thermalAssembly.outerMortarType === 'type-s'
+      ? 'Type S mortar'
+      : output.thermalAssembly.outerMortarType ?? 'mortar';
+  const doubleWallInnerSpec = innerMaterialName
+    ? `${innerMaterialName}${innerHeatRating ? ` (~${innerHeatRating.toLocaleString()}°F)` : ''} · ${innerMortarLabel}`
+    : wallSpec;
+  const doubleWallOuterSpec = outerMaterialName
+    ? `${outerMaterialName}${outerHeatRating ? ` (~${outerHeatRating.toLocaleString()}°F)` : ''} · ${outerMortarLabel}`
+    : wallSpec;
   const capSpec = `${resolvedCapUnit.name} — ${resolvedCapUnit.lengthIn}"L × ${resolvedCapUnit.widthIn}"W × ${resolvedCapUnit.heightIn}"H`;
   const capBridgeRowBreakdown =
     output.thermalAssembly.capBridgeCourseUnitCounts.length > 0
@@ -213,18 +229,32 @@ export default function BillOfMaterials({ output }: Props) {
       key: 'wall-units',
       item:
         output.thermalAssembly.mode === 'double-wall'
-          ? 'Wall Units (Double-Wall Total)'
+          ? `Inner Wall Units (${innerMaterialName ?? resolvedUnit.name})`
           : 'Wall Units',
       detail:
         output.thermalAssembly.mode === 'double-wall'
-          ? `${wallSpec} · inner ${logistics.purchasedUnits} + outer ${thermalAssemblyPurchasedUnits} units · ${logistics.wasteFactorPct}% waste included`
+          ? `${doubleWallInnerSpec} · ${logistics.purchasedUnits} units · ${logistics.wasteFactorPct}% waste`
           : `${wallSpec} · ${logistics.wasteFactorPct}% waste included`,
-      qty: wallUnitsForPricing,
+      qty: output.thermalAssembly.mode === 'double-wall' ? logistics.purchasedUnits : wallUnitsForPricing,
       unit: 'ea',
       unitPrice: costs.wallUnit,
       onUnitPriceChange: (value) => updateCost('wallUnit', value),
       lineTotal: wallTotal,
     },
+    ...(output.thermalAssembly.mode === 'double-wall'
+      ? ([
+          {
+            key: 'outer-wall-units',
+            item: `Outer Wall Units (${outerMaterialName ?? resolvedUnit.name})`,
+            detail: `${doubleWallOuterSpec} · ${thermalAssemblyPurchasedUnits} units · ${logistics.wasteFactorPct}% waste`,
+            qty: thermalAssemblyPurchasedUnits,
+            unit: 'ea',
+            unitPrice: costs.wallUnit,
+            onUnitPriceChange: (value) => updateCost('wallUnit', value),
+            lineTotal: Math.round(thermalAssemblyPurchasedUnits * parseDollar(costs.wallUnit) * 100) / 100,
+          },
+        ] satisfies BomTableRow[])
+      : []),
     {
       key: 'capstones',
       item: 'Capstones',
@@ -251,7 +281,9 @@ export default function BillOfMaterials({ output }: Props) {
       : []),
     {
       key: 'mortar',
-      item: 'Type S Mortar',
+      item: output.thermalAssembly.mode === 'double-wall'
+        ? `Mortar (${innerMortarLabel} inner / ${outerMortarLabel} outer)`
+        : 'Type S Mortar',
       detail: `~${MORTAR_BAG_80LB_FT3} ft³ yield per bag · round up at the yard`,
       qty: mortarBags,
       qtyDisplay: `${mortarBags}`,
@@ -456,7 +488,7 @@ export default function BillOfMaterials({ output }: Props) {
           {output.thermalAssembly.mode === 'double-wall' && (
             <p className='mt-1 text-xs text-amber-900/80'>
               Double-wall mode splits counts into inner and outer shells. Combined wall units to buy:{' '}
-              <strong className='text-amber-950'>{totalWallUnitsPurchased.toLocaleString()} ea</strong>
+              <strong className='text-amber-950'>{(logistics.purchasedUnits + thermalAssemblyPurchasedUnits).toLocaleString()} ea</strong>
               {thermalCapBridgePurchasedUnits > 0 && (
                 <>
                   {' '}· cap closure units:{' '}

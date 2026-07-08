@@ -607,6 +607,107 @@ export default function ControlPanel({
 
         {input.thermalAssemblyMode === 'double-wall' && (
           <div className='grid gap-2 rounded-md border border-amber-700/20 bg-white/60 p-3 sm:col-span-2 sm:grid-cols-2'>
+            <label className='flex flex-col gap-1 sm:col-span-2'>
+              <span className='text-xs font-semibold text-amber-900'>
+                Inner Wall Material <span className='font-normal text-amber-700/70'>(firebox — heat-rated)</span>
+              </span>
+              <p className='text-xs text-amber-800/70'>
+                Uses the primary Wall Material selection above. For wood fires, choose firebrick or radial firebrick (rated ≥ 1,400°F).
+              </p>
+              <span className='text-xs text-amber-900/60 italic'>
+                Currently: <strong>{BRICK_PRESETS[input.brickPresetKey ?? 'modular']?.name ?? 'Custom'}</strong>
+                {' — change via "Wall Material" above.'}
+              </span>
+            </label>
+
+            <label className='flex flex-col gap-1'>
+              <span className='text-xs font-medium text-amber-900'>
+                Inner Wall Mortar
+              </span>
+              <select
+                className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                aria-label='Inner Wall Mortar Type'
+                title='Inner Wall Mortar Type'
+                value={input.innerWallMortarType ?? 'refractory'}
+                onChange={(event) =>
+                  setInput((prev) => ({
+                    ...prev,
+                    innerWallMortarType: event.target.value as MasonryInput['innerWallMortarType'],
+                  }))
+                }
+              >
+                <option value='refractory'>Refractory (fireclay) — required for firebox</option>
+                <option value='type-n'>Type N masonry mortar</option>
+                <option value='type-s'>Type S masonry mortar</option>
+                <option value='construction-adhesive'>Construction adhesive (heat-rated)</option>
+              </select>
+            </label>
+
+            <label className='flex flex-col gap-1 sm:col-span-2'>
+              <span className='text-xs font-semibold text-amber-900'>
+                Outer Wall Material <span className='font-normal text-amber-700/70'>(decorative shell)</span>
+              </span>
+              <select
+                className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                aria-label='Outer Wall Material'
+                title='Outer Wall Material'
+                value={input.outerWallBrickPresetKey ?? input.brickPresetKey ?? 'modular'}
+                onChange={(event) =>
+                  setInput((prev) => ({
+                    ...prev,
+                    outerWallBrickPresetKey: event.target.value,
+                  }))
+                }
+              >
+                <optgroup label='Standard Brick (Outer Shell)'>
+                  <option value='modular'>Modular Brick</option>
+                  <option value='standard'>Standard Brick</option>
+                  <option value='queen'>Queen Brick</option>
+                  <option value='king'>King Brick</option>
+                  <option value='norman'>Norman Brick</option>
+                  <option value='jumboModular'>Jumbo Modular Brick</option>
+                  <option value='closure'>Closure Brick</option>
+                  <option value='utility'>Utility Brick</option>
+                  <option value='paver'>Clay Paver</option>
+                  <option value='bullnose'>Bullnose Face Brick</option>
+                  <option value='radialFace'>Radial Face Brick</option>
+                </optgroup>
+                <optgroup label='Natural Stone (Outer Shell)'>
+                  <option value='rockLedgestone'>Natural Stone — Ledgestone</option>
+                  <option value='rockFieldstone'>Natural Stone — Fieldstone</option>
+                  <option value='rockMosaic'>Natural Stone — Mosaic</option>
+                </optgroup>
+                <optgroup label='Heat-Rated Inner Materials (caution on outer)'>
+                  <option value='fireBrickSplits'>Fire Brick Split (inner-rated)</option>
+                  <option value='fireBrickFull'>Fire Brick Full (inner-rated)</option>
+                  <option value='radialFireBrick'>Radial Fire Brick (inner-rated)</option>
+                </optgroup>
+              </select>
+            </label>
+
+            <label className='flex flex-col gap-1'>
+              <span className='text-xs font-medium text-amber-900'>
+                Outer Wall Mortar
+              </span>
+              <select
+                className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                aria-label='Outer Wall Mortar Type'
+                title='Outer Wall Mortar Type'
+                value={input.outerWallMortarType ?? 'type-n'}
+                onChange={(event) =>
+                  setInput((prev) => ({
+                    ...prev,
+                    outerWallMortarType: event.target.value as MasonryInput['outerWallMortarType'],
+                  }))
+                }
+              >
+                <option value='type-n'>Type N masonry mortar (outdoor, decorative)</option>
+                <option value='type-s'>Type S masonry mortar (below-grade, structural)</option>
+                <option value='refractory'>Refractory mortar (if outer shell also heat-exposed)</option>
+                <option value='construction-adhesive'>Construction adhesive (dry-stack / no-mortar)</option>
+              </select>
+            </label>
+
             <label className='flex flex-col gap-1'>
               <span className='text-xs font-medium text-amber-900'>
                 Cavity Fill

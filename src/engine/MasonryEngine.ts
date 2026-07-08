@@ -35,6 +35,52 @@ const ROCK_WALL_UNIT_PRESET_KEYS = new Set([
   'rockMosaic',
 ]);
 
+/**
+ * Approximate heat ratings (°F) for inner-face exposure per brick preset.
+ * Inner firebox materials need ≥ 1,400°F; outer decorative shells need ≥ 400°F.
+ */
+const HEAT_RATINGS_F: Record<string, number> = {
+  modular: 600,
+  standard: 600,
+  queen: 600,
+  king: 600,
+  norman: 600,
+  jumboModular: 600,
+  closure: 600,
+  utility: 600,
+  paver: 500,
+  fireBrickSplits: 2000,
+  fireBrickFull: 2000,
+  radialFireBrick: 2000,
+  bullnose: 600,
+  radialFace: 600,
+  rockLedgestone: 800,
+  rockFieldstone: 800,
+  rockMosaic: 800,
+  custom: 600,
+  'custom-radial': 600,
+};
+
+/** Minimum heat rating (°F) acceptable for the inner firebox wall. */
+const INNER_WALL_MIN_HEAT_RATING_F = 1400;
+
+/**
+ * Default mortar type for a given material preset.
+ * Inner firebox zone always needs refractory mortar.
+ */
+const DEFAULT_MORTAR_TYPE: Record<string, import('../types').MortarType> = {
+  fireBrickSplits: 'refractory',
+  fireBrickFull: 'refractory',
+  radialFireBrick: 'refractory',
+  rockLedgestone: 'type-n',
+  rockFieldstone: 'type-n',
+  rockMosaic: 'type-n',
+};
+
+function defaultMortarForPreset(presetKey: string): import('../types').MortarType {
+  return DEFAULT_MORTAR_TYPE[presetKey] ?? 'type-n';
+}
+
 const WALL_UNIT_WEIGHT_OVERRIDES_LB: Record<string, number> = {
   modular: MODULAR_BRICK_WEIGHT_LB,
   rockLedgestone: 32,
@@ -507,6 +553,26 @@ export class MasonryEngine {
     return input.brickPresetKey
       ? (BRICK_PRESETS[input.brickPresetKey] ?? this.defaultUnit)
       : this.defaultUnit;
+  }
+
+  /**
+   * Resolves the outer wall unit for double-wall mode.
+   * Uses outerWallBrickPresetKey if set; falls back to the inner wall unit.
+   */
+  private resolveOuterWallUnit(input: MasonryInput): MasonryUnit {
+    const outerKey = input.outerWallBrickPresetKey;
+    if (!outerKey) {
+      return this.resolveRequestedWallUnit(input);
+    }
+    if (outerKey === 'custom') {
+      return {
+        name: 'Custom Brick (Outer)',
+        lengthIn: this.sanitizeDim(input.customBrickLengthIn, 7.625),
+        widthIn: this.sanitizeDim(input.customBrickWidthIn, 3.625),
+        heightIn: this.sanitizeDim(input.customBrickHeightIn, 2.25),
+      };
+    }
+    return BRICK_PRESETS[outerKey] ?? this.resolveRequestedWallUnit(input);
   }
 
   public calculateCircularUnitCountRaw(
@@ -1030,14 +1096,23 @@ export class MasonryEngine {
     const cavityVentMode = input.thermalCavityVentMode ?? 'vented';
     const cavityWidthIn = this.sanitizeDim(input.thermalCavityWidthIn, 1.5);
     const tieSpacingIn = this.sanitizeDim(input.thermalTieSpacingIn, 16);
-    const shellThicknessIn = Math.max(
+
+    // In double-wall mode the inner shell uses wallUnit (brickPresetKey)
+    // and the outer shell uses the resolved outer wall unit.
+    const outerWallUnit = mode === 'double-wall'
+      ? this.resolveOrientedUnit(this.resolveOuterWallUnit(input), input.orientation)
+      : wallUnit;
+
+    const innerShellThicknessIn = Math.max(
       wallUnit.widthIn,
       linerSpec.enabled ? linerSpec.thicknessIn : wallUnit.widthIn,
     );
+    const outerShellThicknessIn = mode === 'double-wall' ? outerWallUnit.widthIn : 0;
     const totalWallDepthIn =
       mode === 'double-wall'
-        ? shellThicknessIn * 2 + cavityWidthIn
-        : shellThicknessIn;
+        ? innerShellThicknessIn + cavityWidthIn + outerShellThicknessIn
+        : innerShellThicknessIn;
+
     const perimeterIn =
       planMetrics.planShape === 'circular'
         ? Math.PI * Math.max(planMetrics.outerWidthIn, planMetrics.outerDepthIn)
@@ -1065,10 +1140,29 @@ export class MasonryEngine {
                 : 'low'
         : 'low';
 
+    // Resolve material metadata for double-wall mode.
+    const innerKey = input.brickPresetKey ?? 'modular';
+    const outerKey = (mode === 'double-wall' && input.outerWallBrickPresetKey)
+      ? input.outerWallBrickPresetKey
+      : innerKey;
+    const innerHeatRatingF = HEAT_RATINGS_F[innerKey] ?? 600;
+    const outerHeatRatingF = HEAT_RATINGS_F[outerKey] ?? 600;
+    const innerMortarType: import('../types').MortarType =
+      input.innerWallMortarType ?? (innerHeatRatingF >= INNER_WALL_MIN_HEAT_RATING_F ? 'refractory' : 'refractory');
+    const outerMortarType: import('../types').MortarType =
+      input.outerWallMortarType ?? defaultMortarForPreset(outerKey);
+
+    const innerMaterialName = BRICK_PRESETS[innerKey]?.name ?? wallUnit.name;
+    const outerMaterialName = mode === 'double-wall'
+      ? (BRICK_PRESETS[outerKey]?.name ?? outerWallUnit.name)
+      : undefined;
+
     const notes =
       mode === 'double-wall'
         ? [
             `Double-wall assembly active with a ${cavityWidthIn.toFixed(2)} in cavity.`,
+            `Inner shell: ${innerMaterialName} (rated to ~${innerHeatRatingF.toLocaleString()}°F) — use ${innerMortarType === 'refractory' ? 'refractory (fireclay) mortar' : innerMortarType + ' mortar'}.`,
+            `Outer shell: ${outerMaterialName} (rated to ~${outerHeatRatingF.toLocaleString()}°F) — use ${outerMortarType === 'type-n' ? 'Type N masonry mortar' : outerMortarType === 'type-s' ? 'Type S masonry mortar' : outerMortarType + ' mortar'}.`,
             cavityVentMode === 'vented'
               ? 'Vented cavity improves heat release and reduces trapped moisture.'
               : 'Sealed cavity reduces airflow and should be reviewed for moisture/expansion risk.',
@@ -1087,8 +1181,8 @@ export class MasonryEngine {
       cavityFill,
       cavityVentMode,
       cavityWidthIn: mode === 'double-wall' ? cavityWidthIn : 0,
-      innerShellThicknessIn: shellThicknessIn,
-      outerShellThicknessIn: mode === 'double-wall' ? wallUnit.widthIn : 0,
+      innerShellThicknessIn,
+      outerShellThicknessIn,
       totalWallDepthIn,
       capBridgeRequiredWidthIn: 0,
       capBridgeRows: 1,
@@ -1099,9 +1193,15 @@ export class MasonryEngine {
       riskLevel,
       description:
         mode === 'double-wall'
-          ? `Double-wall cavity assembly with ${cavityFill.replace('-', ' ')} fill and ${cavityVentMode} cavity behavior.`
+          ? `Double-wall: ${innerMaterialName} inner / ${outerMaterialName ?? innerMaterialName} outer · ${cavityFill.replace('-', ' ')} cavity · ${cavityVentMode}.`
           : 'Single-wall assembly with thermal liner protection.',
       notes,
+      innerMaterialName,
+      outerMaterialName,
+      innerHeatRatingF,
+      outerHeatRatingF: mode === 'double-wall' ? outerHeatRatingF : undefined,
+      innerMortarType,
+      outerMortarType: mode === 'double-wall' ? outerMortarType : undefined,
     };
   }
 
@@ -1577,6 +1677,18 @@ export class MasonryEngine {
       foundation.stoneVolumeCubicFeet * (1 + STONE_WASTE_FACTOR_PCT / 100);
     const wallUnitWeightLb = this.calculateWallUnitWeightLb(input, wallUnit);
 
+    // For double-wall, compute outer shell weight using the outer material's density.
+    let outerShellUnitWeightLb = wallUnitWeightLb;
+    if (thermalAssembly.mode === 'double-wall' && input.outerWallBrickPresetKey) {
+      const outerUnit = this.resolveOuterWallUnit(input);
+      const tempInputOuter = { ...input, brickPresetKey: input.outerWallBrickPresetKey };
+      outerShellUnitWeightLb = this.calculateWallUnitWeightLb(tempInputOuter, outerUnit);
+    }
+    const outerShellTotalWeightLb =
+      thermalAssembly.mode === 'double-wall'
+        ? totalUnits * outerShellUnitWeightLb * 1.05
+        : 0;
+
     const logistics: LogisticsSpec = {
       wasteFactorPct: BRICK_WASTE_FACTOR_PCT,
       purchasedUnits,
@@ -1586,10 +1698,7 @@ export class MasonryEngine {
         purchasedCapUnits * capUnitWeightLb + thermalCapBridgeWeightLb,
       estimatedStoneWeightLb: stoneWithWasteFt3 * STONE_WEIGHT_LB_PER_FT3,
       estimatedMortarVolumeCubicFeet: purchasedUnits * MORTAR_FT3_PER_BRICK,
-      thermalAssemblyWeightLb:
-        thermalAssembly.mode === 'double-wall'
-          ? totalUnits * wallUnitWeightLb * 1.05
-          : 0,
+      thermalAssemblyWeightLb: outerShellTotalWeightLb,
       thermalAssemblyAdditionalUnits:
         thermalAssembly.mode === 'double-wall' ? totalUnits : 0,
       thermalCapBridgeAdditionalUnits,
@@ -1681,6 +1790,25 @@ export class MasonryEngine {
           code: 'double-wall-thermal-review',
           message:
             'Double-wall thermal assembly needs a closer review for heat transfer, moisture, and expansion behavior.',
+        });
+      }
+
+      // Warn if the inner wall material is not rated for firebox temperatures.
+      const innerRating = thermalAssembly.innerHeatRatingF ?? 0;
+      if (innerRating < INNER_WALL_MIN_HEAT_RATING_F) {
+        warnings.push({
+          code: 'outer-wall-heat-risk',
+          message: `Inner wall material "${thermalAssembly.innerMaterialName ?? 'selected'}" is rated to only ~${innerRating.toLocaleString()}°F. The firebox inner shell should use firebrick or refractory material rated to at least ${INNER_WALL_MIN_HEAT_RATING_F.toLocaleString()}°F.`,
+          actualValue: innerRating,
+          requiredValue: INNER_WALL_MIN_HEAT_RATING_F,
+        });
+      }
+
+      // Warn if inner mortar is not refractory.
+      if (thermalAssembly.innerMortarType && thermalAssembly.innerMortarType !== 'refractory') {
+        warnings.push({
+          code: 'mortar-zone-mismatch',
+          message: `Inner firebox wall uses "${thermalAssembly.innerMortarType}" mortar. Refractory (fireclay) mortar is required for the inner firebox zone — standard Portland-based mortars fail above ~572°F.`,
         });
       }
     }

@@ -51,6 +51,7 @@ export type GasHardwareTemplate =
 export type ThermalAssemblyMode = 'single-wall' | 'double-wall';
 export type ThermalCavityFill = 'air-gap' | 'sand-fill' | 'insulation-board';
 export type ThermalCavityVentMode = 'vented' | 'sealed';
+export type MortarType = 'refractory' | 'type-n' | 'type-s' | 'construction-adhesive';
 
 export interface MasonryUnit {
   name: string;
@@ -83,6 +84,12 @@ export interface MasonryInput {
   thermalCavityVentMode?: ThermalCavityVentMode;
   thermalCavityWidthIn?: number;
   thermalTieSpacingIn?: number;
+  /** In double-wall mode: material preset for the outer (decorative) shell. Inner shell uses brickPresetKey. */
+  outerWallBrickPresetKey?: string;
+  /** Mortar type for the inner firebox wall. Defaults to refractory in double-wall mode. */
+  innerWallMortarType?: MortarType;
+  /** Mortar type for the outer decorative shell. Defaults to type-n. */
+  outerWallMortarType?: MortarType;
   soilType?: SoilType;
   drainageCondition?: DrainageCondition;
   frostClimate?: boolean;
@@ -140,7 +147,9 @@ export interface SafetyWarning {
     | 'course-bearing-risk'
     | 'vertical-clearance-low'
     | 'double-wall-cavity-tight'
-    | 'double-wall-thermal-review';
+    | 'double-wall-thermal-review'
+    | 'outer-wall-heat-risk'
+    | 'mortar-zone-mismatch';
     message: string;
     actualValue?: number;
     requiredValue?: number;
@@ -201,6 +210,18 @@ export interface ThermalAssemblySpec {
   riskLevel: 'low' | 'moderate' | 'high';
   description: string;
   notes: string[];
+  /** Material name for the inner firebox shell (double-wall only). */
+  innerMaterialName?: string;
+  /** Material name for the outer decorative shell (double-wall only). */
+  outerMaterialName?: string;
+  /** Heat rating in °F for the inner shell material. */
+  innerHeatRatingF?: number;
+  /** Heat rating in °F for the outer shell material. */
+  outerHeatRatingF?: number;
+  /** Mortar type recommended for the inner firebox zone. */
+  innerMortarType?: MortarType;
+  /** Mortar type recommended for the outer decorative shell. */
+  outerMortarType?: MortarType;
 }
 
 export interface LinerSpec {
