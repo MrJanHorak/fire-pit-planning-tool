@@ -4133,24 +4133,6 @@ export default function Stage3D({
                       rowActualModuleSpacingIn / 12 - capJointLengthFt - overlapSafetyFt,
                     ),
                   );
-                  // For polygon plans, only end bricks on each face get a corner extension
-                  // (to fill the triangular gap at polygon vertices), capped at the
-                  // available joint space so bricks never overlap their neighbors.
-                  const polygonBricksPerFace =
-                    isRadialPlanShape(output.planShape) && output.planShape !== 'circular'
-                      ? Math.max(1, Math.round(rowUnitCount / wallRadialSegments))
-                      : 1;
-                  const maxPolygonCornerExtFt = Math.max(
-                    0,
-                    (rowActualModuleSpacingIn / 12 - rowSafeCapBrickLengthFt - overlapSafetyFt) / 2,
-                  );
-                  const polygonHalfCornerExtFt =
-                    isRadialPlanShape(output.planShape) && output.planShape !== 'circular'
-                      ? Math.min(
-                          (capBrickWidthFt / 2) * Math.tan(Math.PI / wallRadialSegments),
-                          maxPolygonCornerExtFt,
-                        )
-                      : 0;
                   const rowRenderedCapBrickLengthFt =
                     output.planShape === 'circular' && !rowCapRequiresTaper
                       ? Math.max(
@@ -4165,26 +4147,12 @@ export default function Stage3D({
                   if (!isRadialPlanShape(output.planShape)) {
                     const overhangPerimeterIn =
                       (output.capstone.overhangIn + rowOffsetFt * 12) * 8;
-                    // Half-module offset: centers bricks within each side segment so
-                    // mortar joints fall at the rectangle corners, not brick centers.
-                    capstoneOffsetIn =
-                      -overhangPerimeterIn / 2 + rowActualModuleSpacingIn / 2;
+                    capstoneOffsetIn = -overhangPerimeterIn / 2;
                   }
 
                   return Array.from(
                     { length: rowUnitCount },
                     (_, capIdx) => {
-                      // Extend end bricks on each polygon face toward the vertex corner.
-                      const posInFace = polygonBricksPerFace > 1
-                        ? capIdx % polygonBricksPerFace
-                        : 0;
-                      const brickCornerExt = polygonHalfCornerExtFt > 0
-                        ? polygonHalfCornerExtFt *
-                          ((posInFace === 0 ? 1 : 0) +
-                            (posInFace === polygonBricksPerFace - 1 ? 1 : 0))
-                        : 0;
-                      const brickRenderedLengthFt = rowRenderedCapBrickLengthFt + brickCornerExt;
-
                       const placement =
                         output.planShape === 'circular'
                           ? getCircularPlacement(
@@ -4217,7 +4185,7 @@ export default function Stage3D({
                             centerlineRadiusFt: rowRadiusFt,
                             innerRadiusFt: rowRenderedCapInnerRadiusFt,
                             outerRadiusFt: rowRenderedCapOuterRadiusFt,
-                            brickLengthIn: brickRenderedLengthFt * 12,
+                            brickLengthIn: rowRenderedCapBrickLengthFt * 12,
                           })
                         : undefined;
 
@@ -4247,7 +4215,7 @@ export default function Stage3D({
                               >
                                 <boxGeometry
                                   args={[
-                                    brickRenderedLengthFt,
+                                    rowRenderedCapBrickLengthFt,
                                     halfRoundBaseHeightFt,
                                     capBrickWidthFt,
                                   ]}
@@ -4280,7 +4248,7 @@ export default function Stage3D({
                                   args={[
                                     halfRoundCrownRadiusFt,
                                     halfRoundCrownRadiusFt,
-                                    brickRenderedLengthFt,
+                                    rowRenderedCapBrickLengthFt,
                                     20,
                                   ]}
                                 />
@@ -4297,7 +4265,7 @@ export default function Stage3D({
                             <>
                               <boxGeometry
                                 args={[
-                                  brickRenderedLengthFt,
+                                  rowRenderedCapBrickLengthFt,
                                   visCapBrickHeightFt,
                                   capBrickWidthFt,
                                 ]}
@@ -4406,9 +4374,7 @@ export default function Stage3D({
                   if (!isRadialPlanShape(output.planShape)) {
                     const overhangPerimeterIn =
                       (output.capstone.overhangIn + rowOffsetFt * 12) * 8;
-                    // Match the half-module offset from the brick loop.
-                    capstoneOffsetIn =
-                      -overhangPerimeterIn / 2 + rowActualModuleSpacingIn / 2;
+                    capstoneOffsetIn = -overhangPerimeterIn / 2;
                   }
 
                   return Array.from(

@@ -1348,10 +1348,8 @@ export class MasonryEngine {
         const rowUnitsRaw =
           rowPerimeterIn / (capUnit.lengthIn + capstone.joint.actualJointIn);
         return nBridge > 0
-          ? Math.max(nBridge, Math.round(rowUnitsRaw / nBridge) * nBridge)
-          : input.planShape !== 'circular'
-            ? Math.max(4, Math.round(rowUnitsRaw / 4) * 4)
-            : Math.max(1, Math.floor(rowUnitsRaw));
+          ? Math.max(nBridge, Math.ceil(rowUnitsRaw / nBridge) * nBridge)
+          : Math.max(1, Math.floor(rowUnitsRaw));
       },
     );
     const capBridgeAdditionalUnits = capBridgeCourseUnitCounts
@@ -1729,17 +1727,14 @@ export class MasonryEngine {
               capCenterlineDepthIn,
             );
     const capUnitsPerCourseRaw = capPerimeterIn / (unitLengthIn + jointIn);
-    // For polygon plans, round to multiple of n so each face gets a whole
-    // number of bricks — prevents bricks from straddling face corners.
-    // For rectangular/square plans, round to multiple of 4 so joints land
-    // at the 4 corners — prevents bricks from straddling side transitions.
-    // Circular plans keep floor rounding for accurate ring count.
+    // For polygon plans, ceil to a multiple of n so each face gets a whole
+    // number of bricks and module spacing stays at or below one brick+joint
+    // (rounding down to 1 brick/face would leave half-face-width gaps).
+    // Rectangular/square and circular plans use floor for the ring count.
     const capUnitsPerCourseRounded =
       n > 0
-        ? Math.max(n, Math.round(capUnitsPerCourseRaw / n) * n)
-        : planMetrics.planShape !== 'circular'
-          ? Math.max(4, Math.round(capUnitsPerCourseRaw / 4) * 4)
-          : Math.max(1, Math.floor(capUnitsPerCourseRaw));
+        ? Math.max(n, Math.ceil(capUnitsPerCourseRaw / n) * n)
+        : Math.max(1, Math.floor(capUnitsPerCourseRaw));
     const actualModuleSpacingIn = capPerimeterIn / capUnitsPerCourseRounded;
     const actualJointIn = Math.max(0, actualModuleSpacingIn - unitLengthIn);
     const innerPerimeterIn =
