@@ -4145,6 +4145,12 @@ export default function Stage3D({
                     (rowInnerJointIn < 0 ||
                       output.resolvedCapUnit.lengthIn >
                         rowInnerChordIn - Math.max(0.036, output.mortarJointIn * 0.1));
+                  // For polygon plans, extend each brick by capBrickWidth*tan(π/n) so
+                  // the end bricks on each face reach the outer-wall corner triangles.
+                  const polygonCapCornerExtFt =
+                    isRadialPlanShape(output.planShape) && output.planShape !== 'circular'
+                      ? capBrickWidthFt * Math.tan(Math.PI / wallRadialSegments)
+                      : 0;
                   const rowRenderedCapBrickLengthFt =
                     output.planShape === 'circular' && !rowCapRequiresTaper
                       ? Math.max(
@@ -4154,7 +4160,7 @@ export default function Stage3D({
                             arcToChordLengthFt(safeCapBrickLengthFt, rowRadiusFt),
                           ),
                         )
-                      : safeCapBrickLengthFt;
+                      : safeCapBrickLengthFt + polygonCapCornerExtFt;
                   let capstoneOffsetIn = 0;
                   if (!isRadialPlanShape(output.planShape)) {
                     const overhangPerimeterIn =
@@ -4353,6 +4359,11 @@ export default function Stage3D({
                     (rowInnerJointIn < 0 ||
                       output.resolvedCapUnit.lengthIn >
                         rowInnerChordIn - Math.max(0.036, output.mortarJointIn * 0.1));
+                  // For polygon plans, extend each mortar joint to match the brick corner extension.
+                  const polygonCapCornerExtFt2 =
+                    isRadialPlanShape(output.planShape) && output.planShape !== 'circular'
+                      ? capBrickWidthFt * Math.tan(Math.PI / wallRadialSegments)
+                      : 0;
                   const rowRenderedCapBrickLengthFt =
                     output.planShape === 'circular' && !rowCapRequiresTaper
                       ? Math.max(
@@ -4362,7 +4373,7 @@ export default function Stage3D({
                             arcToChordLengthFt(safeCapBrickLengthFt, rowRadiusFt),
                           ),
                         )
-                      : safeCapBrickLengthFt;
+                      : safeCapBrickLengthFt + polygonCapCornerExtFt2;
                   const rowRenderedCapJointLengthFt =
                     output.planShape === 'circular' && !rowCapRequiresTaper
                       ? Math.max(
