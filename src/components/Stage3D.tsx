@@ -1089,7 +1089,12 @@ export function getCircularPlacement(
 
 /**
  * Places bricks on the flat faces of a regular polygon wall.
- * @param apothemFt - center-to-face-midpoint distance (= wallRadiusFt / centerlineDiameterIn/2)
+ * Uses continuous perimeter positioning so any unitCount works cleanly,
+ * and applies a π/n phase offset so bricks align with the flat face midpoints
+ * of the cylinderGeometry (which places vertex 0 at angle=0, making face
+ * midpoints at (i + 0.5) × 2π/n).
+ *
+ * @param apothemFt - center-to-face-midpoint distance (= wallRadiusFt)
  * @param n - number of polygon sides (6 for hex, 8 for oct)
  */
 function getPolygonPlacement(
@@ -1099,26 +1104,35 @@ function getPolygonPlacement(
   apothemFt: number,
   n: number,
 ): Placement {
-  const bricksPerFace = Math.max(1, Math.round(unitCount / n));
-  const faceIndex = Math.min(n - 1, Math.floor(brickIndex / bricksPerFace));
-  const brickInFace = brickIndex - faceIndex * bricksPerFace;
+  const halfFaceLength = apothemFt * Math.tan(Math.PI / n); // half of one face length
+  const faceLength = 2 * halfFaceLength;
+  const totalPerimeter = n * faceLength;
 
-  const faceAngle = faceIndex * ((2 * Math.PI) / n);
-  // Side length at the centerline (apothem) = 2 × apothem × tan(π/n)
-  const sideLength = 2 * apothemFt * Math.tan(Math.PI / n);
-  const spacing = sideLength / Math.max(1, bricksPerFace);
-  // Position along face including course bond offset
-  const courseOffsetFt = offsetIn / 12;
-  const faceOffset =
-    (brickInFace - (bricksPerFace - 1) / 2) * spacing + courseOffsetFt;
+  // Centre each brick in its evenly-spaced perimeter slot (+ 0.5 gives the midpoint).
+  // Add course bond offset (offsetIn / 12 feet).
+  const rawFt = ((brickIndex + 0.5) / unitCount) * totalPerimeter + offsetIn / 12;
+  const posFt = ((rawFt % totalPerimeter) + totalPerimeter) % totalPerimeter;
 
-  // Brick center: face-center point + offset along tangent direction
+  // Which face, and how far along that face (0 … faceLength)
+  const faceRaw = posFt / faceLength;
+  const faceIndex = Math.floor(faceRaw) % n;
+  const faceFt = (faceRaw - Math.floor(faceRaw)) * faceLength;
+
+  // Face midpoint angle: cylinderGeometry face i spans [2πi/n, 2π(i+1)/n],
+  // so its midpoint is at (i + 0.5) × 2π/n. Using this aligns bricks with
+  // the actual flat faces of the rendered cylinder, not the vertices.
+  const faceAngle = (faceIndex + 0.5) * ((2 * Math.PI) / n);
+
+  // Offset from face midpoint (negative = toward start of face, positive = toward end)
+  const faceOffset = faceFt - halfFaceLength;
+
+  // Brick centre in world space (apothem along face normal + offset along tangent)
   const x = apothemFt * Math.cos(faceAngle) - faceOffset * Math.sin(faceAngle);
   const z = apothemFt * Math.sin(faceAngle) + faceOffset * Math.cos(faceAngle);
 
   // rotationY: align brick length (local X-axis) with face tangent direction.
-  // Face tangent at faceAngle: (-sin, 0, cos). Rotating local X by rotY gives (cos(rotY), 0, sin(rotY)).
-  // Matching: rotY = π/2 + faceAngle.
+  // Face tangent: (-sin(faceAngle), 0, cos(faceAngle)).
+  // Rotating local X by (π/2 + faceAngle) yields exactly that direction.
   return { x, z, rotationY: Math.PI / 2 + faceAngle };
 }
 
