@@ -12,6 +12,7 @@ import {
   AdditiveBlending,
   BackSide,
   CanvasTexture,
+  DoubleSide,
   Path,
   RepeatWrapping,
   SRGBColorSpace,
@@ -641,6 +642,237 @@ function CircularCapJointFiller({
       {showEdges && <Edges color='#4a3a28' lineWidth={1} scale={1.003} />}
     </mesh>
   );
+}
+
+function ExtrudedXZPolygon({
+  polygonPoints,
+  heightFt,
+  y,
+  color,
+  opacity,
+  wireframe,
+  showEdges,
+}: {
+  polygonPoints: Point2D[];
+  heightFt: number;
+  y: number;
+  color: string;
+  opacity?: number;
+  wireframe: boolean;
+  showEdges: boolean;
+}) {
+  const shape = useMemo(() => {
+    const nextShape = new Shape();
+    nextShape.moveTo(polygonPoints[0].x, -polygonPoints[0].z);
+    polygonPoints.slice(1).forEach((point) => {
+      nextShape.lineTo(point.x, -point.z);
+    });
+    nextShape.closePath();
+    return nextShape;
+  }, [polygonPoints]);
+
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, y - heightFt / 2, 0]}>
+      <extrudeGeometry
+        args={[
+          shape,
+          {
+            depth: heightFt,
+            bevelEnabled: false,
+            steps: 1,
+          },
+        ]}
+      />
+      <meshStandardMaterial
+        color={color}
+        roughness={0.65}
+        transparent={opacity !== undefined && opacity < 1}
+        opacity={opacity ?? 1}
+        side={DoubleSide}
+        wireframe={wireframe}
+      />
+      {showEdges && <Edges color='#3b2d1f' lineWidth={1} scale={1.003} />}
+    </mesh>
+  );
+}
+
+function averagePoints(points: Point2D[]): Point2D {
+  const total = points.reduce(
+    (sum, point) => ({ x: sum.x + point.x, z: sum.z + point.z }),
+    { x: 0, z: 0 },
+  );
+  return {
+    x: total.x / Math.max(1, points.length),
+    z: total.z / Math.max(1, points.length),
+  };
+}
+
+function pointOnRegularPolygonOffsetFace(
+  apothemFt: number,
+  sideCount: number,
+  faceIndex: number,
+  t: number,
+): Point2D {
+  const faceAngle = (faceIndex + 0.5) * ((2 * Math.PI) / sideCount);
+  const halfFaceLengthFt = apothemFt * Math.tan(Math.PI / sideCount);
+  const faceOffsetFt = -halfFaceLengthFt + t * halfFaceLengthFt * 2;
+
+  return {
+    x:
+      apothemFt * Math.cos(faceAngle) -
+      faceOffsetFt * Math.sin(faceAngle),
+    z:
+      apothemFt * Math.sin(faceAngle) +
+      faceOffsetFt * Math.cos(faceAngle),
+  };
+}
+
+function buildRegularPolygonRingPiecePoints({
+  apothemFt,
+  sideCount,
+  ringWidthFt,
+  faceIndex,
+  pieceIndex,
+  piecesOnFace,
+  jointFt,
+}: {
+  apothemFt: number;
+  sideCount: number;
+  ringWidthFt: number;
+  faceIndex: number;
+  pieceIndex: number;
+  piecesOnFace: number;
+  jointFt: number;
+}): Point2D[] {
+  const safePieces = Math.max(1, piecesOnFace);
+  const faceLengthFt = 2 * apothemFt * Math.tan(Math.PI / sideCount);
+  const jointT = Math.min(
+    0.42 / safePieces,
+    Math.max(0, jointFt) / Math.max(0.001, faceLengthFt) / 2,
+  );
+  const startT = Math.min(0.99, pieceIndex / safePieces + jointT);
+  const endT = Math.max(startT + 0.001, (pieceIndex + 1) / safePieces - jointT);
+  const innerApothemFt = Math.max(0.01, apothemFt - ringWidthFt / 2);
+  const outerApothemFt = apothemFt + ringWidthFt / 2;
+
+  return [
+    pointOnRegularPolygonOffsetFace(innerApothemFt, sideCount, faceIndex, startT),
+    pointOnRegularPolygonOffsetFace(innerApothemFt, sideCount, faceIndex, endT),
+    pointOnRegularPolygonOffsetFace(outerApothemFt, sideCount, faceIndex, endT),
+    pointOnRegularPolygonOffsetFace(outerApothemFt, sideCount, faceIndex, startT),
+  ];
+}
+
+function distributeRectangularRingUnits(
+  unitCount: number,
+  widthFt: number,
+  depthFt: number,
+): [number, number, number, number] {
+  const safeUnitCount = Math.max(4, Math.round(unitCount));
+  const perimeterFt = Math.max(0.001, 2 * (widthFt + depthFt));
+  const targetModuleFt = perimeterFt / safeUnitCount;
+  let widthCount = Math.max(1, Math.round(widthFt / targetModuleFt));
+  let depthCount = Math.max(1, Math.round(depthFt / targetModuleFt));
+
+  const total = () => 2 * (widthCount + depthCount);
+  while (total() < safeUnitCount) {
+    if (widthFt / widthCount >= depthFt / depthCount) widthCount += 1;
+    else depthCount += 1;
+  }
+  while (total() > safeUnitCount && (widthCount > 1 || depthCount > 1)) {
+    if (
+      widthCount > 1 &&
+      (depthCount <= 1 || widthFt / widthCount <= depthFt / depthCount)
+    ) {
+      widthCount -= 1;
+    } else {
+      depthCount -= 1;
+    }
+  }
+
+  return [widthCount, depthCount, widthCount, depthCount];
+}
+
+function getRectangularRingPieceIndex(
+  brickIndex: number,
+  sideCounts: [number, number, number, number],
+): { sideIndex: number; pieceIndex: number; piecesOnSide: number } {
+  let remaining = brickIndex % sideCounts.reduce((sum, count) => sum + count, 0);
+  for (let sideIndex = 0; sideIndex < sideCounts.length; sideIndex += 1) {
+    const piecesOnSide = sideCounts[sideIndex];
+    if (remaining < piecesOnSide) {
+      return { sideIndex, pieceIndex: remaining, piecesOnSide };
+    }
+    remaining -= piecesOnSide;
+  }
+  return {
+    sideIndex: 0,
+    pieceIndex: 0,
+    piecesOnSide: sideCounts[0],
+  };
+}
+
+function buildRectangularRingPiecePoints({
+  spanWidthFt,
+  spanDepthFt,
+  ringWidthFt,
+  sideIndex,
+  pieceIndex,
+  piecesOnSide,
+  jointFt,
+}: {
+  spanWidthFt: number;
+  spanDepthFt: number;
+  ringWidthFt: number;
+  sideIndex: number;
+  pieceIndex: number;
+  piecesOnSide: number;
+  jointFt: number;
+}): Point2D[] {
+  const safePieces = Math.max(1, piecesOnSide);
+  const centerSideLengthFt = sideIndex % 2 === 0 ? spanWidthFt : spanDepthFt;
+  const jointT = Math.min(
+    0.42 / safePieces,
+    Math.max(0, jointFt) / Math.max(0.001, centerSideLengthFt) / 2,
+  );
+  const startT = Math.min(0.99, pieceIndex / safePieces + jointT);
+  const endT = Math.max(startT + 0.001, (pieceIndex + 1) / safePieces - jointT);
+  const outerHalfW = spanWidthFt / 2 + ringWidthFt / 2;
+  const outerHalfD = spanDepthFt / 2 + ringWidthFt / 2;
+  const innerHalfW = Math.max(0.01, spanWidthFt / 2 - ringWidthFt / 2);
+  const innerHalfD = Math.max(0.01, spanDepthFt / 2 - ringWidthFt / 2);
+  const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+  if (sideIndex === 0) {
+    return [
+      { x: lerp(-innerHalfW, innerHalfW, startT), z: -innerHalfD },
+      { x: lerp(-innerHalfW, innerHalfW, endT), z: -innerHalfD },
+      { x: lerp(-outerHalfW, outerHalfW, endT), z: -outerHalfD },
+      { x: lerp(-outerHalfW, outerHalfW, startT), z: -outerHalfD },
+    ];
+  }
+  if (sideIndex === 1) {
+    return [
+      { x: innerHalfW, z: lerp(-innerHalfD, innerHalfD, startT) },
+      { x: innerHalfW, z: lerp(-innerHalfD, innerHalfD, endT) },
+      { x: outerHalfW, z: lerp(-outerHalfD, outerHalfD, endT) },
+      { x: outerHalfW, z: lerp(-outerHalfD, outerHalfD, startT) },
+    ];
+  }
+  if (sideIndex === 2) {
+    return [
+      { x: lerp(innerHalfW, -innerHalfW, startT), z: innerHalfD },
+      { x: lerp(innerHalfW, -innerHalfW, endT), z: innerHalfD },
+      { x: lerp(outerHalfW, -outerHalfW, endT), z: outerHalfD },
+      { x: lerp(outerHalfW, -outerHalfW, startT), z: outerHalfD },
+    ];
+  }
+  return [
+    { x: -innerHalfW, z: lerp(innerHalfD, -innerHalfD, startT) },
+    { x: -innerHalfW, z: lerp(innerHalfD, -innerHalfD, endT) },
+    { x: -outerHalfW, z: lerp(outerHalfD, -outerHalfD, endT) },
+    { x: -outerHalfW, z: lerp(outerHalfD, -outerHalfD, startT) },
+  ];
 }
 
 function VerticalShell({
@@ -3559,6 +3791,45 @@ export default function Stage3D({
                     isVent: isVentOpening,
                   };
 
+                  if (
+                    !isVentOpening &&
+                    !isSpacer &&
+                    isRadialPlanShape(output.planShape) &&
+                    output.planShape !== 'circular'
+                  ) {
+                    const piecesPerFace = Math.max(
+                      1,
+                      Math.round(course.unitCount / wallRadialSegments),
+                    );
+                    const faceIdx = Math.floor(brickIdx / piecesPerFace);
+                    const pieceIdx = brickIdx - faceIdx * piecesPerFace;
+                    const footprint = buildRegularPolygonRingPiecePoints({
+                      apothemFt: geometry.wallRadiusFt,
+                      sideCount: wallRadialSegments,
+                      ringWidthFt: renderedWidthFt,
+                      faceIndex: faceIdx % wallRadialSegments,
+                      pieceIndex: pieceIdx,
+                      piecesOnFace: piecesPerFace,
+                      jointFt: mortarJointFt,
+                    });
+                    const footprintCenter = averagePoints(footprint);
+                    if (!shouldRenderInCutaway(footprintCenter.x, footprintCenter.z)) {
+                      return null;
+                    }
+
+                    return (
+                      <ExtrudedXZPolygon
+                        key={`${course.courseIndex}-${brickIdx}`}
+                        polygonPoints={footprint}
+                        heightFt={renderedHeightFt}
+                        y={y}
+                        color={perBrickColor}
+                        wireframe={effectiveWireframe}
+                        showEdges={effectiveShowBrickOutlines}
+                      />
+                    );
+                  }
+
                   return isVentOpening ? (
                     <group key={`${course.courseIndex}-${brickIdx}-vent`}>
                       <mesh
@@ -3844,14 +4115,25 @@ export default function Stage3D({
                 const outerCenterlineRadiusFt =
                   thermalOuterShellInnerRadiusFt + thermalOuterShellThicknessFt / 2;
                 const outerCenterlineRadiusIn = outerCenterlineRadiusFt * 12;
+                const outerPerimeterFt =
+                  output.planShape === 'circular'
+                    ? 2 * Math.PI * outerCenterlineRadiusFt
+                    : wallRadialSegments *
+                      2 *
+                      outerCenterlineRadiusFt *
+                      Math.tan(Math.PI / wallRadialSegments);
+                const outerUnitCountRaw =
+                  outerPerimeterFt /
+                  Math.max(0.001, safeWallBrickLengthFt + mortarJointFt);
                 // Brick count for the outer shell (larger circumference)
-                const outerUnitCount = Math.max(
-                  4,
-                  Math.round(
-                    (2 * Math.PI * outerCenterlineRadiusFt * 12) /
-                      (safeWallBrickLengthFt * 12 + mortarJointFt * 12),
-                  ),
-                );
+                const outerUnitCount =
+                  output.planShape === 'circular'
+                    ? Math.max(4, Math.round(outerUnitCountRaw))
+                    : Math.max(
+                        wallRadialSegments,
+                        Math.ceil(outerUnitCountRaw / wallRadialSegments) *
+                          wallRadialSegments,
+                      );
                 const outerRenderedBrickLengthFt =
                   output.planShape === 'circular'
                     ? Math.max(
@@ -3900,6 +4182,51 @@ export default function Stage3D({
                                     course.courseIndex * geometry.courseRiseFt +
                                     mortarJointFt / 2;
                                   const perBrickColor = getWallBrickColor(course, false);
+                                  if (output.planShape !== 'circular') {
+                                    const piecesPerFace = Math.max(
+                                      1,
+                                      Math.round(
+                                        outerUnitCount / wallRadialSegments,
+                                      ),
+                                    );
+                                    const faceIdx = Math.floor(
+                                      brickIdx / piecesPerFace,
+                                    );
+                                    const pieceIdx =
+                                      brickIdx - faceIdx * piecesPerFace;
+                                    const footprint =
+                                      buildRegularPolygonRingPiecePoints({
+                                        apothemFt: outerCenterlineRadiusFt,
+                                        sideCount: wallRadialSegments,
+                                        ringWidthFt: visBrickWidthFt,
+                                        faceIndex:
+                                          faceIdx % wallRadialSegments,
+                                        pieceIndex: pieceIdx,
+                                        piecesOnFace: piecesPerFace,
+                                        jointFt: mortarJointFt,
+                                      });
+                                    const footprintCenter =
+                                      averagePoints(footprint);
+                                    if (
+                                      !shouldRenderInCutaway(
+                                        footprintCenter.x,
+                                        footprintCenter.z,
+                                      )
+                                    ) {
+                                      return null;
+                                    }
+                                    return (
+                                      <ExtrudedXZPolygon
+                                        key={`outer-${course.courseIndex}-${brickIdx}`}
+                                        polygonPoints={footprint}
+                                        heightFt={visBrickHeightFt}
+                                        y={y}
+                                        color={perBrickColor}
+                                        wireframe={effectiveWireframe}
+                                        showEdges={effectiveShowBrickOutlines}
+                                      />
+                                    );
+                                  }
                                   return (
                                     <mesh
                                       key={`outer-${course.courseIndex}-${brickIdx}`}
@@ -4206,6 +4533,74 @@ export default function Stage3D({
                           })
                         : undefined;
 
+                      if (output.planShape !== 'circular') {
+                        const footprint = isRadialPlanShape(output.planShape)
+                          ? (() => {
+                              const safePiecesPerFace = Math.max(
+                                1,
+                                Math.round(polyBricksPerFace),
+                              );
+                              const faceIdx = Math.floor(
+                                capIdx / safePiecesPerFace,
+                              );
+                              const pieceIdx =
+                                capIdx - faceIdx * safePiecesPerFace;
+                              return buildRegularPolygonRingPiecePoints({
+                                apothemFt: rowRadiusFt,
+                                sideCount: wallRadialSegments,
+                                ringWidthFt: capBrickWidthFt,
+                                faceIndex: faceIdx % wallRadialSegments,
+                                pieceIndex: pieceIdx,
+                                piecesOnFace: safePiecesPerFace,
+                                jointFt: capJointLengthFt,
+                              });
+                            })()
+                          : (() => {
+                              const sideCounts = distributeRectangularRingUnits(
+                                rowUnitCount,
+                                rowSpanWidthFt,
+                                rowSpanDepthFt,
+                              );
+                              const {
+                                sideIndex,
+                                pieceIndex,
+                                piecesOnSide,
+                              } = getRectangularRingPieceIndex(
+                                capIdx,
+                                sideCounts,
+                              );
+                              return buildRectangularRingPiecePoints({
+                                spanWidthFt: rowSpanWidthFt,
+                                spanDepthFt: rowSpanDepthFt,
+                                ringWidthFt: capBrickWidthFt,
+                                sideIndex,
+                                pieceIndex,
+                                piecesOnSide,
+                                jointFt: capJointLengthFt,
+                              });
+                            })();
+                        const footprintCenter = averagePoints(footprint);
+                        if (
+                          !shouldRenderInCutaway(
+                            footprintCenter.x,
+                            footprintCenter.z,
+                          )
+                        ) {
+                          return null;
+                        }
+                        return (
+                          <ExtrudedXZPolygon
+                            key={`cap-row-${capRowIdx}-${capIdx}`}
+                            polygonPoints={footprint}
+                            heightFt={visCapBrickHeightFt}
+                            y={y}
+                            color={palette.capColor}
+                            wireframe={effectiveWireframe}
+                            showEdges={effectiveShowBrickOutlines}
+                          />
+                        );
+                      }
+
                       return (
                         <mesh
                           key={`cap-row-${capRowIdx}-${capIdx}`}
@@ -4312,6 +4707,7 @@ export default function Stage3D({
 
             {isLodHigh &&
               showMortar &&
+              output.planShape === 'circular' &&
               capJointLengthFt > 0.02 &&
               (() => {
                 const jointY =

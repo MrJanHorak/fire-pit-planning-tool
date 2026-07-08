@@ -870,11 +870,21 @@ export class MasonryEngine {
         recipe.unitLengthIn,
         recipe.jointIn,
       );
+      const polygonSideCount = this.polygonSides(
+        planMetrics.planShape as PlanShape,
+      );
+      const unitCount =
+        polygonSideCount > 0
+          ? Math.max(
+              polygonSideCount,
+              Math.ceil(unitCountRaw / polygonSideCount) * polygonSideCount,
+            )
+          : Math.max(1, Math.floor(unitCountRaw));
 
       return {
         unitCountRaw,
-        unitCount: Math.max(1, Math.floor(unitCountRaw)),
-        mainUnitCount: Math.max(1, Math.floor(unitCountRaw)),
+        unitCount,
+        mainUnitCount: unitCount,
         spacerCount: 0,
       };
     }
@@ -1349,7 +1359,9 @@ export class MasonryEngine {
           rowPerimeterIn / (capUnit.lengthIn + capstone.joint.actualJointIn);
         return nBridge > 0
           ? Math.max(nBridge, Math.ceil(rowUnitsRaw / nBridge) * nBridge)
-          : Math.max(1, Math.floor(rowUnitsRaw));
+          : input.planShape === 'circular'
+            ? Math.max(1, Math.floor(rowUnitsRaw))
+            : Math.max(4, Math.floor(rowUnitsRaw / 2) * 2);
       },
     );
     const capBridgeAdditionalUnits = capBridgeCourseUnitCounts
@@ -1730,11 +1742,14 @@ export class MasonryEngine {
     // For polygon plans, ceil to a multiple of n so each face gets a whole
     // number of bricks and module spacing stays at or below one brick+joint
     // (rounding down to 1 brick/face would leave half-face-width gaps).
-    // Rectangular/square and circular plans use floor for the ring count.
+    // Rectangular/square plans use an even count so opposite sides receive
+    // paired cap modules; circular plans keep continuous-ring floor sizing.
     const capUnitsPerCourseRounded =
       n > 0
         ? Math.max(n, Math.ceil(capUnitsPerCourseRaw / n) * n)
-        : Math.max(1, Math.floor(capUnitsPerCourseRaw));
+        : planMetrics.planShape === 'circular'
+          ? Math.max(1, Math.floor(capUnitsPerCourseRaw))
+          : Math.max(4, Math.floor(capUnitsPerCourseRaw / 2) * 2);
     const actualModuleSpacingIn = capPerimeterIn / capUnitsPerCourseRounded;
     const actualJointIn = Math.max(0, actualModuleSpacingIn - unitLengthIn);
     const innerPerimeterIn =

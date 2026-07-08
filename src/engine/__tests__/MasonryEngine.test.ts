@@ -323,6 +323,32 @@ describe('MasonryEngine', () => {
     );
   });
 
+  it('keeps polygon wall and cap counts divisible by side count', () => {
+    const engine = new MasonryEngine();
+    const output = engine.calculateDesign({
+      ...baseInput,
+      planShape: 'octagonal',
+    });
+
+    expect(output.unitsPerCourseRounded % 8).toBe(0);
+    expect(output.capstone.capUnitsPerCourseRounded % 8).toBe(0);
+    output.courses.forEach((course) => {
+      expect(course.unitCount % 8).toBe(0);
+    });
+  });
+
+  it('keeps rectangular cap counts paired by opposite sides', () => {
+    const engine = new MasonryEngine();
+    const output = engine.calculateDesign({
+      ...baseInput,
+      planShape: 'rectangular',
+      innerDiameterIn: 42,
+      innerDepthIn: 30,
+    });
+
+    expect(output.capstone.capUnitsPerCourseRounded % 2).toBe(0);
+  });
+
   it('supports independent capstone orientation selection', () => {
     const engine = new MasonryEngine();
     const matchWall = engine.calculateDesign({

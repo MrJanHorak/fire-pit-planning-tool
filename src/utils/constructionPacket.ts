@@ -51,12 +51,26 @@ function getCapstoneCutMetrics(output: MasonryOutput): {
   recommendedCutAngleDeg: number;
   minimumRecommendedPitInnerDiameterIn: number;
 } {
+  const polygonSides =
+    output.planShape === 'hexagonal'
+      ? 6
+      : output.planShape === 'octagonal'
+        ? 8
+        : output.planShape === 'square' || output.planShape === 'rectangular'
+          ? 4
+          : 0;
   const requiresCutting =
-    output.planShape === 'circular' && output.capstone.requiresTaperCutting;
+    output.planShape === 'circular'
+      ? output.capstone.requiresTaperCutting
+      : polygonSides > 0;
   const capCount = Math.max(1, output.capstone.capUnitsPerCourseRounded);
   const radiusIn = output.capstone.capInnerDiameterIn / 2;
-  const moduleSpacingIn =
-    (Math.PI * output.capstone.capCenterlineDiameterIn) / capCount;
+  const moduleSpacingIn = polygonSides > 0
+    ? (polygonSides *
+        output.capstone.capCenterlineDiameterIn *
+        Math.tan(Math.PI / polygonSides)) /
+      capCount
+    : (Math.PI * output.capstone.capCenterlineDiameterIn) / capCount;
   const chordIn =
     radiusIn > 0
       ? 2 * radiusIn * Math.sin(moduleSpacingIn / (2 * radiusIn))
@@ -66,11 +80,19 @@ function getCapstoneCutMetrics(output: MasonryOutput): {
     0,
     -output.capstone.joint.innerJointIn,
     chordDeficitIn,
+    polygonSides > 0
+      ? Math.abs(
+          output.capstone.joint.outerJointIn -
+            output.capstone.joint.innerJointIn,
+        )
+      : 0,
   );
   const recommendedCutPerSideIn = recommendedTaperPerUnitIn / 2;
   const capDepthIn = Math.max(0.001, output.capstone.capCourseWidthIn);
   const recommendedCutAngleDeg =
-    (Math.atan(recommendedCutPerSideIn / capDepthIn) * 180) / Math.PI;
+    polygonSides > 0
+      ? 180 / polygonSides
+      : (Math.atan(recommendedCutPerSideIn / capDepthIn) * 180) / Math.PI;
   const targetInnerJointIn = 0.125;
   const minCapInnerDiameterIn =
     (output.capstone.capUnitsPerCourseRounded *
@@ -275,17 +297,34 @@ export function buildWallBrickTaperCutSvg(output: MasonryOutput): string {
 export function buildCapstonePlacementSampleSvg(output: MasonryOutput): string {
   const capCut = getCapstoneCutMetrics(output);
   if (output.planShape !== 'circular') {
+    const polygonSides =
+      output.planShape === 'hexagonal'
+        ? 6
+        : output.planShape === 'octagonal'
+          ? 8
+          : 4;
+    const angleLabel =
+      output.planShape === 'hexagonal' || output.planShape === 'octagonal'
+        ? `${(180 / polygonSides).toFixed(1)} deg corner miter`
+        : '45.0 deg corner miter';
+    const taperLabel = capCut.recommendedCutPerSideIn.toFixed(3);
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 220" width="100%" role="img" aria-label="Capstone placement detail diagram">
       <rect x="0" y="0" width="620" height="220" fill="#fffdf7" />
       <text x="14" y="24" font-size="16" fill="#2f2110" font-weight="700">Capstone Placement Detail (Plan View)</text>
-      <text x="14" y="48" font-size="12" fill="#4a3720">Rectangular and square plans use uniform cap joints at corners and straight runs.</text>
-      <rect x="140" y="78" width="140" height="70" fill="#ccb085" stroke="#6e4728" stroke-width="2" />
-      <rect x="340" y="78" width="140" height="70" fill="#ccb085" stroke="#6e4728" stroke-width="2" />
-      <rect x="280" y="78" width="60" height="70" fill="#c6b39a" stroke="#4a3a28" stroke-width="1.5" />
-      <text x="246" y="172" font-size="12" fill="#4a3720">Capstone unit</text>
-      <text x="355" y="172" font-size="12" fill="#4a3720">Capstone unit</text>
-      <text x="278" y="66" font-size="12" fill="#4a3720">Resolved cap joint</text>
-      <text x="14" y="206" font-size="12" fill="#2f2110" font-weight="700">This detail is for cap placement only; no taper saw cuts are implied here.</text>
+      <text x="14" y="48" font-size="12" fill="#4a3720">Non-circular capstones are clipped to the ring: side pieces use taper cuts and corner pieces use miters.</text>
+      <polygon points="126,88 274,76 292,158 146,170" fill="#ccb085" stroke="#6e4728" stroke-width="2" />
+      <polygon points="324,76 494,88 474,170 306,158" fill="#ccb085" stroke="#6e4728" stroke-width="2" />
+      <polygon points="274,76 324,76 306,158 292,158" fill="#c6b39a" stroke="#4a3a28" stroke-width="1.5" />
+      <line x1="126" y1="88" x2="146" y2="170" stroke="#a01d1d" stroke-width="3" />
+      <line x1="274" y1="76" x2="292" y2="158" stroke="#a01d1d" stroke-width="3" />
+      <line x1="324" y1="76" x2="306" y2="158" stroke="#a01d1d" stroke-width="3" />
+      <text x="18" y="92" font-size="12" fill="#a01d1d">Side taper: about ${taperLabel} in per side</text>
+      <text x="18" y="112" font-size="12" fill="#a01d1d">Corner miter: ${angleLabel}</text>
+      <text x="18" y="132" font-size="12" fill="#a01d1d">Dry-fit each face; do not force rectangular caps through vertices.</text>
+      <text x="206" y="188" font-size="12" fill="#4a3720">Cut capstone unit</text>
+      <text x="386" y="188" font-size="12" fill="#4a3720">Cut capstone unit</text>
+      <text x="278" y="66" font-size="12" fill="#4a3720">Mortar joint between cut edges</text>
+      <text x="14" y="206" font-size="12" fill="#2f2110" font-weight="700">Capstone cuts are required for clean ${formatShapeName(output.planShape).toLowerCase()} coverage.</text>
     </svg>`;
   }
 
