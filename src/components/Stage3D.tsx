@@ -60,8 +60,18 @@ interface BrickSelectionInfo {
 type StageLodLevel = 'high' | 'medium' | 'low';
 
 type MortarMode = 'solid' | 'ghost' | 'off';
-type MaterialStyle = 'classic-red' | 'charcoal' | 'limestone';
+type MaterialStyle = 'classic-red' | 'charcoal' | 'limestone' | 'firebrick' | 'natural-stone';
 type CutawayMode = 'off' | 'quarter' | 'half';
+
+function isRadialPlanShape(shape: string): boolean {
+  return shape === 'circular' || shape === 'hexagonal' || shape === 'octagonal';
+}
+
+function getPolygonSegments(shape: string): number {
+  if (shape === 'hexagonal') return 6;
+  if (shape === 'octagonal') return 8;
+  return 64;
+}
 
 const STYLE_PALETTES: Record<
   MaterialStyle,
@@ -76,6 +86,8 @@ const STYLE_PALETTES: Record<
     proceduralBrickFill: string;
     proceduralCapFill: string;
     proceduralMortarFill: string;
+    roughness?: number;
+    metalness?: number;
   }
 > = {
   'classic-red': {
@@ -89,6 +101,8 @@ const STYLE_PALETTES: Record<
     proceduralBrickFill: '#8c4622',
     proceduralCapFill: '#c6a478',
     proceduralMortarFill: '#b9afa2',
+    roughness: 0.84,
+    metalness: 0.02,
   },
   charcoal: {
     label: 'Charcoal',
@@ -101,6 +115,8 @@ const STYLE_PALETTES: Record<
     proceduralBrickFill: '#403d3a',
     proceduralCapFill: '#525050',
     proceduralMortarFill: '#908a84',
+    roughness: 0.88,
+    metalness: 0.0,
   },
   limestone: {
     label: 'Limestone',
@@ -113,6 +129,36 @@ const STYLE_PALETTES: Record<
     proceduralBrickFill: '#c4b494',
     proceduralCapFill: '#dcd0b8',
     proceduralMortarFill: '#ddd8d0',
+    roughness: 0.82,
+    metalness: 0.0,
+  },
+  firebrick: {
+    label: 'Firebrick',
+    swatch: '#8B2500',
+    wallEvenColor: '#8B2500',
+    wallOddColor: '#9E2D00',
+    capColor: '#7A2000',
+    capCrownColor: '#8B2800',
+    mortarColor: '#C4A882',
+    proceduralBrickFill: '#8B2500',
+    proceduralCapFill: '#7A2000',
+    proceduralMortarFill: '#C4A882',
+    roughness: 0.90,
+    metalness: 0.0,
+  },
+  'natural-stone': {
+    label: 'Natural Stone',
+    swatch: '#6B7C6A',
+    wallEvenColor: '#6B7C6A',
+    wallOddColor: '#7A8D79',
+    capColor: '#5C6D5B',
+    capCrownColor: '#6B7C6A',
+    mortarColor: '#B8B0A0',
+    proceduralBrickFill: '#6B7C6A',
+    proceduralCapFill: '#5C6D5B',
+    proceduralMortarFill: '#B8B0A0',
+    roughness: 0.93,
+    metalness: 0.0,
   },
 };
 
@@ -606,6 +652,7 @@ function VerticalShell({
     opacity,
     wireframe,
     showEdges,
+    segments = 64,
 }: {
     innerRadiusFt: number;
     outerRadiusFt: number;
@@ -615,15 +662,38 @@ function VerticalShell({
     opacity: number;
     wireframe: boolean;
     showEdges: boolean;
+    segments?: number;
 }) {
     const shape = useMemo(() => {
       const shellShape = new Shape();
-      shellShape.absarc(0, 0, outerRadiusFt, 0, Math.PI * 2, false);
-      const hole = new Path();
-      hole.absarc(0, 0, innerRadiusFt, 0, Math.PI * 2, true);
-      shellShape.holes.push(hole);
+      if (segments < 64) {
+        // Polygon shell: generate vertices for a regular polygon
+        for (let i = 0; i < segments; i++) {
+          const angle = (i / segments) * Math.PI * 2;
+          const px = Math.cos(angle) * outerRadiusFt;
+          const py = Math.sin(angle) * outerRadiusFt;
+          if (i === 0) shellShape.moveTo(px, py);
+          else shellShape.lineTo(px, py);
+        }
+        shellShape.closePath();
+        const hole = new Path();
+        for (let i = 0; i < segments; i++) {
+          const angle = (i / segments) * Math.PI * 2;
+          const px = Math.cos(angle) * innerRadiusFt;
+          const py = Math.sin(angle) * innerRadiusFt;
+          if (i === 0) hole.moveTo(px, py);
+          else hole.lineTo(px, py);
+        }
+        hole.closePath();
+        shellShape.holes.push(hole);
+      } else {
+        shellShape.absarc(0, 0, outerRadiusFt, 0, Math.PI * 2, false);
+        const hole = new Path();
+        hole.absarc(0, 0, innerRadiusFt, 0, Math.PI * 2, true);
+        shellShape.holes.push(hole);
+      }
       return shellShape;
-    }, [innerRadiusFt, outerRadiusFt]);
+    }, [innerRadiusFt, outerRadiusFt, segments]);
 
     return (
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, y - heightFt / 2, 0]}>
@@ -634,7 +704,7 @@ function VerticalShell({
               depth: heightFt,
               bevelEnabled: false,
               steps: 1,
-              curveSegments: 96,
+              curveSegments: segments < 64 ? segments : 96,
             },
           ]}
         />
@@ -643,6 +713,7 @@ function VerticalShell({
           transparent={opacity < 1}
           opacity={opacity}
           roughness={0.86}
+          flatShading={segments < 64}
           wireframe={wireframe}
         />
         {showEdges && <Edges color='#4a3a28' lineWidth={1} scale={1.003} />}
@@ -1071,7 +1142,7 @@ function getPlacement(
   spanDepthFt: number,
   radiusFt: number,
 ): Placement {
-  if (output.planShape === 'circular') {
+  if (output.planShape === 'circular' || output.planShape === 'hexagonal' || output.planShape === 'octagonal') {
     return getCircularPlacement(
       brickIndex,
       unitCount,
@@ -1424,7 +1495,7 @@ function DimensionAnnotationsScene({
   spanWidthFt: number;
   spanDepthFt: number;
 }) {
-  if (planShape === 'circular') {
+  if (isRadialPlanShape(planShape)) {
     const sideX = capOuterRadius + 0.55;
     return (
       <>
@@ -1984,7 +2055,12 @@ export default function Stage3D({
     ? mortarJointFt * 1.8
     : mortarJointFt;
 
-  const palette = STYLE_PALETTES[materialStyle];
+  const palette = STYLE_PALETTES[materialStyle] ?? STYLE_PALETTES['classic-red'];
+  const wallRadialSegments = getPolygonSegments(output.planShape);
+  const effectivePalette =
+    output.thermalAssembly?.innerMaterialName?.toLowerCase().includes('firebrick')
+      ? STYLE_PALETTES['firebrick'] ?? palette
+      : palette;
   const isPhotoreal = true;
   const lightingConfig = isPhotoreal ? PHOTOREAL_LIGHTING : STYLIZED_LIGHTING;
   const effectiveWireframe = wireframe;
@@ -3745,7 +3821,7 @@ export default function Stage3D({
                       )
                     : safeWallBrickLengthFt;
 
-                if (output.planShape === 'circular') {
+                if (isRadialPlanShape(output.planShape)) {
                   return (
                     <>
                       {/* Per-brick outer wall at high LOD */}
@@ -3803,6 +3879,7 @@ export default function Stage3D({
                           opacity={1}
                           wireframe={effectiveWireframe}
                           showEdges={false}
+                          segments={wallRadialSegments}
                         />
                       )}
                       {/* Cavity top cap ring */}
@@ -4389,7 +4466,7 @@ export default function Stage3D({
                         course.courseIndex * geometry.courseRiseFt +
                         mortarJointFt / 2;
                       const courseColor = getWallCourseColor(course);
-                      return output.planShape === 'circular' ? (
+                      return isRadialPlanShape(output.planShape) ? (
                         <mesh
                           key={`lod-medium-wall-${course.courseIndex}`}
                           position={[0, courseY, 0]}
@@ -4399,7 +4476,7 @@ export default function Stage3D({
                               renderedWallOuterRadiusFt,
                               renderedWallOuterRadiusFt,
                               visBrickHeightFt,
-                              64,
+                              wallRadialSegments,
                               1,
                               true,
                               cutawayThetaStartRad,
@@ -4408,8 +4485,9 @@ export default function Stage3D({
                           />
                           <meshStandardMaterial
                             color={courseColor}
-                            roughness={isPhotoreal ? 0.78 : 0.84}
-                            metalness={0.02}
+                            roughness={isPhotoreal ? (effectivePalette.roughness ?? 0.78) : (effectivePalette.roughness ?? 0.84) + 0.06}
+                            metalness={effectivePalette.metalness ?? 0.02}
+                            flatShading={wallRadialSegments < 64}
                             wireframe={effectiveWireframe}
                           />
                         </mesh>
@@ -4427,14 +4505,14 @@ export default function Stage3D({
                       );
                     })}
                   </>
-                ) : output.planShape === 'circular' ? (
+                ) : isRadialPlanShape(output.planShape) ? (
                   <mesh position={[0, wallHeightFt / 2, 0]}>
                     <cylinderGeometry
                       args={[
                         renderedWallOuterRadiusFt,
                         renderedWallOuterRadiusFt,
                         wallHeightFt,
-                        64,
+                        wallRadialSegments,
                         1,
                         true,
                         cutawayThetaStartRad,
@@ -4442,9 +4520,10 @@ export default function Stage3D({
                       ]}
                     />
                     <meshStandardMaterial
-                      color={palette.wallEvenColor}
-                      roughness={isPhotoreal ? 0.78 : 0.84}
-                      metalness={0.02}
+                      color={effectivePalette.wallEvenColor}
+                      roughness={isPhotoreal ? (effectivePalette.roughness ?? 0.78) : (effectivePalette.roughness ?? 0.84) + 0.06}
+                      metalness={effectivePalette.metalness ?? 0.02}
+                      flatShading={wallRadialSegments < 64}
                       wireframe={effectiveWireframe}
                     />
                   </mesh>
@@ -4460,7 +4539,7 @@ export default function Stage3D({
                   />
                 )}
 
-                {output.planShape === 'circular'
+                {isRadialPlanShape(output.planShape)
                   ? Array.from({ length: capBridgeRowCount }, (_, capRowIdx) => (
                       <mesh
                         key={`lod-cap-row-${capRowIdx}`}
@@ -4475,7 +4554,7 @@ export default function Stage3D({
                             renderedCapOuterRadiusFt + capRowIdx * capBridgeRowStepFt,
                             renderedCapOuterRadiusFt + capRowIdx * capBridgeRowStepFt,
                             visCapBrickHeightFt,
-                            64,
+                            wallRadialSegments,
                             1,
                             true,
                             cutawayThetaStartRad,
@@ -4483,9 +4562,10 @@ export default function Stage3D({
                           ]}
                         />
                         <meshStandardMaterial
-                          color={palette.capColor}
+                          color={effectivePalette.capColor}
                           roughness={isPhotoreal ? 0.62 : 0.68}
-                          metalness={0.02}
+                          metalness={effectivePalette.metalness ?? 0.02}
+                          flatShading={wallRadialSegments < 64}
                           wireframe={effectiveWireframe}
                         />
                       </mesh>
@@ -4509,7 +4589,7 @@ export default function Stage3D({
               </>
             )}
 
-            {showMortar && output.planShape === 'circular' ? (
+            {showMortar && isRadialPlanShape(output.planShape) ? (
               <mesh
                 key={`cap-bed-${mortarMode}`}
                 rotation={[-Math.PI / 2, 0, 0]}
@@ -4519,7 +4599,7 @@ export default function Stage3D({
                   args={[
                     renderedCapInnerRadiusFt,
                     capBridgeOuterRadiusFt,
-                    128,
+                    wallRadialSegments === 64 ? 128 : wallRadialSegments,
                     1,
                     cutawayThetaStartRad,
                     cutawayThetaLengthRad,
@@ -4550,7 +4630,7 @@ export default function Stage3D({
             ) : null}
 
             {output.linerSpec.enabled &&
-              output.planShape === 'circular' &&
+              isRadialPlanShape(output.planShape) &&
               output.linerSpec.type === 'fire-brick' && (
                 <>
                   <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
@@ -4631,7 +4711,7 @@ export default function Stage3D({
               )}
 
             {output.linerSpec.enabled &&
-              output.planShape === 'circular' &&
+              isRadialPlanShape(output.planShape) &&
               output.linerSpec.type === 'steel-ring' && (
                 <>
                   <mesh position={[0, linerMidY, 0]}>
@@ -4678,7 +4758,7 @@ export default function Stage3D({
                 </>
               )}
 
-            {output.linerSpec.enabled && output.planShape !== 'circular' && (
+            {output.linerSpec.enabled && !isRadialPlanShape(output.planShape) && (
               <RectangularRing
                 widthFt={geometry.linerOuterWidthFt}
                 depthFt={geometry.linerOuterDepthFt}
@@ -4692,12 +4772,12 @@ export default function Stage3D({
               />
             )}
 
-            {output.planShape === 'circular' ? (
+            {isRadialPlanShape(output.planShape) ? (
               <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
                 <circleGeometry
                   args={[
                     innerVoidRadiusFt,
-                    72,
+                    wallRadialSegments === 64 ? 72 : wallRadialSegments,
                     cutawayThetaStartRad,
                     cutawayThetaLengthRad,
                   ]}

@@ -11,6 +11,7 @@ import type {
   MasonryInput,
   MasonryOutput,
   MasonryUnit,
+  PlanShape,
   SafetyWarning,
   SmokelessInsertPresetKey,
   SmokelessSpec,
@@ -672,11 +673,9 @@ export class MasonryEngine {
     wallWidthIn: number,
   ): PlanMetrics {
     const innerWidthIn =
-      input.planShape === 'circular'
+      input.planShape === 'circular' || input.planShape === 'hexagonal' || input.planShape === 'octagonal'
         ? input.innerDiameterIn
-        : input.planShape === 'square'
-          ? input.innerWidthIn
-          : input.innerWidthIn;
+        : input.innerWidthIn;
     const innerDepthIn =
       input.planShape === 'rectangular' ? input.innerDepthIn : innerWidthIn;
 
@@ -700,6 +699,11 @@ export class MasonryEngine {
       return (
         (Math.PI * planMetrics.centerlineWidthIn) / (unitLengthIn + jointIn)
       );
+    }
+
+    const n = this.polygonSides(planMetrics.planShape as PlanShape);
+    if (n > 0) {
+      return this.polygonPerimeter(n, planMetrics.centerlineWidthIn) / (unitLengthIn + jointIn);
     }
 
     return (
@@ -842,6 +846,11 @@ export class MasonryEngine {
   private calculatePerimeterIn(planMetrics: PlanMetrics): number {
     if (planMetrics.planShape === 'circular') {
       return Math.PI * planMetrics.centerlineWidthIn;
+    }
+
+    const n = this.polygonSides(planMetrics.planShape as PlanShape);
+    if (n > 0) {
+      return this.polygonPerimeter(n, planMetrics.centerlineWidthIn);
     }
 
     return this.calculateRectangularPerimeter(
@@ -1256,6 +1265,15 @@ export class MasonryEngine {
             'Single-wall assembly active. Thermal liner handles the primary hot-face protection.',
           ];
 
+    if (input.ashCleanoutType && input.ashCleanoutType !== 'none') {
+      const cleanoutNotes: Record<string, string> = {
+        'hinged-door': 'Ash cleanout door: frame one course-opening (≈8×8 in) in base course; use lintel brick or angle iron header; seal cast-iron frame with refractory mortar.',
+        'removable-pan': 'Removable ash pan: leave base course open on one side (≈12 in wide) with steel channel guides; pan sits on ledge stone at hearth level.',
+        'drain-holes': 'Drainage holes: omit mortar from 3–4 base-course head joints, or drill 1-in holes after cure; install stainless mesh screen over each hole to retain embers.',
+      };
+      notes.push(cleanoutNotes[input.ashCleanoutType] ?? 'Ash cleanout: see building plans.');
+    }
+
     return {
       mode,
       cavityFill,
@@ -1502,6 +1520,24 @@ export class MasonryEngine {
       };
     }
 
+    const n = this.polygonSides(planMetrics.planShape as PlanShape);
+    if (n > 0) {
+      const effectiveModuleIn = unitLengthIn + jointIn;
+      const recommendedOverlapIn = effectiveModuleIn / 2;
+      const cornerAngleDeg = (180 - 360 / n) / 2;
+      return {
+        required: true,
+        recommendedOverlapIn,
+        cornerCutPerSideIn: 0,
+        notes: [
+          `${n}-sided polygon has ${n} corners, each with an interior angle of ${(180 - 360 / n).toFixed(1)}°.`,
+          `Corner units require mitre cuts at ${cornerAngleDeg.toFixed(1)}° from face to maintain a tight polygon corner.`,
+          `Alternate running bond offsets by ${recommendedOverlapIn.toFixed(2)} in on successive courses at each corner.`,
+          'Use half-bats or cut starters at polygon corners to stagger vertical joints.',
+        ],
+      };
+    }
+
     const effectiveModuleIn = unitLengthIn + jointIn;
     const recommendedOverlapIn = effectiveModuleIn / 2;
     const remainderWidth = planMetrics.centerlineWidthIn % effectiveModuleIn;
@@ -1531,20 +1567,30 @@ export class MasonryEngine {
     unitCount: number,
   ): CutPlanSpec {
     if (planMetrics.planShape !== 'circular') {
+      const n = this.polygonSides(planMetrics.planShape as PlanShape);
+      const cornerAngleDeg = n > 0 ? (180 - 360 / n) / 2 : 45;
+      const notes =
+        n > 0
+          ? [
+              `${n}-sided polygon plan: no circular wedge cutting required.`,
+              `Corner units at each of the ${n} corners need a mitre cut of ${cornerAngleDeg.toFixed(1)}° on each side face (interior corner angle ${(180 - 360 / n).toFixed(1)}°).`,
+              `Alternate the running bond at each corner to maintain interlock across courses.`,
+            ]
+          : [
+              'Rectangular and square plans avoid circular wedge compression, but corner units may still need trim cuts for preferred bond layout.',
+            ];
       return {
-        requiresCutting: false,
+        requiresCutting: n > 0,
         innerJointIn: jointIn,
         centerlineModuleSpacingIn: unitLengthIn + jointIn,
         recommendedTaperPerBrickIn: 0,
         recommendedCutPerSideIn: 0,
-        recommendedCutAngleDeg: 0,
+        recommendedCutAngleDeg: cornerAngleDeg,
         minimumRecommendedInnerDiameterIn: Math.min(
           planMetrics.innerWidthIn,
           planMetrics.innerDepthIn,
         ),
-        notes: [
-          'Rectangular and square plans avoid circular wedge compression, but corner units may still need trim cuts for preferred bond layout.',
-        ],
+        notes,
       };
     }
 
@@ -1602,7 +1648,15 @@ export class MasonryEngine {
     const footprintAreaIn2 =
       planMetrics.planShape === 'circular'
         ? Math.PI * Math.pow(footprintWidthIn / 2, 2)
-        : footprintWidthIn * footprintDepthIn;
+        : (() => {
+            const n = this.polygonSides(planMetrics.planShape as PlanShape);
+            if (n > 0) {
+              // Polygon area = n × a² × tan(π/n), where a = apothem = footprintWidth/2
+              const a = footprintWidthIn / 2;
+              return n * a * a * Math.tan(Math.PI / n);
+            }
+            return footprintWidthIn * footprintDepthIn;
+          })();
     const stoneVolumeIn3 = footprintAreaIn2 * stoneDepthIn;
 
     return {
@@ -2325,5 +2379,16 @@ export class MasonryEngine {
     depthIn: number,
   ): number {
     return 2 * (widthIn + depthIn);
+  }
+
+  private polygonSides(shape: PlanShape): number {
+    if (shape === 'hexagonal') return 6;
+    if (shape === 'octagonal') return 8;
+    return 0; // not a polygon
+  }
+
+  private polygonPerimeter(n: number, spanIn: number): number {
+    // Regular polygon perimeter: n sides × side-length, where side = apothem × 2tan(π/n)
+    return n * spanIn * Math.tan(Math.PI / n);
   }
 }

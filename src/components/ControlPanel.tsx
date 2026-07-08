@@ -1,7 +1,7 @@
 import { useState, type Dispatch, type SetStateAction } from 'react';
 import HelpTip from './HelpTip';
 import { BRICK_PRESETS, CAPSTONE_PRESETS } from '../engine/MasonryEngine';
-import type { MasonryInput, MasonryUnit } from '../types';
+import type { MasonryInput, MasonryUnit, AshCleanoutType } from '../types';
 import {
   clampSeatingFurnitureCount,
   getMaxCircularSeatingCount,
@@ -232,7 +232,9 @@ export default function ControlPanel({
     })
     .filter(({ orientedUnit }) => orientedUnit.widthIn >= capBridgeRequiredWidthIn);
   const primaryDimensionValue =
-    input.planShape === 'circular' ? input.innerDiameterIn : input.innerWidthIn;
+    input.planShape === 'circular' || input.planShape === 'hexagonal' || input.planShape === 'octagonal'
+      ? input.innerDiameterIn
+      : input.innerWidthIn;
   const primaryDimensionMin = 18;
   const primaryDimensionMax = Math.max(180, Math.ceil(primaryDimensionValue));
   const innerDepthMin = 18;
@@ -244,7 +246,7 @@ export default function ControlPanel({
 
   const updatePrimaryDimension = (value: number) => {
     setInput((prev) => {
-      if (prev.planShape === 'circular') {
+      if (prev.planShape === 'circular' || prev.planShape === 'hexagonal' || prev.planShape === 'octagonal') {
         return {
           ...prev,
           innerDiameterIn: value,
@@ -294,7 +296,7 @@ export default function ControlPanel({
             tip='Circular layouts are common for masonry fire pits and keep coursing, vent spacing, and cap layout easy to read at a glance.'
           />
           <div
-            className='grid grid-cols-3 gap-1 rounded-lg border border-amber-700/25 bg-white p-1'
+            className='grid grid-cols-5 gap-1 rounded-lg border border-amber-700/25 bg-white p-1'
             role='group'
             aria-label='Plan Shape'
           >
@@ -321,6 +323,22 @@ export default function ControlPanel({
                 hint: 'Long + short',
                 icon: (
                   <span className='inline-block h-2.5 w-4.5 rounded-[2px] border-2 border-current' />
+                ),
+              },
+              {
+                value: 'hexagonal' as const,
+                label: 'Hex',
+                hint: '6 sides',
+                icon: (
+                  <span className='inline-block h-3.5 w-3.5 rounded-[3px] border-2 border-current' />
+                ),
+              },
+              {
+                value: 'octagonal' as const,
+                label: 'Oct',
+                hint: '8 sides',
+                icon: (
+                  <span className='inline-block h-3.5 w-3.5 rounded-[4px] border-2 border-current' />
                 ),
               },
             ].map((option) => {
@@ -793,6 +811,23 @@ export default function ControlPanel({
           </div>
         )}
 
+        <label className='flex flex-col gap-1 sm:col-span-2'>
+          <FieldLabel
+            label='Ash Cleanout'
+            tip='Choose how ash will be removed from the firebox. A cleanout door or pan simplifies maintenance for wood-burning pits.'
+          />
+          <select
+            className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+            value={input.ashCleanoutType ?? 'none'}
+            onChange={(e) => setInput((prev) => ({ ...prev, ashCleanoutType: e.target.value as AshCleanoutType }))}
+          >
+            <option value='none'>None</option>
+            <option value='hinged-door'>Hinged cleanout door</option>
+            <option value='removable-pan'>Removable ash pan</option>
+            <option value='drain-holes'>Drainage holes (outdoor)</option>
+          </select>
+        </label>
+
         {/* ── Smokeless Secondary-Combustion Mode ── */}
         {input.fuelType === 'wood' && (
           <label className='flex flex-col gap-1 sm:col-span-2'>
@@ -1175,7 +1210,7 @@ export default function ControlPanel({
         <label className='flex flex-col gap-1'>
           <FieldLabel
             label={
-              input.planShape === 'circular'
+              input.planShape === 'circular' || input.planShape === 'hexagonal' || input.planShape === 'octagonal'
                 ? 'Inner Diameter (in)'
                 : 'Inner Width (in)'
             }
@@ -1186,12 +1221,12 @@ export default function ControlPanel({
               <input
                 className='h-2.5 w-full cursor-pointer rounded-full bg-white accent-amber-700'
                 aria-label={
-                  input.planShape === 'circular'
+                  input.planShape === 'circular' || input.planShape === 'hexagonal' || input.planShape === 'octagonal'
                     ? 'Inner Diameter in inches'
                     : 'Inner Width in inches'
                 }
                 title={
-                  input.planShape === 'circular'
+                  input.planShape === 'circular' || input.planShape === 'hexagonal' || input.planShape === 'octagonal'
                     ? 'Inner Diameter in inches'
                     : 'Inner Width in inches'
                 }
@@ -1207,12 +1242,12 @@ export default function ControlPanel({
               <input
                 className='w-[4.5rem] rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-right'
                 aria-label={
-                  input.planShape === 'circular'
+                  input.planShape === 'circular' || input.planShape === 'hexagonal' || input.planShape === 'octagonal'
                     ? 'Inner Diameter in inches'
                     : 'Inner Width in inches'
                 }
                 title={
-                  input.planShape === 'circular'
+                  input.planShape === 'circular' || input.planShape === 'hexagonal' || input.planShape === 'octagonal'
                     ? 'Inner Diameter in inches'
                     : 'Inner Width in inches'
                 }

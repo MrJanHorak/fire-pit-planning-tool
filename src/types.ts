@@ -4,7 +4,8 @@ export type UnitOrientation = 'stretcher' | 'header';
 export type CapOrientation = 'match-wall' | UnitOrientation;
 export type WallCourseStrategy = 'uniform' | 'shim-spacer' | 'vented-accent';
 export type LinerType = 'none' | 'fire-brick' | 'steel-ring';
-export type PlanShape = 'circular' | 'square' | 'rectangular';
+export type PlanShape = 'circular' | 'square' | 'rectangular' | 'hexagonal' | 'octagonal';
+export type AshCleanoutType = 'none' | 'hinged-door' | 'removable-pan' | 'drain-holes';
 export type CapPlacementMode = 'outward-only' | 'symmetric';
 export type SoilType =
   | 'unknown'
@@ -155,6 +156,7 @@ export interface MasonryInput {
   seatingAreaRadiusFt?: number;
   naturalStoneType?: NaturalStoneType;
   stoneBuildMethod?: StoneBuildMethod;
+  ashCleanoutType?: AshCleanoutType;
 }
 
 export interface SafetyWarning {

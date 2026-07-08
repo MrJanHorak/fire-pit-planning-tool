@@ -1692,7 +1692,7 @@ export default function App() {
               </Suspense>
             </div>
 
-            <BillOfMaterials output={output} />
+            <BillOfMaterials output={output} input={input} />
 
             <details
               className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-3 shadow-lg'

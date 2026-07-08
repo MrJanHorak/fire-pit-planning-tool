@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { MasonryOutput } from '../types';
+import type { MasonryOutput, MasonryInput } from '../types';
 
 const BOM_COSTS_STORAGE_KEY =
   'firepit-parametric-masonry-designer-bom-costs';
@@ -13,6 +13,7 @@ interface BomCosts {
   gravelTon: string;
   linerUnit: string;
   stoneTon: string;
+  cleanoutHardware: string;
   seatingMats: Record<string, string>;
 }
 
@@ -24,6 +25,7 @@ function defaultCosts(): BomCosts {
     gravelTon: '',
     linerUnit: '',
     stoneTon: '',
+    cleanoutHardware: '',
     seatingMats: {},
   };
 }
@@ -112,9 +114,10 @@ interface BomTableRow {
 
 interface Props {
   output: MasonryOutput;
+  input: MasonryInput;
 }
 
-export default function BillOfMaterials({ output }: Props) {
+export default function BillOfMaterials({ output, input }: Props) {
   const [costs, setCosts] = useState<BomCosts>(loadCosts);
 
   const { logistics, resolvedUnit, resolvedCapUnit, linerSpec, foundation } =
@@ -164,6 +167,14 @@ export default function BillOfMaterials({ output }: Props) {
   const stoneTotal = logistics.naturalStoneEstimate
     ? stoneTonPrice * stoneAvgTons
     : 0;
+  const cleanoutHardwarePrice = parseDollar(costs.cleanoutHardware);
+  const cleanoutDefaultCost =
+    input.ashCleanoutType === 'hinged-door' ? 45 :
+    input.ashCleanoutType === 'removable-pan' ? 25 : 15;
+  const cleanoutTotal =
+    input.ashCleanoutType && input.ashCleanoutType !== 'none'
+      ? (cleanoutHardwarePrice > 0 ? cleanoutHardwarePrice : cleanoutDefaultCost)
+      : 0;
   const seatingTotals = (logistics.seatingAreaMaterials?.materials ?? []).map(
     (mat) => parseDollar(costs.seatingMats[mat.name] ?? '') * mat.quantity,
   );
@@ -177,6 +188,7 @@ export default function BillOfMaterials({ output }: Props) {
     gravelTotal +
     linerTotal +
     stoneTotal +
+    cleanoutTotal +
     seatingGrandTotal;
   const hasCostData = grandTotal > 0;
 
@@ -350,6 +362,24 @@ export default function BillOfMaterials({ output }: Props) {
       lineTotal: seatingTotals[i] ?? 0,
     });
   });
+
+  if (input.ashCleanoutType && input.ashCleanoutType !== 'none') {
+    const cleanoutLabel = {
+      'hinged-door': 'Ash cleanout door (cast iron hinged)',
+      'removable-pan': 'Removable ash pan (galv. steel)',
+      'drain-holes': 'Drainage mesh/screen inserts',
+    }[input.ashCleanoutType] ?? 'Ash cleanout hardware';
+    bomRows.push({
+      key: 'ash-cleanout',
+      item: cleanoutLabel,
+      detail: 'Install per manufacturer spec; seal frame with refractory mortar',
+      qty: 1,
+      unit: 'ea',
+      unitPrice: costs.cleanoutHardware,
+      onUnitPriceChange: (value) => updateCost('cleanoutHardware', value),
+      lineTotal: cleanoutTotal,
+    });
+  }
 
   const handlePrint = () => {
     const allCostRows: string[] = [];

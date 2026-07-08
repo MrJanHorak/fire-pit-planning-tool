@@ -1,4 +1,4 @@
-import type { MasonryInput } from '../types';
+import type { MasonryInput, AshCleanoutType } from '../types';
 
 export const DEFAULT_MASONRY_INPUT: MasonryInput = {
   planShape: 'circular',
@@ -75,4 +75,5 @@ export const DEFAULT_MASONRY_INPUT: MasonryInput = {
   seatingAreaRadiusFt: 10,
   naturalStoneType: 'unspecified',
   stoneBuildMethod: 'dry-stack',
+  ashCleanoutType: 'none' as AshCleanoutType,
 };
