@@ -55,6 +55,9 @@ Adding feature-focused screenshots will improve adoption and clarity. Suggested 
 
 - Parametric circular, square, and rectangular firepit design.
 - Engineering-aware wall, capstone, venting, liner, and foundation calculations.
+- **Separate inner/outer wall material selection in double-wall mode** — distinct material presets, heat ratings (°F), and mortar types (refractory / Type N / Type S) for the firebox inner shell and outer decorative shell. Split Bill of Materials.
+- **Smokeless secondary-combustion mode** — stack-effect draft pressure (ΔP formula), intake/outlet vent area ratio check (1.2–1.5 optimal range), secondary jet sizing, base-course block omission count, and flange overlap safety status.
+- **Commercial smokeless insert presets** — Solo Stove Bonfire 2.0, Breeo X19/X24/X30, Tiki Brand Patio, and Custom/DIY steel liner; auto-calculates required masonry ID and all clearances.
 - 3D preview with camera presets, cutaway mode, dimension overlays, LOD, and WebGL fallback handling.
 - Construction Mode with printable layer-by-layer SVG guidance.
 - Enhanced Bill of Materials with categorized material groups, cost estimator, and BOM-focused print layout.
@@ -76,10 +79,10 @@ The following capabilities are identified and on the roadmap but not yet impleme
 
 | Gap | Description |
 |---|---|
-| **Separate inner/outer wall materials** | Double-wall mode currently uses the same material for both shells. Distinct inner (firebrick/refractory) and outer (stone/brick) materials with split BOM are planned. |
-| **Smokeless secondary-combustion mode** | Stack-effect draft pressure, intake/outlet vent ratio, and secondary jet sizing are not yet modeled. `thermalCavityVentMode` is a cavity behavior flag, not a smokeless system. |
-| **Commercial insert fitment** | Solo Stove, Breeo, and Tiki Brand insert profiles with flange overlap checks and auto-omit base-course block counts are planned. |
-| **Mortar type distinction** | Refractory mortar (firebox zone) vs. Type N/S (outer wall) are not yet tracked separately. |
+| **Inner/outer wall materials** | ✅ **Implemented** — separate material presets, heat ratings, and mortar types per zone with split BOM. |
+| **Smokeless secondary-combustion mode** | ✅ **Implemented** — stack-effect ΔP, intake/outlet ratio, jet sizing, base-course omissions, flange overlap. |
+| **Commercial insert fitment** | ✅ **Implemented** — Solo Stove, Breeo X19/X24/X30, Tiki Brand presets with auto-calc masonry ID. |
+| **Mortar type distinction** | ✅ **Implemented** — refractory vs. Type N/S tracked and warned per wall zone. |
 | **Hex/octagonal shapes** | Only circular, square, and rectangular plans are currently supported. |
 | **Keyhole firepit shape** | Cooking-focused keyhole (circle + coal channel) shape is not yet available. |
 | **In-ground / raised-pedestal build modes** | All builds are modeled as above-grade masonry walls. |

@@ -12,6 +12,8 @@ import type {
   MasonryOutput,
   MasonryUnit,
   SafetyWarning,
+  SmokelessInsertPresetKey,
+  SmokelessSpec,
   UnitOrientation,
   VentSpec,
   WallCourseStrategy,
@@ -111,6 +113,77 @@ const GAS_HARDWARE_TEMPLATES: Record<
     label: 'High-BTU bowl / ring',
     recommendedAreaMinSqIn: 36,
     recommendedAreaMaxSqIn: 60,
+  },
+};
+
+/** Physical constants for the stack-effect draft pressure formula. */
+const STACK_PATM_PA = 101325;   // atmospheric pressure (Pa)
+const STACK_G_MS2 = 9.81;       // gravitational acceleration (m/s²)
+const STACK_R_AIR = 287.05;     // specific gas constant for air (J/kg·K)
+const STACK_T0_K = 293;         // ambient temperature (K) ≈ 20°C
+const STACK_TI_K = 673;         // heated cavity air temperature (K) ≈ 400°C / 750°F
+
+/** Optimal intake-to-outlet vent area ratio range for smokeless secondary combustion. */
+const SMOKELESS_RATIO_MIN = 1.2;
+const SMOKELESS_RATIO_MAX = 1.5;
+
+interface SmokelessInsertPresetDef {
+  label: string;
+  baseOD: number;    // in
+  flangeOD: number;  // in
+  minDepth: number;  // in
+  airGap: number;    // in
+}
+
+/**
+ * Commercial smokeless insert dimensions.
+ * Source: manufacturer specs + independent architectural analysis.
+ */
+export const SMOKELESS_INSERT_PRESETS: Record<
+  import('../types').SmokelessInsertPresetKey,
+  SmokelessInsertPresetDef
+> = {
+  'solo-stove-bonfire-2': {
+    label: 'Solo Stove Bonfire 2.0',
+    baseOD: 19.5,
+    flangeOD: 21.5,
+    minDepth: 14.5,
+    airGap: 0.75,
+  },
+  'breeo-x19': {
+    label: 'Breeo X19',
+    baseOD: 19.0,
+    flangeOD: 22.0,
+    minDepth: 15.0,
+    airGap: 1.5,
+  },
+  'breeo-x24': {
+    label: 'Breeo X24',
+    baseOD: 24.0,
+    flangeOD: 27.5,
+    minDepth: 15.0,
+    airGap: 1.5,
+  },
+  'breeo-x30': {
+    label: 'Breeo X30',
+    baseOD: 30.0,
+    flangeOD: 34.0,
+    minDepth: 15.0,
+    airGap: 2.0,
+  },
+  'tiki-patio': {
+    label: 'Tiki Brand Patio Smokeless',
+    baseOD: 24.75,
+    flangeOD: 26.75,
+    minDepth: 18.75,
+    airGap: 1.0,
+  },
+  'custom-diy': {
+    label: 'Custom / DIY Steel Liner',
+    baseOD: 19.0,
+    flangeOD: 21.0,
+    minDepth: 14.0,
+    airGap: 0.75,
   },
 };
 
@@ -400,12 +473,18 @@ export class MasonryEngine {
       oriented.lengthIn,
       input.mortarJointIn,
     );
+    const smokelessSpec = this.calculateSmokelessSpec(
+      input,
+      oriented,
+      input.wallHeightIn,
+    );
     const warnings = this.computeSafetyWarnings(
       input,
       ventSpec,
       cutPlan,
       strategySummary,
       thermalAssembly,
+      smokelessSpec,
     );
 
     return {
@@ -450,6 +529,7 @@ export class MasonryEngine {
       warnings,
       cornerGuidance,
       thermalAssembly,
+      smokelessSpec,
     };
   }
 
@@ -1732,12 +1812,123 @@ export class MasonryEngine {
     return logistics;
   }
 
+  private calculateSmokelessSpec(
+    input: MasonryInput,
+    wallUnit: MasonryUnit,
+    wallHeightIn: number,
+  ): SmokelessSpec | undefined {
+    if (!input.smokelessMode || input.fuelType !== 'wood') {
+      return undefined;
+    }
+
+    // --- Resolve insert preset ---
+    const presetKey: SmokelessInsertPresetKey = input.smokelessInsertPreset ?? 'custom-diy';
+    const presetDef = SMOKELESS_INSERT_PRESETS[presetKey];
+    const isCustom = presetKey === 'custom-diy';
+
+    const insertBaseOD = isCustom && input.smokelessInsertBaseOD != null
+      ? input.smokelessInsertBaseOD
+      : presetDef.baseOD;
+    const insertFlangeOD = isCustom && input.smokelessInsertFlangeOD != null
+      ? input.smokelessInsertFlangeOD
+      : presetDef.flangeOD;
+    const insertMinDepthIn = isCustom && input.smokelessInsertMinDepthIn != null
+      ? input.smokelessInsertMinDepthIn
+      : presetDef.minDepth;
+
+    // Allow air gap override for any preset.
+    const airGapIn = input.smokelessInsertAirGapIn != null
+      ? Math.max(0.25, input.smokelessInsertAirGapIn)
+      : presetDef.airGap;
+
+    // D_masonry = D_base + 2 × G_air
+    const requiredMasonryID = insertBaseOD + 2 * airGapIn;
+
+    // --- Vent sizing ---
+    const primaryVentCount = Math.max(3, input.smokelessPrimaryVentCount ?? 20);
+    const primaryVentDiameterIn = Math.max(0.25, input.smokelessPrimaryVentDiameterIn ?? 0.75);
+    const secondaryVentCount = Math.max(3, input.smokelessSecondaryVentCount ?? 20);
+    const secondaryVentDiameterIn = Math.max(0.25, input.smokelessSecondaryVentDiameterIn ?? 0.5);
+
+    const ventCircleAreaSqIn = (d: number) => Math.PI * Math.pow(d / 2, 2);
+    const primaryVentTotalAreaSqIn = primaryVentCount * ventCircleAreaSqIn(primaryVentDiameterIn);
+    const secondaryVentTotalAreaSqIn = secondaryVentCount * ventCircleAreaSqIn(secondaryVentDiameterIn);
+
+    // --- Intake/outlet ratio check (optimal: 1.2 – 1.5) ---
+    const intakeOutletRatio = secondaryVentTotalAreaSqIn > 0
+      ? primaryVentTotalAreaSqIn / secondaryVentTotalAreaSqIn
+      : 0;
+    const intakeOutletRatioStatus: SmokelessSpec['intakeOutletRatioStatus'] =
+      intakeOutletRatio < SMOKELESS_RATIO_MIN
+        ? 'starved'
+        : intakeOutletRatio > SMOKELESS_RATIO_MAX
+          ? 'overcooled'
+          : 'optimal';
+
+    // --- Stack effect draft pressure (Pa) ---
+    // ΔP = Patm × (g × H / R) × (1/T0 − 1/Ti), H in meters
+    const cavityHeightM = wallHeightIn * 0.0254;
+    const draftPressurePa =
+      STACK_PATM_PA *
+      (STACK_G_MS2 * cavityHeightM / STACK_R_AIR) *
+      (1 / STACK_T0_K - 1 / STACK_TI_K);
+
+    // --- Base-course block omissions for intake vents ---
+    // One omitted block opening ≈ wallUnit.lengthIn × wallUnit.heightIn (sq in)
+    const singleBlockOpeningAreaSqIn = Math.max(1, wallUnit.lengthIn * wallUnit.heightIn);
+    const baseVentBlockOmissions = Math.max(3, Math.ceil(primaryVentTotalAreaSqIn / singleBlockOpeningAreaSqIn));
+
+    // --- Flange overlap safety (D_flange ≥ D_masonry + 1.0 in is secure) ---
+    const blockInnerRadius = requiredMasonryID / 2;
+    const flangeRadius = insertFlangeOD / 2;
+    const flangeOverlap = flangeRadius - blockInnerRadius;
+    const flangeOverlapStatus: SmokelessSpec['flangeOverlapStatus'] =
+      flangeOverlap <= 0.25 ? 'unsafe' : flangeOverlap < 1.0 ? 'marginal' : 'secure';
+
+    // --- Notes ---
+    const notes: string[] = [
+      `Smokeless secondary-combustion mode active — insert: ${presetDef.label}.`,
+      `Required masonry inner diameter: ${requiredMasonryID.toFixed(2)} in (insert base ${insertBaseOD} in + 2 × ${airGapIn} in air gap).`,
+      `Flange overlap: ${flangeOverlap.toFixed(2)} in — status: ${flangeOverlapStatus}. Insert flange (${insertFlangeOD} in OD) must rest securely on capstones.`,
+      `Primary intake vents: ${primaryVentCount}× ${primaryVentDiameterIn}" dia. holes = ${primaryVentTotalAreaSqIn.toFixed(2)} sq in total.`,
+      `Secondary combustion jets: ${secondaryVentCount}× ${secondaryVentDiameterIn}" dia. holes = ${secondaryVentTotalAreaSqIn.toFixed(2)} sq in total.`,
+      `Intake/outlet ratio: ${intakeOutletRatio.toFixed(2)} — ${intakeOutletRatioStatus === 'optimal' ? '✓ optimal (1.2–1.5)' : intakeOutletRatioStatus === 'starved' ? '⚠ below 1.2 — add more or larger intake holes' : '⚠ above 1.5 — reduce intake area or increase jet count'}.`,
+      `Stack-effect draft pressure: ~${draftPressurePa.toFixed(1)} Pa at current wall height.`,
+      `First course: omit ${baseVentBlockOmissions} blocks evenly spaced to create primary air intake openings.`,
+      `Minimum pit depth required: ${insertMinDepthIn} in — current wall height: ${wallHeightIn} in.`,
+    ];
+
+    return {
+      enabled: true,
+      insertPreset: presetKey,
+      insertLabel: presetDef.label,
+      insertBaseOD,
+      insertFlangeOD,
+      insertMinDepthIn,
+      requiredMasonryID,
+      airGapIn,
+      primaryVentCount,
+      primaryVentDiameterIn,
+      primaryVentTotalAreaSqIn,
+      secondaryVentCount,
+      secondaryVentDiameterIn,
+      secondaryVentTotalAreaSqIn,
+      intakeOutletRatio,
+      intakeOutletRatioStatus,
+      draftPressurePa,
+      baseVentBlockOmissions,
+      flangeOverlapStatus,
+      notes,
+    };
+  }
+
   private computeSafetyWarnings(
     input: MasonryInput,
     ventSpec: VentSpec,
     cutPlan: CutPlanSpec,
     strategySummary: CourseStrategySummary,
     thermalAssembly: import('../types').ThermalAssemblySpec,
+    smokelessSpec: SmokelessSpec | undefined,
   ): SafetyWarning[] {
     const warnings: SafetyWarning[] = [];
 
@@ -1809,6 +2000,44 @@ export class MasonryEngine {
         warnings.push({
           code: 'mortar-zone-mismatch',
           message: `Inner firebox wall uses "${thermalAssembly.innerMortarType}" mortar. Refractory (fireclay) mortar is required for the inner firebox zone — standard Portland-based mortars fail above ~572°F.`,
+        });
+      }
+    }
+
+    // --- Smokeless secondary-combustion checks ---
+    if (smokelessSpec?.enabled) {
+      if (smokelessSpec.intakeOutletRatioStatus === 'starved') {
+        warnings.push({
+          code: 'smokeless-vent-ratio-low',
+          message: `Smokeless vent ratio ${smokelessSpec.intakeOutletRatio.toFixed(2)} is below the minimum 1.2. Add more or larger primary intake holes to prevent an air-starved burn that stalls secondary combustion.`,
+          actualValue: smokelessSpec.intakeOutletRatio,
+          requiredValue: SMOKELESS_RATIO_MIN,
+        });
+      } else if (smokelessSpec.intakeOutletRatioStatus === 'overcooled') {
+        warnings.push({
+          code: 'smokeless-vent-ratio-high',
+          message: `Smokeless vent ratio ${smokelessSpec.intakeOutletRatio.toFixed(2)} exceeds the maximum 1.5. Reduce intake area or increase secondary jets — excess cold air cools the cavity below the ~600°F re-ignition threshold.`,
+          actualValue: smokelessSpec.intakeOutletRatio,
+          requiredValue: SMOKELESS_RATIO_MAX,
+        });
+      }
+      if (smokelessSpec.flangeOverlapStatus === 'unsafe') {
+        warnings.push({
+          code: 'smokeless-flange-unsafe',
+          message: `Insert flange overlap is only ${(smokelessSpec.insertFlangeOD / 2 - smokelessSpec.requiredMasonryID / 2).toFixed(2)} in — the insert may fall into the pit. Flange OD (${smokelessSpec.insertFlangeOD} in) must overlap the masonry inner edge by at least 1 in on each side.`,
+        });
+      } else if (smokelessSpec.flangeOverlapStatus === 'marginal') {
+        warnings.push({
+          code: 'smokeless-flange-unsafe',
+          message: `Insert flange overlap is marginal. Verify the insert seats securely on the capstones before finalizing wall dimensions.`,
+        });
+      }
+      if (input.wallHeightIn < smokelessSpec.insertMinDepthIn) {
+        warnings.push({
+          code: 'smokeless-depth-insufficient',
+          message: `Wall height (${input.wallHeightIn} in) is less than the minimum pit depth required for this insert (${smokelessSpec.insertMinDepthIn} in). Increase wall height or choose a shallower insert.`,
+          actualValue: input.wallHeightIn,
+          requiredValue: smokelessSpec.insertMinDepthIn,
         });
       }
     }

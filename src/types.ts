@@ -52,6 +52,13 @@ export type ThermalAssemblyMode = 'single-wall' | 'double-wall';
 export type ThermalCavityFill = 'air-gap' | 'sand-fill' | 'insulation-board';
 export type ThermalCavityVentMode = 'vented' | 'sealed';
 export type MortarType = 'refractory' | 'type-n' | 'type-s' | 'construction-adhesive';
+export type SmokelessInsertPresetKey =
+  | 'solo-stove-bonfire-2'
+  | 'breeo-x19'
+  | 'breeo-x24'
+  | 'breeo-x30'
+  | 'tiki-patio'
+  | 'custom-diy';
 
 export interface MasonryUnit {
   name: string;
@@ -90,6 +97,26 @@ export interface MasonryInput {
   innerWallMortarType?: MortarType;
   /** Mortar type for the outer decorative shell. Defaults to type-n. */
   outerWallMortarType?: MortarType;
+  /** Enable secondary-combustion smokeless mode (wood fuel only). */
+  smokelessMode?: boolean;
+  /** Commercial insert preset or 'custom-diy'. Only relevant when smokelessMode is true. */
+  smokelessInsertPreset?: SmokelessInsertPresetKey;
+  /** Custom insert: base outer diameter (in). Used when preset is 'custom-diy'. */
+  smokelessInsertBaseOD?: number;
+  /** Custom insert: top flange outer diameter (in). Used when preset is 'custom-diy'. */
+  smokelessInsertFlangeOD?: number;
+  /** Custom insert: minimum required pit depth (in). Used when preset is 'custom-diy'. */
+  smokelessInsertMinDepthIn?: number;
+  /** Air gap between insert base and masonry inner wall (in). Overrides preset default when set. */
+  smokelessInsertAirGapIn?: number;
+  /** Number of base-level primary air intake holes. */
+  smokelessPrimaryVentCount?: number;
+  /** Diameter of each primary intake hole (in). */
+  smokelessPrimaryVentDiameterIn?: number;
+  /** Number of top secondary combustion jet holes on the inner liner/insert. */
+  smokelessSecondaryVentCount?: number;
+  /** Diameter of each secondary jet hole (in). */
+  smokelessSecondaryVentDiameterIn?: number;
   soilType?: SoilType;
   drainageCondition?: DrainageCondition;
   frostClimate?: boolean;
@@ -149,7 +176,11 @@ export interface SafetyWarning {
     | 'double-wall-cavity-tight'
     | 'double-wall-thermal-review'
     | 'outer-wall-heat-risk'
-    | 'mortar-zone-mismatch';
+    | 'mortar-zone-mismatch'
+    | 'smokeless-vent-ratio-low'
+    | 'smokeless-vent-ratio-high'
+    | 'smokeless-flange-unsafe'
+    | 'smokeless-depth-insufficient';
     message: string;
     actualValue?: number;
     requiredValue?: number;
@@ -349,6 +380,50 @@ export interface CourseStrategySummary {
   shimUnit?: MasonryUnit;
 }
 
+export interface SmokelessSpec {
+  enabled: boolean;
+  /** The preset key used, or 'custom-diy'. */
+  insertPreset: SmokelessInsertPresetKey;
+  /** Human-readable label for the selected insert. */
+  insertLabel: string;
+  /** Insert base outer diameter (in). */
+  insertBaseOD: number;
+  /** Insert top flange outer diameter (in). */
+  insertFlangeOD: number;
+  /** Minimum required pit depth (in). */
+  insertMinDepthIn: number;
+  /** Required masonry inner diameter to accommodate the insert with air gap. */
+  requiredMasonryID: number;
+  /** Air gap between insert base OD and masonry inner wall (in). */
+  airGapIn: number;
+  /** Number of primary (base) air intake holes. */
+  primaryVentCount: number;
+  /** Diameter of each primary intake hole (in). */
+  primaryVentDiameterIn: number;
+  /** Total intake area: primaryVentCount × π×(d/2)² (sq in). */
+  primaryVentTotalAreaSqIn: number;
+  /** Number of secondary combustion jet holes at the top inner rim. */
+  secondaryVentCount: number;
+  /** Diameter of each secondary jet hole (in). */
+  secondaryVentDiameterIn: number;
+  /** Total secondary jet area: secondaryVentCount × π×(d/2)² (sq in). */
+  secondaryVentTotalAreaSqIn: number;
+  /** A_intake / A_holes ratio. Optimal range: 1.2 – 1.5. */
+  intakeOutletRatio: number;
+  /** Whether the ratio is in the optimal range, below (starved), or above (overcooled). */
+  intakeOutletRatioStatus: 'optimal' | 'starved' | 'overcooled';
+  /**
+   * Approximate stack-effect draft pressure (Pa) using the ideal gas law formula:
+   * ΔP = Patm × (g × H / R) × (1/T0 − 1/Ti)
+   */
+  draftPressurePa: number;
+  /** Number of base-course blocks to omit to create primary intake openings. */
+  baseVentBlockOmissions: number;
+  /** Whether the insert flange safely overlaps the masonry inner wall edge. */
+  flangeOverlapStatus: 'secure' | 'marginal' | 'unsafe';
+  notes: string[];
+}
+
 export interface MasonryOutput {
   planShape: PlanShape;
   innerSpanWidthIn: number;
@@ -376,4 +451,5 @@ export interface MasonryOutput {
   warnings: SafetyWarning[];
   cornerGuidance?: CornerInterlockGuidance;
   thermalAssembly: ThermalAssemblySpec;
+  smokelessSpec?: SmokelessSpec;
 }

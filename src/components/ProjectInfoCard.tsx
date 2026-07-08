@@ -373,6 +373,44 @@ export default function ProjectInfoCard({
           ))}
         </ul>
       </details>
+      {output.smokelessSpec?.enabled && (
+        <details className='mt-3 rounded-lg border border-amber-600/30 bg-amber-50/70 p-3' open>
+          <summary className='cursor-pointer font-semibold text-amber-900'>
+            🔥 Smokeless secondary-combustion spec
+          </summary>
+          <div className='mt-2 space-y-2 text-sm text-amber-900/90'>
+            <div className='grid grid-cols-2 gap-x-4 gap-y-1 text-xs'>
+              <span className='font-medium'>Insert</span>
+              <span>{output.smokelessSpec.insertLabel}</span>
+              <span className='font-medium'>Required masonry ID</span>
+              <span>{output.smokelessSpec.requiredMasonryID.toFixed(2)} in</span>
+              <span className='font-medium'>Air gap</span>
+              <span>{output.smokelessSpec.airGapIn} in</span>
+              <span className='font-medium'>Flange overlap</span>
+              <span className={output.smokelessSpec.flangeOverlapStatus === 'secure' ? 'text-emerald-700 font-semibold' : output.smokelessSpec.flangeOverlapStatus === 'marginal' ? 'text-amber-700 font-semibold' : 'text-red-700 font-semibold'}>
+                {output.smokelessSpec.flangeOverlapStatus.toUpperCase()}
+              </span>
+              <span className='font-medium'>Primary intake area</span>
+              <span>{output.smokelessSpec.primaryVentCount}× {output.smokelessSpec.primaryVentDiameterIn}" = {output.smokelessSpec.primaryVentTotalAreaSqIn.toFixed(2)} sq in</span>
+              <span className='font-medium'>Secondary jet area</span>
+              <span>{output.smokelessSpec.secondaryVentCount}× {output.smokelessSpec.secondaryVentDiameterIn}" = {output.smokelessSpec.secondaryVentTotalAreaSqIn.toFixed(2)} sq in</span>
+              <span className='font-medium'>Intake / outlet ratio</span>
+              <span className={output.smokelessSpec.intakeOutletRatioStatus === 'optimal' ? 'text-emerald-700 font-semibold' : 'text-amber-700 font-semibold'}>
+                {output.smokelessSpec.intakeOutletRatio.toFixed(2)} — {output.smokelessSpec.intakeOutletRatioStatus}
+              </span>
+              <span className='font-medium'>Draft pressure</span>
+              <span>~{output.smokelessSpec.draftPressurePa.toFixed(1)} Pa</span>
+              <span className='font-medium'>Base-course omissions</span>
+              <span>{output.smokelessSpec.baseVentBlockOmissions} blocks (evenly spaced)</span>
+            </div>
+            <ul className='mt-2 list-disc pl-4 text-xs text-amber-900/80'>
+              {output.smokelessSpec.notes.map((note) => (
+                <li key={note}>{note}</li>
+              ))}
+            </ul>
+          </div>
+        </details>
+      )}
       {output.logistics.seatingAreaMaterials && (
         <details className='mt-3 rounded-lg border border-amber-900/15 bg-white/70 p-3'>
           <summary className='cursor-pointer font-medium'>

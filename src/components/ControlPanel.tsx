@@ -793,6 +793,146 @@ export default function ControlPanel({
           </div>
         )}
 
+        {/* ── Smokeless Secondary-Combustion Mode ── */}
+        {input.fuelType === 'wood' && (
+          <label className='flex flex-col gap-1 sm:col-span-2'>
+            <FieldLabel
+              label='Smokeless Mode'
+              tip='Enables secondary-combustion engineering. Cool air enters base intake holes, heats in the annular cavity between walls (or between liner and wall), then jets through top rim holes to re-ignite unburned gases — eliminating most visible smoke.'
+            />
+            <div className='flex items-center gap-3'>
+              <button
+                type='button'
+                role='switch'
+                aria-checked={input.smokelessMode ?? false}
+                onClick={() => setInput((prev) => ({ ...prev, smokelessMode: !(prev.smokelessMode ?? false) }))}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-1 ${(input.smokelessMode ?? false) ? 'bg-amber-600' : 'bg-amber-200'}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${(input.smokelessMode ?? false) ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+              <span className='text-sm text-amber-900'>
+                {(input.smokelessMode ?? false) ? 'Enabled — secondary combustion mode' : 'Disabled'}
+              </span>
+            </div>
+          </label>
+        )}
+
+        {input.fuelType === 'wood' && (input.smokelessMode ?? false) && (
+          <div className='grid gap-3 rounded-md border border-amber-600/30 bg-amber-50/60 p-3 sm:col-span-2 sm:grid-cols-2'>
+            <div className='sm:col-span-2'>
+              <p className='text-xs font-semibold text-amber-900'>Smokeless Insert / Liner Profile</p>
+              <p className='mt-0.5 text-xs text-amber-800/70'>
+                Select a commercial insert to auto-fill dimensions, or use Custom to enter your own steel liner specs.
+              </p>
+            </div>
+
+            <label className='flex flex-col gap-1 sm:col-span-2'>
+              <span className='text-xs font-medium text-amber-900'>Insert Preset</span>
+              <select
+                className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                aria-label='Smokeless Insert Preset'
+                value={input.smokelessInsertPreset ?? 'custom-diy'}
+                onChange={(event) =>
+                  setInput((prev) => ({
+                    ...prev,
+                    smokelessInsertPreset: event.target.value as MasonryInput['smokelessInsertPreset'],
+                  }))
+                }
+              >
+                <option value='solo-stove-bonfire-2'>Solo Stove Bonfire 2.0 — 19.5" base / 21.5" flange</option>
+                <option value='breeo-x19'>Breeo X19 — 19.0" base / 22.0" flange</option>
+                <option value='breeo-x24'>Breeo X24 — 24.0" base / 27.5" flange</option>
+                <option value='breeo-x30'>Breeo X30 — 30.0" base / 34.0" flange</option>
+                <option value='tiki-patio'>Tiki Brand Patio — 24.75" base / 26.75" flange</option>
+                <option value='custom-diy'>Custom / DIY Steel Liner</option>
+              </select>
+            </label>
+
+            {(input.smokelessInsertPreset ?? 'custom-diy') === 'custom-diy' && (
+              <>
+                <label className='flex flex-col gap-1'>
+                  <span className='text-xs font-medium text-amber-900'>Insert Base OD (in)</span>
+                  <input
+                    type='number' min={6} step={0.25}
+                    className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                    value={input.smokelessInsertBaseOD ?? 19.0}
+                    onChange={(e) => setInput((prev) => ({ ...prev, smokelessInsertBaseOD: Number(e.target.value) }))}
+                  />
+                </label>
+                <label className='flex flex-col gap-1'>
+                  <span className='text-xs font-medium text-amber-900'>Insert Flange OD (in)</span>
+                  <input
+                    type='number' min={6} step={0.25}
+                    className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                    value={input.smokelessInsertFlangeOD ?? 21.0}
+                    onChange={(e) => setInput((prev) => ({ ...prev, smokelessInsertFlangeOD: Number(e.target.value) }))}
+                  />
+                </label>
+                <label className='flex flex-col gap-1'>
+                  <span className='text-xs font-medium text-amber-900'>Min. Pit Depth (in)</span>
+                  <input
+                    type='number' min={8} step={0.25}
+                    className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                    value={input.smokelessInsertMinDepthIn ?? 14.0}
+                    onChange={(e) => setInput((prev) => ({ ...prev, smokelessInsertMinDepthIn: Number(e.target.value) }))}
+                  />
+                </label>
+              </>
+            )}
+
+            <label className='flex flex-col gap-1'>
+              <span className='text-xs font-medium text-amber-900'>Air Gap (in)</span>
+              <input
+                type='number' min={0.25} max={3} step={0.25}
+                className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                value={input.smokelessInsertAirGapIn ?? 0.75}
+                onChange={(e) => setInput((prev) => ({ ...prev, smokelessInsertAirGapIn: Number(e.target.value) }))}
+              />
+            </label>
+
+            <div className='sm:col-span-2 border-t border-amber-600/20 pt-2'>
+              <p className='text-xs font-semibold text-amber-900'>Vent Sizing</p>
+            </div>
+
+            <label className='flex flex-col gap-1'>
+              <span className='text-xs font-medium text-amber-900'>Primary Intake Holes</span>
+              <input
+                type='number' min={3} max={48} step={1}
+                className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                value={input.smokelessPrimaryVentCount ?? 20}
+                onChange={(e) => setInput((prev) => ({ ...prev, smokelessPrimaryVentCount: Number(e.target.value) }))}
+              />
+            </label>
+            <label className='flex flex-col gap-1'>
+              <span className='text-xs font-medium text-amber-900'>Primary Hole Diameter (in)</span>
+              <input
+                type='number' min={0.25} max={2} step={0.0625}
+                className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                value={input.smokelessPrimaryVentDiameterIn ?? 0.75}
+                onChange={(e) => setInput((prev) => ({ ...prev, smokelessPrimaryVentDiameterIn: Number(e.target.value) }))}
+              />
+            </label>
+            <label className='flex flex-col gap-1'>
+              <span className='text-xs font-medium text-amber-900'>Secondary Jet Holes</span>
+              <input
+                type='number' min={3} max={48} step={1}
+                className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                value={input.smokelessSecondaryVentCount ?? 20}
+                onChange={(e) => setInput((prev) => ({ ...prev, smokelessSecondaryVentCount: Number(e.target.value) }))}
+              />
+            </label>
+            <label className='flex flex-col gap-1'>
+              <span className='text-xs font-medium text-amber-900'>Jet Hole Diameter (in)</span>
+              <input
+                type='number' min={0.25} max={1} step={0.0625}
+                className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
+                value={input.smokelessSecondaryVentDiameterIn ?? 0.5}
+                onChange={(e) => setInput((prev) => ({ ...prev, smokelessSecondaryVentDiameterIn: Number(e.target.value) }))}
+              />
+            </label>
+          </div>
+        )}
+
         <label className='flex flex-col gap-1 sm:col-span-2'>
           <FieldLabel
             label='Capstone Type'
