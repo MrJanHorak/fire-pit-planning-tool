@@ -1087,6 +1087,41 @@ export function getCircularPlacement(
   };
 }
 
+/**
+ * Places bricks on the flat faces of a regular polygon wall.
+ * @param apothemFt - center-to-face-midpoint distance (= wallRadiusFt / centerlineDiameterIn/2)
+ * @param n - number of polygon sides (6 for hex, 8 for oct)
+ */
+function getPolygonPlacement(
+  brickIndex: number,
+  unitCount: number,
+  offsetIn: number,
+  apothemFt: number,
+  n: number,
+): Placement {
+  const bricksPerFace = Math.max(1, Math.round(unitCount / n));
+  const faceIndex = Math.min(n - 1, Math.floor(brickIndex / bricksPerFace));
+  const brickInFace = brickIndex - faceIndex * bricksPerFace;
+
+  const faceAngle = faceIndex * ((2 * Math.PI) / n);
+  // Side length at the centerline (apothem) = 2 × apothem × tan(π/n)
+  const sideLength = 2 * apothemFt * Math.tan(Math.PI / n);
+  const spacing = sideLength / Math.max(1, bricksPerFace);
+  // Position along face including course bond offset
+  const courseOffsetFt = offsetIn / 12;
+  const faceOffset =
+    (brickInFace - (bricksPerFace - 1) / 2) * spacing + courseOffsetFt;
+
+  // Brick center: face-center point + offset along tangent direction
+  const x = apothemFt * Math.cos(faceAngle) - faceOffset * Math.sin(faceAngle);
+  const z = apothemFt * Math.sin(faceAngle) + faceOffset * Math.cos(faceAngle);
+
+  // rotationY: align brick length (local X-axis) with face tangent direction.
+  // Face tangent at faceAngle: (-sin, 0, cos). Rotating local X by rotY gives (cos(rotY), 0, sin(rotY)).
+  // Matching: rotY = π/2 + faceAngle.
+  return { x, z, rotationY: Math.PI / 2 + faceAngle };
+}
+
 function getRectangularPlacement(
   brickIndex: number,
   unitCount: number,
@@ -1142,7 +1177,12 @@ function getPlacement(
   spanDepthFt: number,
   radiusFt: number,
 ): Placement {
-  if (output.planShape === 'circular' || output.planShape === 'hexagonal' || output.planShape === 'octagonal') {
+  if (output.planShape === 'hexagonal' || output.planShape === 'octagonal') {
+    const n = output.planShape === 'hexagonal' ? 6 : 8;
+    return getPolygonPlacement(brickIndex, unitCount, offsetIn, radiusFt, n);
+  }
+
+  if (output.planShape === 'circular') {
     return getCircularPlacement(
       brickIndex,
       unitCount,
@@ -3831,13 +3871,22 @@ export default function Stage3D({
                               {Array.from(
                                 { length: outerUnitCount },
                                 (_, brickIdx) => {
-                                  const placement = getCircularPlacement(
-                                    brickIdx,
-                                    outerUnitCount,
-                                    course.offsetIn,
-                                    outerCenterlineRadiusFt,
-                                    outerCenterlineRadiusIn,
-                                  );
+                                  const placement =
+                                    output.planShape === 'hexagonal' || output.planShape === 'octagonal'
+                                      ? getPolygonPlacement(
+                                          brickIdx,
+                                          outerUnitCount,
+                                          course.offsetIn,
+                                          outerCenterlineRadiusFt,
+                                          output.planShape === 'hexagonal' ? 6 : 8,
+                                        )
+                                      : getCircularPlacement(
+                                          brickIdx,
+                                          outerUnitCount,
+                                          course.offsetIn,
+                                          outerCenterlineRadiusFt,
+                                          outerCenterlineRadiusIn,
+                                        );
                                   if (!shouldRenderInCutaway(placement.x, placement.z)) {
                                     return null;
                                   }
@@ -4776,7 +4825,11 @@ export default function Stage3D({
               <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
                 <circleGeometry
                   args={[
-                    innerVoidRadiusFt,
+                    // For polygon shapes, circleGeometry uses vertex radius (circumradius).
+                    // Divide by cos(π/n) to make the flat faces flush with the inner wall face.
+                    wallRadialSegments < 64
+                      ? innerVoidRadiusFt / Math.cos(Math.PI / wallRadialSegments)
+                      : innerVoidRadiusFt,
                     wallRadialSegments === 64 ? 72 : wallRadialSegments,
                     cutawayThetaStartRad,
                     cutawayThetaLengthRad,
@@ -4786,6 +4839,7 @@ export default function Stage3D({
                   color='#3d3126'
                   map={isPhotoreal ? mortarTexture : undefined}
                   roughness={isPhotoreal ? 0.9 : 0.95}
+                  flatShading={wallRadialSegments < 64}
                   wireframe={effectiveWireframe}
                 />
               </mesh>
