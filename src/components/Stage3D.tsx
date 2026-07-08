@@ -4083,7 +4083,9 @@ export default function Stage3D({
                   const rowPerimeterIn =
                     output.planShape === 'circular'
                       ? Math.PI * rowRadiusFt * 2 * 12
-                      : 2 * (rowSpanWidthFt + rowSpanDepthFt) * 12;
+                      : isRadialPlanShape(output.planShape)
+                        ? wallRadialSegments * 2 * rowRadiusFt * Math.tan(Math.PI / wallRadialSegments) * 12
+                        : 2 * (rowSpanWidthFt + rowSpanDepthFt) * 12;
                   const rowActualModuleSpacingIn =
                     rowPerimeterIn / Math.max(1, rowUnitCount);
                   const rowRenderedCapInnerRadiusFt = Math.max(
@@ -4123,7 +4125,7 @@ export default function Stage3D({
                         )
                       : safeCapBrickLengthFt;
                   let capstoneOffsetIn = 0;
-                  if (output.planShape !== 'circular') {
+                  if (!isRadialPlanShape(output.planShape)) {
                     const overhangPerimeterIn =
                       (output.capstone.overhangIn + rowOffsetFt * 12) * 8;
                     capstoneOffsetIn = -overhangPerimeterIn / 2;
@@ -4141,13 +4143,21 @@ export default function Stage3D({
                               rowRadiusFt,
                               rowRadiusFt * 12,
                             )
-                          : getRectangularPlacement(
-                              capIdx,
-                              rowUnitCount,
-                              capstoneOffsetIn,
-                              rowSpanWidthFt,
-                              rowSpanDepthFt,
-                            );
+                          : isRadialPlanShape(output.planShape)
+                            ? getPolygonPlacement(
+                                capIdx,
+                                rowUnitCount,
+                                0,
+                                rowRadiusFt,
+                                wallRadialSegments,
+                              )
+                            : getRectangularPlacement(
+                                capIdx,
+                                rowUnitCount,
+                                capstoneOffsetIn,
+                                rowSpanWidthFt,
+                                rowSpanDepthFt,
+                              );
                       if (!shouldRenderInCutaway(placement.x, placement.z)) {
                         return null;
                       }
@@ -4281,7 +4291,9 @@ export default function Stage3D({
                   const rowPerimeterIn =
                     output.planShape === 'circular'
                       ? Math.PI * rowRadiusFt * 2 * 12
-                      : 2 * (rowSpanWidthFt + rowSpanDepthFt) * 12;
+                      : isRadialPlanShape(output.planShape)
+                        ? wallRadialSegments * 2 * rowRadiusFt * Math.tan(Math.PI / wallRadialSegments) * 12
+                        : 2 * (rowSpanWidthFt + rowSpanDepthFt) * 12;
                   const rowActualModuleSpacingIn =
                     rowPerimeterIn / Math.max(1, rowUnitCount);
                   const rowRenderedCapInnerRadiusFt = Math.max(
@@ -4331,7 +4343,7 @@ export default function Stage3D({
                         )
                       : capJointLengthFt;
                   let capstoneOffsetIn = 0;
-                  if (output.planShape !== 'circular') {
+                  if (!isRadialPlanShape(output.planShape)) {
                     const overhangPerimeterIn =
                       (output.capstone.overhangIn + rowOffsetFt * 12) * 8;
                     capstoneOffsetIn = -overhangPerimeterIn / 2;
@@ -4349,13 +4361,21 @@ export default function Stage3D({
                               rowRadiusFt,
                               rowRadiusFt * 12,
                             )
-                          : getRectangularPlacement(
-                              capIdx + 0.5,
-                              rowUnitCount,
-                              capstoneOffsetIn,
-                              rowSpanWidthFt,
-                              rowSpanDepthFt,
-                            );
+                          : isRadialPlanShape(output.planShape)
+                            ? getPolygonPlacement(
+                                capIdx + 0.5,
+                                rowUnitCount,
+                                0,
+                                rowRadiusFt,
+                                wallRadialSegments,
+                              )
+                            : getRectangularPlacement(
+                                capIdx + 0.5,
+                                rowUnitCount,
+                                capstoneOffsetIn,
+                                rowSpanWidthFt,
+                                rowSpanDepthFt,
+                              );
                       if (
                         !shouldRenderInCutaway(
                           jointPlacement.x,
@@ -4373,13 +4393,21 @@ export default function Stage3D({
                               rowRadiusFt,
                               rowRadiusFt * 12,
                             )
-                          : getRectangularPlacement(
-                              capIdx,
-                              rowUnitCount,
-                              capstoneOffsetIn,
-                              rowSpanWidthFt,
-                              rowSpanDepthFt,
-                            );
+                          : isRadialPlanShape(output.planShape)
+                            ? getPolygonPlacement(
+                                capIdx,
+                                rowUnitCount,
+                                0,
+                                rowRadiusFt,
+                                wallRadialSegments,
+                              )
+                            : getRectangularPlacement(
+                                capIdx,
+                                rowUnitCount,
+                                capstoneOffsetIn,
+                                rowSpanWidthFt,
+                                rowSpanDepthFt,
+                              );
                       const rightPlacement =
                         output.planShape === 'circular'
                           ? getCircularPlacement(
@@ -4389,13 +4417,21 @@ export default function Stage3D({
                               rowRadiusFt,
                               rowRadiusFt * 12,
                             )
-                          : getRectangularPlacement(
-                              (capIdx + 1) % rowUnitCount,
-                              rowUnitCount,
-                              capstoneOffsetIn,
-                              rowSpanWidthFt,
-                              rowSpanDepthFt,
-                            );
+                          : isRadialPlanShape(output.planShape)
+                            ? getPolygonPlacement(
+                                (capIdx + 1) % rowUnitCount,
+                                rowUnitCount,
+                                0,
+                                rowRadiusFt,
+                                wallRadialSegments,
+                              )
+                            : getRectangularPlacement(
+                                (capIdx + 1) % rowUnitCount,
+                                rowUnitCount,
+                                capstoneOffsetIn,
+                                rowSpanWidthFt,
+                                rowSpanDepthFt,
+                              );
                       const jointQuad =
                         output.planShape === 'circular' && rowCapRequiresTaper
                           ? buildCircularCapJointQuad({
@@ -4404,7 +4440,7 @@ export default function Stage3D({
                               outerRadiusFt: rowRenderedCapOuterRadiusFt,
                               actualJointIn: output.capstone.joint.actualJointIn,
                             })
-                          : output.planShape !== 'circular'
+                          : !isRadialPlanShape(output.planShape)
                             ? buildRectangularJointQuad(
                                 leftPlacement,
                                 rightPlacement,
