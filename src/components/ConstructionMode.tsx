@@ -41,7 +41,7 @@ export default function ConstructionMode({
     setActiveTab(tab);
     window.localStorage.setItem(CONSTRUCTION_TAB_KEY, tab);
   };
-  const coursePlanMarkup = buildCoursePlanSvg(output);
+  const coursePlanMarkup = buildCoursePlanSvg(output, input);
   const wallBrickCutMarkup = buildWallBrickTaperCutSvg(output);
   const capstonePlacementMarkup = buildCapstonePlacementSampleSvg(output);
   const wallCutPerSideIn = output.cutPlan.recommendedCutPerSideIn;
@@ -120,7 +120,25 @@ export default function ConstructionMode({
       dotClassName: 'bg-[#c13a1f]',
       chipClassName: 'border-red-900/20 bg-red-100 text-red-950',
     },
+    {
+      label: 'Corner/cut unit marker',
+      dotClassName: 'bg-[#6e4728]',
+      chipClassName: 'border-stone-900/20 bg-stone-100 text-stone-950',
+    },
+    {
+      label: 'Gas line entry marker',
+      dotClassName: 'bg-[#2b6f9b]',
+      chipClassName: 'border-sky-900/20 bg-sky-100 text-sky-950',
+    },
   ];
+
+  if (input.ashCleanoutType && input.ashCleanoutType !== 'none') {
+    strategySwatches.push({
+      label: 'Ash cleanout marker',
+      dotClassName: 'bg-[#2f2f2f]',
+      chipClassName: 'border-neutral-900/20 bg-neutral-100 text-neutral-950',
+    });
+  }
 
   if (output.courseStrategy.strategy === 'shim-spacer') {
     strategySwatches.splice(1, 0, {
@@ -191,8 +209,10 @@ export default function ConstructionMode({
       </div>
       <p className='mb-3 text-sm text-amber-950/80'>
         C1 is the lowest wall course and numbering rises upward. CAP is the
-        capstone course. Alternating start offsets implement running bond. Red
-        marks planned vent openings and blue marks gas line entry.
+        capstone course. Alternating start offsets implement running bond.
+        Double-wall plans show inner-wall, outer-wall, and cap-bridge rows
+        separately. Red marks planned vent openings, blue marks gas line entry,
+        dark marks ash cleanout, and C marks corner/cut units.
       </p>
       <p className='mb-3 text-xs text-amber-900/70'>
         Engineering report PDF includes assumptions/limitations and a sign-off

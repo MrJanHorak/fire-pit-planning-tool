@@ -208,6 +208,25 @@ describe('construction packet export', () => {
     expect(html).toContain('Cap Row');
     expect(html).toContain('R1');
     expect(html).toContain('Double-wall cap closure');
+    expect(html).toContain('INNER WALL COURSES');
+    expect(html).toContain('OUTER WALL COURSES');
+    expect(html).toContain('CAP R2');
+    expect(html).toContain('Capstone Course Rows');
+  });
+
+  it('marks ash cleanout and corner units in the course layout', () => {
+    const cleanoutInput: MasonryInput = {
+      ...input,
+      planShape: 'octagonal',
+      thermalAssemblyMode: 'double-wall',
+      ashCleanoutType: 'hinged-door',
+    };
+    const output = new MasonryEngine().calculateDesign(cleanoutInput);
+    const svg = buildCoursePlanSvg(output, cleanoutInput);
+
+    expect(svg).toContain('Ash cleanout (hinged door)');
+    expect(svg).toContain('C = corner/cut unit');
+    expect(svg).toContain('CAP R1');
   });
 
   it('builds clearance diagram with pass status when distance meets code', () => {

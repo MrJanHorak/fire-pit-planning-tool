@@ -183,15 +183,23 @@ function buildCapBridgeRowScheduleTable(
         rowIndex * (output.resolvedCapUnit.widthIn + output.mortarJointIn);
       const rowCenterlineWidthIn = output.capstone.capCenterlineWidthIn + rowOffsetIn * 2;
       const rowCenterlineDepthIn = output.capstone.capCenterlineDepthIn + rowOffsetIn * 2;
+      const sideCount = getPlanCornerSideCount(output.planShape);
       const rowPerimeterIn =
         output.planShape === 'circular'
           ? Math.PI * Math.max(rowCenterlineWidthIn, rowCenterlineDepthIn)
-          : 2 * (rowCenterlineWidthIn + rowCenterlineDepthIn);
+          : sideCount > 4
+            ? sideCount *
+              rowCenterlineWidthIn *
+              Math.tan(Math.PI / sideCount)
+            : 2 * (rowCenterlineWidthIn + rowCenterlineDepthIn);
       const moduleSpacingIn = rowPerimeterIn / Math.max(1, unitCount);
       const rowJointIn = Math.max(0, moduleSpacingIn - output.resolvedCapUnit.lengthIn);
-      const taperRequired = output.planShape === 'circular' && rowIndex === 0 && capCut.requiresCutting;
+      const taperRequired =
+        output.planShape === 'circular'
+          ? rowIndex === 0 && capCut.requiresCutting
+          : sideCount > 0;
       const rowCutGuide = taperRequired
-        ? `${capCut.recommendedCutPerSideIn.toFixed(3)} in per side @ ${capCut.recommendedCutAngleDeg.toFixed(2)} deg`
+        ? `${capCut.recommendedCutPerSideIn.toFixed(3)} in per side @ ${capCut.recommendedCutAngleDeg.toFixed(2)} deg; corner units marked in layout`
         : 'Not required';
 
       return `<tr>
@@ -271,7 +279,7 @@ export function buildWallBrickTaperCutSvg(output: MasonryOutput): string {
   const cutPerSide = output.cutPlan.recommendedCutPerSideIn.toFixed(3);
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 220" width="100%" role="img" aria-label="Wall brick taper cut diagram">
-    <rect x="0" y="0" width="620" height="220" fill="#fffdf7" />
+    <rect x="0" y="0" width="620" height="250" fill="#fffdf7" />
     <text x="14" y="24" font-size="16" fill="#2f2110" font-weight="700">Sample Wall Brick Taper Cut (Plan View)</text>
     <text x="14" y="44" font-size="12" fill="#4a3720">Applies to circular WALL courses only (not capstone units).</text>
 
@@ -308,8 +316,16 @@ export function buildCapstonePlacementSampleSvg(output: MasonryOutput): string {
         ? `${(180 / polygonSides).toFixed(1)} deg corner miter`
         : '45.0 deg corner miter';
     const taperLabel = capCut.recommendedCutPerSideIn.toFixed(3);
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 220" width="100%" role="img" aria-label="Capstone placement detail diagram">
-      <rect x="0" y="0" width="620" height="220" fill="#fffdf7" />
+    const capRows =
+      output.thermalAssembly.mode === 'double-wall' &&
+      output.thermalAssembly.capBridgeCourseUnitCounts.length > 0
+        ? output.thermalAssembly.capBridgeCourseUnitCounts
+        : [output.capstone.capUnitsPerCourseRounded];
+    const rowSummary = capRows
+      .map((count, idx) => `R${idx + 1}: ${count}`)
+      .join('  ');
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 250" width="100%" role="img" aria-label="Capstone placement detail diagram">
+      <rect x="0" y="0" width="620" height="244" fill="#fffdf7" />
       <text x="14" y="24" font-size="16" fill="#2f2110" font-weight="700">Capstone Placement Detail (Plan View)</text>
       <text x="14" y="48" font-size="12" fill="#4a3720">Non-circular capstones are clipped to the ring: side pieces use taper cuts and corner pieces use miters.</text>
       <polygon points="126,88 274,76 292,158 146,170" fill="#ccb085" stroke="#6e4728" stroke-width="2" />
@@ -325,6 +341,7 @@ export function buildCapstonePlacementSampleSvg(output: MasonryOutput): string {
       <text x="386" y="188" font-size="12" fill="#4a3720">Cut capstone unit</text>
       <text x="278" y="66" font-size="12" fill="#4a3720">Mortar joint between cut edges</text>
       <text x="14" y="206" font-size="12" fill="#2f2110" font-weight="700">Capstone cuts are required for clean ${formatShapeName(output.planShape).toLowerCase()} coverage.</text>
+      <text x="14" y="228" font-size="12" fill="#4a3720">Cap course rows shown in Course Layout: ${rowSummary}. Each row has its own count and corner/miter units.</text>
     </svg>`;
   }
 
@@ -333,7 +350,16 @@ export function buildCapstonePlacementSampleSvg(output: MasonryOutput): string {
   const capCutPerSide = capCut.recommendedCutPerSideIn.toFixed(3);
   const capCutAngle = capCut.recommendedCutAngleDeg.toFixed(2);
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 220" width="100%" role="img" aria-label="Capstone placement detail diagram">
+  const circularCapRows =
+    output.thermalAssembly.mode === 'double-wall' &&
+    output.thermalAssembly.capBridgeCourseUnitCounts.length > 0
+      ? output.thermalAssembly.capBridgeCourseUnitCounts
+      : [output.capstone.capUnitsPerCourseRounded];
+  const circularRowSummary = circularCapRows
+    .map((count, idx) => `R${idx + 1}: ${count}`)
+    .join('  ');
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 244" width="100%" role="img" aria-label="Capstone placement detail diagram">
     <rect x="0" y="0" width="620" height="220" fill="#fffdf7" />
     <text x="14" y="24" font-size="16" fill="#2f2110" font-weight="700">Capstone Placement Detail (Plan View)</text>
     <text x="14" y="44" font-size="12" fill="#4a3720">Capstone units shown in a level plan view with a wedge-shaped mortar joint between them.</text>
@@ -358,6 +384,7 @@ export function buildCapstonePlacementSampleSvg(output: MasonryOutput): string {
     <text x="288" y="198" font-size="12" fill="#4a3720">Inner cap joint: ${innerJoint} in</text>
 
     <text x="14" y="206" font-size="12" fill="#2f2110" font-weight="700">${capCut.requiresCutting ? `Capstone taper cuts required here (about ${capCutPerSide} in per side at ${capCutAngle} deg).` : 'Capstone taper cuts are not required at this size.'}</text>
+    <text x="14" y="228" font-size="12" fill="#4a3720">Cap course rows shown in Course Layout: ${circularRowSummary}. Each bridge row has its own count.</text>
   </svg>`;
 }
 
@@ -382,6 +409,14 @@ function buildDiyStepsHtml(input: MasonryInput, output: MasonryOutput): string {
     output.thermalAssembly.mode === 'double-wall' &&
     output.thermalAssembly.capBridgeRows > 1
       ? `Double-wall cap closure: build ${output.thermalAssembly.capBridgeRows} cap rows total. Install ${output.capstone.capUnitsPerCourseRounded} primary cap units plus ${output.thermalAssembly.capBridgeAdditionalUnits} closure units (before waste) so the cap fully bridges the cavity and outer shell.`
+      : null;
+  const doubleWallStep =
+    output.thermalAssembly.mode === 'double-wall'
+      ? `Double-wall shell layout: build the inner firebox courses first, then dry-lay the outer decorative shell on its larger centerline. Keep the ${output.thermalAssembly.cavityWidthIn.toFixed(2)} in ${output.thermalAssembly.cavityVentMode} cavity clear, align outer-shell vents with the planned vent angles, and install ties at the configured spacing.`
+      : null;
+  const ashCleanoutStep =
+    input.ashCleanoutType && input.ashCleanoutType !== 'none'
+      ? `Ash cleanout: reserve the marked C1 cleanout location before mortaring the base course. For ${input.ashCleanoutType.replace('-', ' ')}, keep it clear of vent openings and gas-line routing, then frame or screen it according to the cut notes.`
       : null;
   const cutStep = output.cutPlan.requiresCutting
     ? `Cut wall bricks as wedges before installation. Remove approximately ${output.cutPlan.recommendedCutPerSideIn.toFixed(3)} in from each side of the inner face and set the saw to about ${output.cutPlan.recommendedCutAngleDeg.toFixed(2)} deg off square.`
@@ -408,7 +443,9 @@ function buildDiyStepsHtml(input: MasonryInput, output: MasonryOutput): string {
     cutStep,
     `Lay the wall courses to a total of ${output.courses.length} courses. Keep running bond by starting every other course with a half-module offset of ${output.courses[1]?.offsetIn.toFixed(3) ?? '0.000'} in.`,
     strategyStep,
+    ...(doubleWallStep ? [doubleWallStep] : []),
     `Leave vent openings in ${ventCourses} at brick indexes ${output.ventSpec.ventBrickIndexes.join(', ')}. This provides ${output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in of vent area for the selected ${formatFuelName(input.fuelType).toLowerCase()} configuration.`,
+    ...(ashCleanoutStep ? [ashCleanoutStep] : []),
     linerStep,
     `Set the primary cap ring with ${output.capstone.capUnitsPerCourseRounded} units on the cap centerline. Maintain a centerline cap joint of ${output.capstone.joint.actualJointIn.toFixed(3)} in.`,
     ...(capBridgeStep ? [capBridgeStep] : []),
@@ -639,82 +676,443 @@ function buildSeatingMaterialsSection(output: MasonryOutput): string {
     <ul>${seating.notes.map((note) => `<li>${note}</li>`).join('')}</ul>`;
 }
 
-export function buildCoursePlanSvg(output: MasonryOutput): string {
+function getPlanCornerSideCount(shape: MasonryOutput['planShape']): number {
+  if (shape === 'hexagonal') return 6;
+  if (shape === 'octagonal') return 8;
+  if (shape === 'square' || shape === 'rectangular') return 4;
+  return 0;
+}
+
+function calculatePlanPerimeterIn(
+  shape: MasonryOutput['planShape'],
+  widthIn: number,
+  depthIn: number,
+): number {
+  const sideCount = getPlanCornerSideCount(shape);
+  if (shape === 'circular') {
+    return Math.PI * Math.max(widthIn, depthIn);
+  }
+  if (sideCount > 4) {
+    return sideCount * widthIn * Math.tan(Math.PI / sideCount);
+  }
+  return 2 * (widthIn + depthIn);
+}
+
+function roundLayoutUnitCount(
+  shape: MasonryOutput['planShape'],
+  rawCount: number,
+): number {
+  const sideCount = getPlanCornerSideCount(shape);
+  if (sideCount > 4) {
+    return Math.max(sideCount, Math.ceil(rawCount / sideCount) * sideCount);
+  }
+  if (sideCount === 4) {
+    return Math.max(4, Math.floor(rawCount / 2) * 2);
+  }
+  return Math.max(1, Math.round(rawCount));
+}
+
+function distributeSideCounts(
+  unitCount: number,
+  widthIn: number,
+  depthIn: number,
+): [number, number, number, number] {
+  const safeUnitCount = Math.max(4, Math.round(unitCount));
+  const perimeterIn = Math.max(0.001, 2 * (widthIn + depthIn));
+  const targetModuleIn = perimeterIn / safeUnitCount;
+  let widthCount = Math.max(1, Math.round(widthIn / targetModuleIn));
+  let depthCount = Math.max(1, Math.round(depthIn / targetModuleIn));
+  const total = () => 2 * (widthCount + depthCount);
+
+  while (total() < safeUnitCount) {
+    if (widthIn / widthCount >= depthIn / depthCount) widthCount += 1;
+    else depthCount += 1;
+  }
+  while (total() > safeUnitCount && (widthCount > 1 || depthCount > 1)) {
+    if (
+      widthCount > 1 &&
+      (depthCount <= 1 || widthIn / widthCount <= depthIn / depthCount)
+    ) {
+      widthCount -= 1;
+    } else {
+      depthCount -= 1;
+    }
+  }
+
+  return [widthCount, depthCount, widthCount, depthCount];
+}
+
+function getLinearSidePiece(
+  unitIndex: number,
+  unitCount: number,
+  shape: MasonryOutput['planShape'],
+  widthIn: number,
+  depthIn: number,
+): { sideIndex: number; pieceIndex: number; piecesOnSide: number } | null {
+  const sideCount = getPlanCornerSideCount(shape);
+  if (sideCount === 0) return null;
+  if (sideCount > 4) {
+    const piecesOnSide = Math.max(1, Math.round(unitCount / sideCount));
+    const sideIndex = Math.floor(unitIndex / piecesOnSide) % sideCount;
+    return {
+      sideIndex,
+      pieceIndex: unitIndex - sideIndex * piecesOnSide,
+      piecesOnSide,
+    };
+  }
+
+  const sideCounts = distributeSideCounts(unitCount, widthIn, depthIn);
+  let remaining = unitIndex % sideCounts.reduce((sum, count) => sum + count, 0);
+  for (let sideIndex = 0; sideIndex < sideCounts.length; sideIndex += 1) {
+    const piecesOnSide = sideCounts[sideIndex];
+    if (remaining < piecesOnSide) {
+      return { sideIndex, pieceIndex: remaining, piecesOnSide };
+    }
+    remaining -= piecesOnSide;
+  }
+  return null;
+}
+
+function isCornerPiece(
+  unitIndex: number,
+  unitCount: number,
+  shape: MasonryOutput['planShape'],
+  widthIn: number,
+  depthIn: number,
+): boolean {
+  const piece = getLinearSidePiece(unitIndex, unitCount, shape, widthIn, depthIn);
+  return !!piece && (piece.pieceIndex === 0 || piece.pieceIndex === piece.piecesOnSide - 1);
+}
+
+function estimateDoubleWallOuterCourseUnitCount(output: MasonryOutput): number {
+  const centerlineOffsetIn =
+    output.thermalAssembly.innerShellThicknessIn / 2 +
+    output.thermalAssembly.cavityWidthIn +
+    output.thermalAssembly.outerShellThicknessIn / 2;
+  const outerCenterlineWidthIn = output.centerlineSpanWidthIn + centerlineOffsetIn * 2;
+  const outerCenterlineDepthIn = output.centerlineSpanDepthIn + centerlineOffsetIn * 2;
+  const moduleIn = output.resolvedUnit.lengthIn + output.mortarJointIn;
+
+  return roundLayoutUnitCount(
+    output.planShape,
+    calculatePlanPerimeterIn(
+      output.planShape,
+      outerCenterlineWidthIn,
+      outerCenterlineDepthIn,
+    ) / Math.max(0.001, moduleIn),
+  );
+}
+
+function indexFromAngle(unitCount: number, angleDeg?: number): number | undefined {
+  if (angleDeg === undefined) return undefined;
+  const normalized = ((angleDeg % 360) + 360) % 360;
+  return Math.round((normalized / 360) * unitCount) % Math.max(1, unitCount);
+}
+
+function chooseAshCleanoutIndex(
+  input: MasonryInput | undefined,
+  unitCount: number,
+  ventIndexes: number[],
+  gasIndex?: number,
+): number | undefined {
+  if (!input?.ashCleanoutType || input.ashCleanoutType === 'none') return undefined;
+  const blocked = new Set([
+    ...ventIndexes,
+    ...(gasIndex === undefined ? [] : [gasIndex]),
+  ]);
+  const preferred = Math.floor(unitCount / 2);
+  for (let step = 0; step < unitCount; step += 1) {
+    const candidate = (preferred + step) % unitCount;
+    if (!blocked.has(candidate)) return candidate;
+  }
+  return preferred;
+}
+
+export function buildCoursePlanSvg(
+  output: MasonryOutput,
+  input?: MasonryInput,
+): string {
   const rowHeight = 26;
-  const includeStrategyLegend = output.courseStrategy.strategy !== 'uniform';
-  const legendHeight = includeStrategyLegend ? 56 : 0;
-  const svgHeight = (output.courses.length + 1) * rowHeight + 28 + legendHeight;
+  const sectionGap = 32;
+  const modulePx = 48;
+  const mainBrickWidthPx = modulePx - 4;
+  const spacerBrickWidthPx = Math.max(16, Math.floor(mainBrickWidthPx * 0.5));
+  const labelX = 8;
+  const brickStartX = 92;
+  const wallRows = output.courses.length;
+  const includeOuterWall = output.thermalAssembly.mode === 'double-wall';
+  const capRowCounts =
+    output.thermalAssembly.mode === 'double-wall' &&
+    output.thermalAssembly.capBridgeCourseUnitCounts.length > 0
+      ? output.thermalAssembly.capBridgeCourseUnitCounts
+      : [output.capstone.capUnitsPerCourseRounded];
+  const outerUnitCount = includeOuterWall
+    ? estimateDoubleWallOuterCourseUnitCount(output)
+    : 0;
+  const maxUnits = Math.max(
+    output.unitsPerCourseRounded,
+    outerUnitCount,
+    ...capRowCounts,
+  );
+  const svgWidth = Math.max(940, brickStartX + maxUnits * modulePx + 24);
+  const totalRows = wallRows + (includeOuterWall ? wallRows : 0) + capRowCounts.length;
+  const legendHeight = 78;
+  const svgHeight =
+    28 +
+    totalRows * rowHeight +
+    sectionGap * (includeOuterWall ? 3 : 2) +
+    legendHeight;
 
-  const rows = output.courses
-    .map((course, idx) => {
-      const y = 18 + idx * rowHeight;
-      const modulePx = 48;
-      const mainBrickWidthPx = modulePx - 4;
-      const spacerBrickWidthPx = Math.max(
-        16,
-        Math.floor(mainBrickWidthPx * 0.5),
-      );
-      const offsetPx = course.offsetIn > 0 ? modulePx / 2 : 0;
-      const ventCourse = output.ventSpec.targetCourseIndexes.includes(
-        course.courseIndex,
-      );
-      const gasLineCourse =
-        output.ventSpec.gasLineEntryBrickIndex !== undefined &&
-        course.courseIndex === 0;
-      const courseFill =
-        course.specialCourse === 'vented-accent' ? '#8a5a13' : '#b66a34';
-      const courseTag =
-        course.specialCourse === 'vented-accent'
-          ? ' (ACCENT)'
-          : course.specialCourse === 'shim-spacer'
-            ? ' (SHIM)'
-            : '';
+  let yCursor = 18;
+  const sectionTitle = (title: string, detail: string) => {
+    const markup = `<text x="${labelX}" y="${yCursor}" font-size="12" fill="#3c2a11" font-weight="700">${title}</text>
+      <text x="${labelX + 158}" y="${yCursor}" font-size="11" fill="#6b5033">${detail}</text>`;
+    yCursor += 18;
+    return markup;
+  };
 
-      const bricks = Array.from({ length: course.unitCount }, (_, brickIdx) => {
-        const isSpacer =
-          course.specialCourse === 'shim-spacer' &&
-          !!course.spacerIndexes?.includes(brickIdx);
-        const isVentBrick =
-          ventCourse && output.ventSpec.ventBrickIndexes.includes(brickIdx);
-        const isGasLineBrick =
-          gasLineCourse && brickIdx === output.ventSpec.gasLineEntryBrickIndex;
-        const fill = isGasLineBrick
+  const renderUnitRow = ({
+    label,
+    unitCount,
+    offsetIn,
+    y,
+    fill,
+    cornerFill,
+    widthIn,
+    depthIn,
+    ventIndexes,
+    gasIndex,
+    ashIndex,
+    course,
+    isCap,
+  }: {
+    label: string;
+    unitCount: number;
+    offsetIn: number;
+    y: number;
+    fill: string;
+    cornerFill: string;
+    widthIn: number;
+    depthIn: number;
+    ventIndexes: number[];
+    gasIndex?: number;
+    ashIndex?: number;
+    course?: MasonryOutput['courses'][number];
+    isCap?: boolean;
+  }) => {
+    const offsetPx = offsetIn > 0 ? modulePx / 2 : 0;
+    const courseTag =
+      course?.specialCourse === 'vented-accent'
+        ? ' (ACCENT)'
+        : course?.specialCourse === 'shim-spacer'
+          ? ' (SHIM)'
+          : '';
+    const bricks = Array.from({ length: unitCount }, (_, unitIdx) => {
+      const isSpacer =
+        course?.specialCourse === 'shim-spacer' &&
+        !!course.spacerIndexes?.includes(unitIdx);
+      const isVentBrick = ventIndexes.includes(unitIdx);
+      const isGasLineBrick = unitIdx === gasIndex;
+      const isAshCleanout = unitIdx === ashIndex;
+      const isCorner = isCornerPiece(
+        unitIdx,
+        unitCount,
+        output.planShape,
+        widthIn,
+        depthIn,
+      );
+      const unitFill = isAshCleanout
+        ? '#2f2f2f'
+        : isGasLineBrick
           ? '#2b6f9b'
           : isVentBrick
             ? '#c13a1f'
             : isSpacer
               ? '#5f4f96'
-              : courseFill;
-        const brickWidthPx = isSpacer ? spacerBrickWidthPx : mainBrickWidthPx;
-        const xInsetPx = (mainBrickWidthPx - brickWidthPx) / 2;
-        const opacity = isGasLineBrick || isVentBrick ? '0.9' : '0.72';
+              : isCorner
+                ? cornerFill
+                : fill;
+      const brickWidthPx = isSpacer ? spacerBrickWidthPx : mainBrickWidthPx;
+      const xInsetPx = (mainBrickWidthPx - brickWidthPx) / 2;
+      const x = brickStartX + offsetPx + unitIdx * modulePx + xInsetPx;
+      const stroke = isCorner && !isVentBrick && !isGasLineBrick && !isAshCleanout
+        ? '#2f2110'
+        : 'none';
+      const strokeWidth = stroke === 'none' ? 0 : 1.5;
+      const cornerLabel =
+        isCorner && getPlanCornerSideCount(output.planShape) > 0
+          ? `<text x="${x + brickWidthPx / 2}" y="${y + 12}" text-anchor="middle" font-size="9" fill="#fff8ea">C</text>`
+          : '';
+      const capLabel =
+        isCap && isCorner && getPlanCornerSideCount(output.planShape) > 0
+          ? `<title>Corner/miter cap unit ${unitIdx + 1}</title>`
+          : '';
+      return `<rect x="${x}" y="${y}" width="${brickWidthPx}" height="16" rx="2" fill="${unitFill}" opacity="0.9" stroke="${stroke}" stroke-width="${strokeWidth}" />${cornerLabel}${capLabel}`;
+    }).join('');
 
-        return `<rect x="${52 + offsetPx + brickIdx * modulePx + xInsetPx}" y="${y}" width="${brickWidthPx}" height="16" rx="2" fill="${fill}" opacity="${opacity}" />`;
-      }).join('');
+    return `<g><text x="${labelX}" y="${y + 13}" font-size="11" fill="#3c2a11">${label}${courseTag}</text>${bricks}</g>`;
+  };
 
-      return `<g><text x="8" y="${y + 13}" font-size="11" fill="#3c2a11">C${course.courseIndex + 1}${courseTag}</text>${bricks}</g>`;
+  const innerRowsTitle = sectionTitle(
+    includeOuterWall ? 'INNER WALL COURSES' : 'WALL COURSES',
+    includeOuterWall
+      ? `${output.thermalAssembly.innerMaterialName ?? output.resolvedUnit.name}; vents/cleanout shown on hot-face layout`
+      : 'Red = vent opening; blue = gas entry; dark = ash cleanout; C = corner/cut unit',
+  );
+  const innerRows = output.courses
+    .map((course, idx) => {
+      const y = yCursor + idx * rowHeight;
+      const ventCourse = output.ventSpec.targetCourseIndexes.includes(
+        course.courseIndex,
+      );
+      const gasIndex =
+        output.ventSpec.gasLineEntryBrickIndex !== undefined &&
+        course.courseIndex === 0
+          ? output.ventSpec.gasLineEntryBrickIndex
+          : undefined;
+      const ventIndexes = ventCourse ? output.ventSpec.ventBrickIndexes : [];
+      const ashIndex =
+        course.courseIndex === 0
+          ? chooseAshCleanoutIndex(
+              input,
+              course.unitCount,
+              ventIndexes,
+              gasIndex,
+            )
+          : undefined;
+      return renderUnitRow({
+        label: `C${course.courseIndex + 1}`,
+        unitCount: course.unitCount,
+        offsetIn: course.offsetIn,
+        y,
+        fill: course.specialCourse === 'vented-accent' ? '#8a5a13' : '#b66a34',
+        cornerFill: '#6e4728',
+        widthIn: output.centerlineSpanWidthIn,
+        depthIn: output.centerlineSpanDepthIn,
+        ventIndexes,
+        gasIndex,
+        ashIndex,
+        course,
+      });
     })
     .join('');
+  yCursor += wallRows * rowHeight + sectionGap;
 
-  const capY = 18 + output.courses.length * rowHeight;
-  const capModulePx = 48;
-  const capBricks = Array.from(
-    { length: output.capstone.capUnitsPerCourseRounded },
-    (_, capIdx) =>
-      `<rect x="${52 + capIdx * capModulePx}" y="${capY}" width="${capModulePx - 4}" height="16" rx="2" fill="#ccb085" opacity="0.9" />`,
-  ).join('');
-  const capRow = `<g><text x="8" y="${capY + 13}" font-size="11" fill="#3c2a11">CAP</text>${capBricks}</g>`;
-  const strategyLegend = includeStrategyLegend
-    ? `<g>
-      <rect x="8" y="${svgHeight - 44}" width="14" height="10" rx="2" fill="#5f4f96" opacity="0.8" />
-      <text x="28" y="${svgHeight - 35}" font-size="11" fill="#3c2a11">Shim spacer unit</text>
-      <rect x="182" y="${svgHeight - 44}" width="14" height="10" rx="2" fill="#8a5a13" opacity="0.85" />
-      <text x="202" y="${svgHeight - 35}" font-size="11" fill="#3c2a11">Vented accent course</text>
-      <text x="8" y="${svgHeight - 18}" font-size="11" fill="#4a3720">Standard course units remain brown; shim units are narrower and purple; vent openings remain red; gas line entry remains blue.</text>
-    </g>`
+  const outerCenterlineOffsetIn =
+    output.thermalAssembly.innerShellThicknessIn / 2 +
+    output.thermalAssembly.cavityWidthIn +
+    output.thermalAssembly.outerShellThicknessIn / 2;
+  const outerCenterlineWidthIn =
+    output.centerlineSpanWidthIn + outerCenterlineOffsetIn * 2;
+  const outerCenterlineDepthIn =
+    output.centerlineSpanDepthIn + outerCenterlineOffsetIn * 2;
+  const outerRows = includeOuterWall
+    ? (() => {
+        const title = sectionTitle(
+          'OUTER WALL COURSES',
+          `${output.thermalAssembly.outerMaterialName ?? 'Decorative shell'}; estimated ${outerUnitCount} units/course on larger centerline`,
+        );
+        const rows = output.courses
+          .map((course, idx) => {
+            const y = yCursor + idx * rowHeight;
+            const ventCourse = output.ventSpec.targetCourseIndexes.includes(
+              course.courseIndex,
+            );
+            const ventIndexes = ventCourse
+              ? output.ventSpec.ventAnglesDeg.map((angle) =>
+                  indexFromAngle(outerUnitCount, angle) ?? 0,
+                )
+              : [];
+            const gasIndex =
+              course.courseIndex === 0
+                ? indexFromAngle(
+                    outerUnitCount,
+                    output.ventSpec.gasLineEntryAngleDeg,
+                  )
+                : undefined;
+            return renderUnitRow({
+              label: `O${course.courseIndex + 1}`,
+              unitCount: outerUnitCount,
+              offsetIn: course.offsetIn,
+              y,
+              fill: '#a96532',
+              cornerFill: '#5f381c',
+              widthIn: outerCenterlineWidthIn,
+              depthIn: outerCenterlineDepthIn,
+              ventIndexes,
+              gasIndex,
+              course,
+            });
+          })
+          .join('');
+        yCursor += wallRows * rowHeight + sectionGap;
+        return title + rows;
+      })()
     : '';
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 ${svgHeight}" width="940" height="${svgHeight}">${rows}${capRow}${strategyLegend}</svg>`;
+  const capTitle = sectionTitle(
+    'CAPSTONE COURSE LAYOUT',
+    capRowCounts.length > 1
+      ? `Double-wall cap bridge rows: ${capRowCounts.map((count, idx) => `R${idx + 1}=${count}`).join(', ')}`
+      : `${output.capstone.capUnitsPerCourseRounded} cap units on primary cap ring`,
+  );
+  const capRows = capRowCounts
+    .map((unitCount, rowIdx) => {
+      const rowOffsetIn =
+        rowIdx * (output.resolvedCapUnit.widthIn + output.mortarJointIn);
+      const y = yCursor + rowIdx * rowHeight;
+      return renderUnitRow({
+        label: capRowCounts.length > 1 ? `CAP R${rowIdx + 1}` : 'CAP',
+        unitCount,
+        offsetIn: rowIdx % 2 === 1 ? output.capstone.joint.actualModuleSpacingIn / 2 : 0,
+        y,
+        fill: rowIdx === 0 ? '#ccb085' : '#d8c397',
+        cornerFill: '#9f8050',
+        widthIn: output.capstone.capCenterlineWidthIn + rowOffsetIn * 2,
+        depthIn: output.capstone.capCenterlineDepthIn + rowOffsetIn * 2,
+        ventIndexes: [],
+        isCap: true,
+      });
+    })
+    .join('');
+  yCursor += capRowCounts.length * rowHeight + sectionGap;
+
+  const legendY = svgHeight - 58;
+  const cleanoutLegend =
+    input?.ashCleanoutType && input.ashCleanoutType !== 'none'
+      ? `<rect x="532" y="${legendY}" width="14" height="10" rx="2" fill="#2f2f2f" opacity="0.9" />
+         <text x="552" y="${legendY + 9}" font-size="11" fill="#3c2a11">Ash cleanout (${input.ashCleanoutType.replace('-', ' ')})</text>`
+      : '';
+  const doubleWallLegend = includeOuterWall
+    ? `<text x="8" y="${legendY + 48}" font-size="11" fill="#4a3720">Double-wall mode: inner and outer shell rows are separate because the outer shell has a larger centerline and may use a different material.</text>`
+    : '';
+  const strategyLegendText =
+    output.courseStrategy.strategy === 'shim-spacer'
+      ? 'Shim spacer unit: narrower purple markers.'
+      : output.courseStrategy.strategy === 'vented-accent'
+        ? 'Vented accent course: amber-gold course rows.'
+        : 'Uniform course strategy: no special course overrides active.';
+  const legend = `<g>
+    <rect x="8" y="${legendY}" width="14" height="10" rx="2" fill="#b66a34" opacity="0.8" />
+    <text x="28" y="${legendY + 9}" font-size="11" fill="#3c2a11">Standard course units remain brown</text>
+    <rect x="214" y="${legendY}" width="14" height="10" rx="2" fill="#6e4728" opacity="0.9" />
+    <text x="234" y="${legendY + 9}" font-size="11" fill="#3c2a11">C = corner/cut unit</text>
+    <rect x="358" y="${legendY}" width="14" height="10" rx="2" fill="#c13a1f" opacity="0.9" />
+    <text x="378" y="${legendY + 9}" font-size="11" fill="#3c2a11">Vent opening marker</text>
+    ${cleanoutLegend}
+    <rect x="8" y="${legendY + 22}" width="14" height="10" rx="2" fill="#2b6f9b" opacity="0.9" />
+    <text x="28" y="${legendY + 31}" font-size="11" fill="#3c2a11">Gas line entry</text>
+    <rect x="134" y="${legendY + 22}" width="14" height="10" rx="2" fill="#ccb085" opacity="0.9" />
+    <text x="154" y="${legendY + 31}" font-size="11" fill="#3c2a11">Cap row unit</text>
+    <rect x="254" y="${legendY + 22}" width="14" height="10" rx="2" fill="#9f8050" opacity="0.9" />
+    <text x="274" y="${legendY + 31}" font-size="11" fill="#3c2a11">Cap corner/miter unit</text>
+    <text x="8" y="${legendY + 64}" font-size="11" fill="#4a3720">Vent openings remain red; gas line entry remains blue. ${strategyLegendText} Verify vent and cleanout locations during dry fit before cutting.</text>
+    ${doubleWallLegend}
+  </g>`;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgWidth} ${svgHeight}" width="${svgWidth}" height="${svgHeight}">
+    ${innerRowsTitle}${innerRows}${outerRows}${capTitle}${capRows}${legend}
+  </svg>`;
 }
 
 export function buildSafetyClearanceSvg(
@@ -809,7 +1207,7 @@ export function buildConstructionPacketHtml(
   const capCut = getCapstoneCutMetrics(output);
   const foundationAdvisory = buildFoundationAdvisory(input, output);
   const regionalCodeReview = buildRegionalCodeReview(input, output);
-  const svg = buildCoursePlanSvg(output);
+  const svg = buildCoursePlanSvg(output, input);
   const clearanceSvg = buildSafetyClearanceSvg(input, output);
   const warnings =
     output.warnings.length > 0
@@ -1137,10 +1535,11 @@ export function buildConstructionPacketHtml(
 
     <section class="block print-break-before">
       <h2>Layer-By-Layer Layout</h2>
-      <p>Course legend: C1 is the bottom wall course, numbering increases upward, and CAP is the top capstone layer.</p>
-      <p>Red highlights indicate planned vent openings. Blue highlights indicate gas line entry.</p>
+      <p>Course legend: C1 is the bottom wall course. In double-wall plans C1 is the bottom inner-wall course, O1 is the matching outer-wall course, and CAP R1/R2/etc are capstone bridge rows from inside to outside.</p>
+      <p>Red highlights indicate planned vent openings. Blue highlights indicate gas line entry. Dark highlights indicate ash cleanout locations. Units marked C are corner/cut units that need extra dry-fit attention.</p>
       <p>Course strategy: ${output.courseStrategy.strategy}. ${output.courseStrategy.strategy === 'shim-spacer' ? `Shim spacer units planned: ${output.courseStrategy.shimUnitCount}.` : output.courseStrategy.strategy === 'vented-accent' ? `Accent courses: ${output.courseStrategy.accentCourseIndexes.map((index) => `C${index + 1}`).join(', ') || 'none'}.` : 'No special course overrides active.'}</p>
       ${svg}
+      ${output.thermalAssembly.mode === 'double-wall' ? `<h3>Capstone Course Rows</h3>${buildCapBridgeRowScheduleTable(output, capCut)}` : ''}
     </section>
   </body>
 </html>`;
@@ -1159,7 +1558,7 @@ export function buildEngineeringReportHtml(
   });
   const foundationAdvisory = buildFoundationAdvisory(input, output);
   const clearanceSvg = buildSafetyClearanceSvg(input, output);
-  const layoutSvg = buildCoursePlanSvg(output);
+  const layoutSvg = buildCoursePlanSvg(output, input);
   const warningList =
     output.warnings.length > 0
       ? `<ul>${output.warnings.map((warning) => `<li>${warning.message}</li>`).join('')}</ul>`
