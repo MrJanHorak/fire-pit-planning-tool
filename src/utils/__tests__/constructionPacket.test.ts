@@ -280,6 +280,10 @@ describe('construction packet export', () => {
     expect(html).toContain('DIY butt-joint mode');
     expect(html).toContain('no M corner miter cuts are scheduled');
     expect(html).toContain('No miter cuts in DIY butt-joint mode');
+    expect(html).toContain('<td>Cap taper required</td><td>No</td>');
+    expect(html).toContain('Cap cuts: 0');
+    expect(html).not.toContain('Cap side cut A');
+    expect(html).not.toContain('T — taper-cut face unit');
     expect(svg).toContain('DIY butt-joint cap mode');
     expect(svg).toContain('M not used in square/rect DIY butt-joint mode');
   });

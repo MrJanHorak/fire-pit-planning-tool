@@ -73,7 +73,7 @@ function getCapstoneCutMetrics(output: MasonryOutput): {
   const requiresCutting =
     output.planShape === 'circular'
       ? output.capstone.requiresTaperCutting
-      : polygonSides > 0;
+      : polygonSides > 0 && !usesButtJointCapCorners(output);
   const capCount = Math.max(1, output.capstone.capUnitsPerCourseRounded);
   const radiusIn = output.capstone.capInnerDiameterIn / 2;
   const moduleSpacingIn = polygonSides > 0
@@ -493,6 +493,27 @@ export function buildCapstonePlacementSampleSvg(output: MasonryOutput): string {
       .map((count, idx) => `R${idx + 1}: ${count}`)
       .join('  ');
     const cutStrategy = output.capstone.cutStrategy ?? 'full-fit';
+    if (buttJointCorners) {
+      return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 250" width="100%" role="img" aria-label="Butt-joint capstone placement detail diagram">
+        <rect x="0" y="0" width="620" height="244" fill="#fffdf7" />
+        <text x="14" y="24" font-size="16" fill="#2f2110" font-weight="700">Capstone Placement Detail (DIY Butt-Joint Mode)</text>
+        <text x="14" y="48" font-size="12" fill="#4a3720">Square/rectangle capstones stay full length: top and bottom runs pass through the corners; side runs butt into them.</text>
+        <rect x="128" y="76" width="168" height="48" rx="2" fill="#ccb085" stroke="#6e4728" stroke-width="2" />
+        <rect x="296" y="76" width="168" height="48" rx="2" fill="#ccb085" stroke="#6e4728" stroke-width="2" />
+        <rect x="448" y="124" width="48" height="92" rx="2" fill="#ccb085" stroke="#6e4728" stroke-width="2" />
+        <rect x="96" y="124" width="48" height="92" rx="2" fill="#ccb085" stroke="#6e4728" stroke-width="2" />
+        <rect x="144" y="140" width="304" height="60" fill="#2f2110" opacity="0.16" />
+        <line x1="448" y1="124" x2="448" y2="216" stroke="#4a3720" stroke-width="2" stroke-dasharray="5 4" />
+        <line x1="144" y1="124" x2="144" y2="216" stroke="#4a3720" stroke-width="2" stroke-dasharray="5 4" />
+        <text x="18" y="92" font-size="12" fill="#2f2110">Cap saw cuts: none scheduled</text>
+        <text x="18" y="112" font-size="12" fill="#4a3720">Set one straight run first, then butt the perpendicular run into it.</text>
+        <text x="184" y="70" font-size="12" fill="#4a3720">Through run continues past corner</text>
+        <text x="410" y="232" font-size="12" fill="#4a3720">Butt-joint end</text>
+        <text x="14" y="206" font-size="12" fill="#2f2110" font-weight="700">No cap taper or miter cuts are required for this DIY square/rectangle cap strategy.</text>
+        <text x="14" y="228" font-size="12" fill="#4a3720">Cap course rows shown in Course Layout: ${rowSummary}. Dry-fit corners to choose which run passes through on each side.</text>
+      </svg>`;
+    }
+
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 250" width="100%" role="img" aria-label="Capstone placement detail diagram">
       <rect x="0" y="0" width="620" height="244" fill="#fffdf7" />
       <text x="14" y="24" font-size="16" fill="#2f2110" font-weight="700">Capstone Placement Detail (Plan View)</text>
@@ -571,6 +592,38 @@ export function buildCapstoneCutTypeDiagramsSvg(output: MasonryOutput): string {
       : cutStrategy === 'corner-only'
       ? 'DIY corner-only mode: only M corner units are cut; face capstones remain full rectangular units.'
       : 'Full-fit mode: T face units are tapered; M corner units receive both taper and miter cuts.';
+
+  if (buttJointCorners) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 250" width="100%" role="img" aria-label="Butt-joint capstone no-cut diagram">
+      <rect x="0" y="0" width="760" height="250" fill="#fffdf7" />
+      <text x="16" y="26" font-size="16" fill="#2f2110" font-weight="700">Capstone Cut Type Diagrams</text>
+      <text x="16" y="48" font-size="12" fill="#4a3720">${strategyNote}</text>
+
+      <g transform="translate(36 78)">
+        <text x="0" y="-12" font-size="13" fill="#2f2110" font-weight="700">Full cap unit — through run</text>
+        <rect x="18" y="22" width="198" height="76" rx="2" fill="#ccb085" stroke="#6e4728" stroke-width="2" />
+        <text x="12" y="126" font-size="11" fill="#4a3720">No taper. No miter.</text>
+        <text x="12" y="144" font-size="11" fill="#4a3720">Runs straight through the corner.</text>
+      </g>
+
+      <g transform="translate(292 78)">
+        <text x="0" y="-12" font-size="13" fill="#2f2110" font-weight="700">Butt-joint corner</text>
+        <rect x="18" y="22" width="182" height="58" rx="2" fill="#ccb085" stroke="#6e4728" stroke-width="2" />
+        <rect x="142" y="80" width="58" height="94" rx="2" fill="#ccb085" stroke="#6e4728" stroke-width="2" />
+        <line x1="142" y1="80" x2="200" y2="80" stroke="#4a3720" stroke-width="2" stroke-dasharray="5 4" />
+        <text x="12" y="204" font-size="11" fill="#4a3720">Perpendicular run butts into through run.</text>
+      </g>
+
+      <g transform="translate(560 78)">
+        <text x="0" y="-12" font-size="13" fill="#2f2110" font-weight="700">Saw setup</text>
+        <rect x="18" y="22" width="136" height="76" rx="2" fill="#ccb085" stroke="#6e4728" stroke-width="2" />
+        <text x="12" y="126" font-size="11" fill="#4a3720">Cap cuts: 0</text>
+        <text x="12" y="144" font-size="11" fill="#4a3720">Use dry-fit layout only.</text>
+      </g>
+
+      <text x="16" y="232" font-size="12" fill="#2f2110" font-weight="700">This mode reduces cutting; the tradeoff is that joints at the corners are butt joints instead of mitered/clipped cap corners.</text>
+    </svg>`;
+  }
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 270" width="100%" role="img" aria-label="Capstone cut type diagrams">
     <rect x="0" y="0" width="760" height="270" fill="#fffdf7" />
@@ -697,6 +750,7 @@ function buildDiyStepsHtml(input: MasonryInput, output: MasonryOutput): string {
 
 function buildCutMethodGuidanceHtml(output: MasonryOutput): string {
   const capCut = getCapstoneCutMetrics(output);
+  const capCutsRequired = capCut.requiresCutting && !usesButtJointCapCorners(output);
   const wallRows: Array<[string, string]> = [
     ['Wall taper required', output.cutPlan.requiresCutting ? 'Yes' : 'No'],
     [
@@ -711,18 +765,33 @@ function buildCutMethodGuidanceHtml(output: MasonryOutput): string {
     ],
   ];
   const capRows: Array<[string, string]> = [
-    ['Cap taper required', capCut.requiresCutting ? 'Yes' : 'No'],
+    ['Cap taper required', capCutsRequired ? 'Yes' : 'No'],
     [
       'Cap taper per side',
-      capCut.requiresCutting
+      capCutsRequired
         ? `${capCut.recommendedCutPerSideIn.toFixed(3)} in`
         : '0.000 in',
     ],
     [
       'Cap saw angle setting',
-      `${capCut.recommendedCutAngleDeg.toFixed(2)} deg off square`,
+      capCutsRequired
+        ? `${capCut.recommendedCutAngleDeg.toFixed(2)} deg off square`
+        : 'Not required',
     ],
   ];
+  const markingGuidance = usesButtJointCapCorners(output)
+    ? `<ul>
+      <li>Cap workflow: no cap saw cuts are scheduled. Dry-fit the through runs first, then butt the perpendicular cap runs into them at the corners.</li>
+      <li>Wall workflow: use the wall cut settings only if the wall schedule lists cuts for the selected wall shape/material.</li>
+      <li>Quality check: Dry-fit a full side plus both corners before setting mortar so the butt-joint choice is consistent around the ring.</li>
+      <li>Cap and wall settings are independent. This DIY cap mode changes cap placement only; it does not remove any wall cuts required by the wall layout.</li>
+    </ul>`
+    : `<ul>
+      <li>Manual marking workflow: Mark the centerline of the brick first, then mark equal cut lines on both side edges from the inner face using the listed per-side taper value. Keep both marks symmetric to preserve unit center alignment.</li>
+      <li>Saw workflow: Set fence or miter to the listed angle off square, perform one side cut, then flip and repeat for the opposite side so taper remains centered.</li>
+      <li>Quality check: Dry-fit three to five cut units before batch cutting. The inner edges should close without overlap, and outer joints should stay within your target mortar range.</li>
+      <li>Cap and wall settings are independent. Use wall values for wall bricks and cap values for capstones; do not interchange them.</li>
+    </ul>`;
 
   return `<h3>Wall And Cap Cut Settings</h3>
     <div class="grid split-grid">
@@ -734,12 +803,7 @@ function buildCutMethodGuidanceHtml(output: MasonryOutput): string {
       </div>
     </div>
     <h3>Marking And Saw Setup</h3>
-    <ul>
-      <li>Manual marking workflow: Mark the centerline of the brick first, then mark equal cut lines on both side edges from the inner face using the listed per-side taper value. Keep both marks symmetric to preserve unit center alignment.</li>
-      <li>Saw workflow: Set fence or miter to the listed angle off square, perform one side cut, then flip and repeat for the opposite side so taper remains centered.</li>
-      <li>Quality check: Dry-fit three to five cut units before batch cutting. The inner edges should close without overlap, and outer joints should stay within your target mortar range.</li>
-      <li>Cap and wall settings are independent. Use wall values for wall bricks and cap values for capstones; do not interchange them.</li>
-    </ul>`;
+    ${markingGuidance}`;
 }
 
 function buildFirePitMaterialsTable(output: MasonryOutput): string {
