@@ -8,6 +8,7 @@ import {
   buildConstructionPacketHtml,
   buildCoursePlanSvg,
   buildCutScheduleTablesHtml,
+  buildSmokelessHoleGuideHtml,
   buildWallBrickTaperCutSvg,
 } from '../utils/constructionPacket';
 import { buildFoundationAdvisory } from '../utils/foundationAdvisory';
@@ -48,6 +49,10 @@ export default function ConstructionMode({
   const capstonePlacementMarkup = buildCapstonePlacementSampleSvg(output);
   const capstoneCutTypesMarkup = buildCapstoneCutTypeDiagramsSvg(output);
   const cutScheduleMarkup = buildCutScheduleTablesHtml(output);
+  const smokelessHoleGuideMarkup =
+    output.smokelessSpec?.enabled && input.fuelType === 'wood'
+      ? buildSmokelessHoleGuideHtml(output)
+      : '';
   const wallCutPerSideIn = output.cutPlan.recommendedCutPerSideIn;
   const wallCutAngleDeg = output.cutPlan.recommendedCutAngleDeg;
   const capCount = Math.max(1, output.capstone.capUnitsPerCourseRounded);
@@ -348,6 +353,18 @@ export default function ConstructionMode({
             Review these detail drawings before purchasing units and laying out
             final cuts.
           </p>
+
+          {smokelessHoleGuideMarkup && (
+            <div className='rounded-lg border border-amber-900/20 bg-white p-3'>
+              <h4 className='text-sm font-semibold text-amber-950'>
+                Smokeless Insert Hole Guide
+              </h4>
+              <div
+                className='mt-2 overflow-x-auto text-sm'
+                dangerouslySetInnerHTML={{ __html: smokelessHoleGuideMarkup }}
+              />
+            </div>
+          )}
 
           <div className='rounded-lg border border-amber-900/20 bg-white p-3'>
             <h4 className='text-sm font-semibold text-amber-950'>

@@ -129,6 +129,28 @@ describe('construction packet export', () => {
     expect(html).toContain('Professional Sign-Off');
   });
 
+  it('includes smokeless hole guide in engineering report when smokeless mode is enabled', () => {
+    const smokelessInput: MasonryInput = {
+      ...input,
+      fuelType: 'wood',
+      smokelessMode: true,
+      smokelessInsertPreset: 'custom-diy',
+      smokelessInsertBaseOD: 19,
+      smokelessInsertFlangeOD: 21,
+      smokelessPrimaryVentCount: 20,
+      smokelessPrimaryVentDiameterIn: 0.75,
+      smokelessSecondaryVentCount: 20,
+      smokelessSecondaryVentDiameterIn: 0.5,
+    };
+    const output = new MasonryEngine().calculateDesign(smokelessInput);
+    const html = buildEngineeringReportHtml(smokelessInput, output);
+
+    expect(html).toContain('Smokeless Insert Hole Guide');
+    expect(html).toContain('Hole Cutting Guide');
+    expect(html).toContain('Primary intake holes');
+    expect(html).toContain('Secondary jet holes');
+  });
+
   it('includes seating quantities when seating inputs are configured', () => {
     const output = new MasonryEngine().calculateDesign({
       ...input,
@@ -169,6 +191,41 @@ describe('construction packet export', () => {
     expect(html).toContain('8 in Wall Stone (10-15% waste)');
     expect(html).toContain('4 in Building Stone (10-15% waste)');
     expect(html).toContain('Typical Stone Wall Weight');
+  });
+
+  it('adds a smokeless insert planning section with a sheet-metal cutting guide', () => {
+    const smokelessInput: MasonryInput = {
+      ...input,
+      fuelType: 'wood',
+      smokelessMode: true,
+      smokelessInsertPreset: 'custom-diy',
+      smokelessInsertBaseOD: 28,
+      smokelessInsertFlangeOD: 32,
+      smokelessInsertMinDepthIn: 18,
+      smokelessInsertAirGapIn: 1.5,
+      smokelessPrimaryVentCount: 12,
+      smokelessPrimaryVentDiameterIn: 0.75,
+      smokelessSecondaryVentCount: 18,
+      smokelessSecondaryVentDiameterIn: 0.5,
+    };
+    const output = new MasonryEngine().calculateDesign(smokelessInput);
+    const html = buildConstructionPacketHtml(smokelessInput, output);
+
+    expect(html).toContain('Smokeless Insert Planning');
+    expect(html).toContain('Sheet Metal Cutting Guide');
+    expect(html).toContain('Hole Cutting Guide');
+    expect(html).toContain('Build Sequence');
+    expect(html).toContain('Smokeless Insert Hole Guide');
+    expect(html).toContain('Custom DIY sheet-metal insert');
+    expect(html).toContain('Base OD: 28.00 in');
+    expect(html).toContain('Flange OD: 32.00 in');
+    expect(html).toContain('Smokeless Insert / Liner');
+    expect(html).toContain('Primary Intake Holes');
+    expect(html).toContain('Secondary Jet Holes');
+    expect(html).toContain('Hole Layout Spacing');
+    expect(html).toContain('Primary intake holes');
+    expect(html).toContain('Secondary jet holes');
+    expect(html).toContain('Cut / roll the sheet metal');
   });
 
   it('uses width and depth text for rectangular plans', () => {

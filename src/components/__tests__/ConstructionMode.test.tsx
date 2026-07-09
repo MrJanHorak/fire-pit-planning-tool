@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { MasonryEngine } from '../../engine/MasonryEngine';
 import type { MasonryInput } from '../../types';
@@ -71,5 +71,34 @@ describe('ConstructionMode', () => {
     expect(
       screen.getByText(/Vented accent strategy is active/i),
     ).toBeInTheDocument();
+  });
+
+  it('shows smokeless hole guide in cuts tab when smokeless mode is enabled', () => {
+    const smokelessInput: MasonryInput = {
+      ...baseInput,
+      fuelType: 'wood',
+      smokelessMode: true,
+      smokelessInsertPreset: 'custom-diy',
+      smokelessInsertBaseOD: 19,
+      smokelessInsertFlangeOD: 21,
+      smokelessPrimaryVentCount: 20,
+      smokelessPrimaryVentDiameterIn: 0.75,
+      smokelessSecondaryVentCount: 20,
+      smokelessSecondaryVentDiameterIn: 0.5,
+    };
+    const output = new MasonryEngine().calculateDesign(smokelessInput);
+
+    const { container } = render(
+      <ConstructionMode input={smokelessInput} output={output} />,
+    );
+    const localQueries = within(container);
+
+    fireEvent.click(localQueries.getByRole('tab', { name: 'Cuts' }));
+
+    expect(
+      localQueries.getByRole('heading', { name: 'Smokeless Insert Hole Guide' }),
+    ).toBeInTheDocument();
+    expect(localQueries.getByText('Primary intake holes')).toBeInTheDocument();
+    expect(localQueries.getByText('Secondary jet holes')).toBeInTheDocument();
   });
 });

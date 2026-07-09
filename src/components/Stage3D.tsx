@@ -1827,6 +1827,75 @@ function seededUnitVariation(seed: number): number {
 
 type RockVisualStyle = 'ledgestone' | 'fieldstone' | 'mosaic';
 
+function isRadialWallUnitName(unitName?: string): boolean {
+  return !!unitName && /radial/i.test(unitName);
+}
+
+function getRadialWallUnitTaperFactor(unitName?: string): number {
+  const normalized = unitName?.toLowerCase() ?? '';
+
+  if (normalized.includes('fire brick')) {
+    return 0.14;
+  }
+  if (normalized.includes('bullnose')) {
+    return 0.06;
+  }
+  return 0.1;
+}
+
+function buildRadialWallUnitFootprint({
+  center,
+  rotationY,
+  lengthFt,
+  widthFt,
+  taperFactor,
+}: {
+  center: Point2D;
+  rotationY: number;
+  lengthFt: number;
+  widthFt: number;
+  taperFactor: number;
+}): Point2D[] {
+  const safeLengthFt = Math.max(0.08, lengthFt);
+  const safeWidthFt = Math.max(0.04, widthFt);
+  const taper = Math.min(0.24, Math.max(0.02, taperFactor));
+  const innerLengthFt = safeLengthFt * (1 - taper);
+  const outerLengthFt = safeLengthFt * (1 + taper);
+  const halfWidthFt = safeWidthFt / 2;
+
+  const localPoints = [
+    { x: -innerLengthFt / 2, z: -halfWidthFt },
+    { x: innerLengthFt / 2, z: -halfWidthFt },
+    { x: outerLengthFt / 2, z: halfWidthFt },
+    { x: -outerLengthFt / 2, z: halfWidthFt },
+  ];
+
+  return localPoints.map((point) => {
+    const rotated = rotateLocalOffset(point.x, point.z, rotationY);
+    return {
+      x: center.x + rotated.x,
+      z: center.z + rotated.z,
+    };
+  });
+}
+
+function getRockVisualStyle(materialName?: string): RockVisualStyle | null {
+  if (!materialName || !/natural stone/i.test(materialName)) {
+    return null;
+  }
+
+  const normalized = materialName.toLowerCase();
+  if (normalized.includes('ledgestone')) {
+    return 'ledgestone';
+  }
+
+  if (normalized.includes('mosaic')) {
+    return 'mosaic';
+  }
+
+  return 'fieldstone';
+}
+
 function getRockArchetypeIndex(
   style: RockVisualStyle,
   courseIndex: number,
@@ -2370,6 +2439,25 @@ export default function Stage3D({
     renderedWallOuterRadiusFt + thermalCavityWidthFt;
   const thermalOuterShellOuterRadiusFt =
     thermalOuterShellInnerRadiusFt + thermalOuterShellThicknessFt;
+  const smokelessSpec = output.smokelessSpec;
+  const smokelessInsertBaseRadiusFt = smokelessSpec?.enabled
+    ? smokelessSpec.insertBaseOD / 2 / 12
+    : 0;
+  const smokelessInsertFlangeRadiusFt = smokelessSpec?.enabled
+    ? smokelessSpec.insertFlangeOD / 2 / 12
+    : 0;
+  const smokelessPrimaryHoleRadiusFt = smokelessSpec?.enabled
+    ? Math.max(0.02, (smokelessSpec.primaryVentDiameterIn / 12) * 0.45)
+    : 0;
+  const smokelessSecondaryHoleRadiusFt = smokelessSpec?.enabled
+    ? Math.max(0.018, (smokelessSpec.secondaryVentDiameterIn / 12) * 0.45)
+    : 0;
+  const smokelessPrimaryHoleCount = smokelessSpec?.enabled
+    ? Math.min(24, smokelessSpec.primaryVentCount)
+    : 0;
+  const smokelessSecondaryHoleCount = smokelessSpec?.enabled
+    ? Math.min(24, smokelessSpec.secondaryVentCount)
+    : 0;
   const thermalTieRenderCount = Math.max(
     6,
     Math.min(24, Math.round(output.thermalAssembly.estimatedTieCount / 2) || 6),
@@ -2414,14 +2502,18 @@ export default function Stage3D({
   const capCutStatusText = capRequiresTaperCut
     ? 'Capstone taper cuts required'
     : 'Capstone taper cuts not required';
-  const isRockWallVisual = /natural stone/i.test(output.resolvedUnit.name);
-  const rockVisualStyle: RockVisualStyle = output.resolvedUnit.name
-    .toLowerCase()
-    .includes('ledgestone')
-    ? 'ledgestone'
-    : output.resolvedUnit.name.toLowerCase().includes('mosaic')
-      ? 'mosaic'
-      : 'fieldstone';
+  const rockVisualStyle =
+    getRockVisualStyle(output.resolvedUnit.name) ?? 'fieldstone';
+  const isRockWallVisual = getRockVisualStyle(output.resolvedUnit.name) !== null;
+  const wallUnitIsRadial = isRadialWallUnitName(output.resolvedUnit.name);
+  const outerWallMaterialName =
+    output.thermalAssembly.mode === 'double-wall'
+      ? output.thermalAssembly.outerMaterialName ?? output.resolvedUnit.name
+      : output.resolvedUnit.name;
+  const outerRockVisualStyle =
+    getRockVisualStyle(outerWallMaterialName) ?? rockVisualStyle;
+  const outerIsRockWallVisual = getRockVisualStyle(outerWallMaterialName) !== null;
+  const outerWallUnitIsRadial = isRadialWallUnitName(outerWallMaterialName);
   const wallLegendLabel = isRockWallVisual ? 'Wall Rock' : 'Wall Brick';
   const capLegendLabel = isHalfRoundCap ? 'Cap Unit (Half-Round)' : 'Cap Unit';
   const rockPalette =
@@ -2702,11 +2794,20 @@ export default function Stage3D({
     renderedWidthFt: number,
     color: string,
     brickId: string,
+    visualOverride?: {
+      isRockWallVisual: boolean;
+      rockVisualStyle: RockVisualStyle;
+    },
   ) => {
-    if (isRockWallVisual) {
+    const wallIsRockWallVisual =
+      visualOverride?.isRockWallVisual ?? isRockWallVisual;
+    const wallRockVisualStyle =
+      visualOverride?.rockVisualStyle ?? rockVisualStyle;
+
+    if (wallIsRockWallVisual) {
       const seedBase = courseIndex * 1000 + brickIdx;
       const styleScales =
-        rockVisualStyle === 'ledgestone'
+        wallRockVisualStyle === 'ledgestone'
           ? {
               lengthMin: 1.0,
               lengthRange: 0.26,
@@ -2718,7 +2819,7 @@ export default function Stage3D({
               jitterX: 0.08,
               jitterZ: 0.08,
             }
-          : rockVisualStyle === 'mosaic'
+          : wallRockVisualStyle === 'mosaic'
             ? {
                 lengthMin: 0.9,
                 lengthRange: 0.34,
@@ -2774,13 +2875,13 @@ export default function Stage3D({
       );
       const rockColor = rockPalette[colorIndex] ?? '#8f6a4a';
       const archetypeIndex = getRockArchetypeIndex(
-        rockVisualStyle,
+        wallRockVisualStyle,
         courseIndex,
         brickIdx,
         archetypePatternLength,
       );
       const archetypeScales =
-        rockVisualStyle === 'ledgestone'
+        wallRockVisualStyle === 'ledgestone'
           ? [
               [1.15, 0.8, 1.04],
               [1.07, 0.86, 1.02],
@@ -2788,7 +2889,7 @@ export default function Stage3D({
               [1.0, 0.9, 1.06],
               [1.18, 0.78, 1.0],
             ]
-          : rockVisualStyle === 'mosaic'
+          : wallRockVisualStyle === 'mosaic'
             ? [
                 [0.96, 1.06, 1.0],
                 [1.02, 0.94, 0.96],
@@ -2815,13 +2916,13 @@ export default function Stage3D({
             renderedWidthFt * widthScale * archWidth,
           ]}
         >
-          {rockVisualStyle === 'ledgestone' ? (
+          {wallRockVisualStyle === 'ledgestone' ? (
             archetypeIndex % 2 === 0 ? (
               <boxGeometry args={[1, 1, 1]} />
             ) : (
               <dodecahedronGeometry args={[0.56, 0]} />
             )
-          ) : rockVisualStyle === 'mosaic' ? (
+          ) : wallRockVisualStyle === 'mosaic' ? (
             archetypeIndex % 3 === 0 ? (
               <octahedronGeometry args={[0.62, 0]} />
             ) : archetypeIndex % 3 === 1 ? (
@@ -3939,6 +4040,60 @@ export default function Stage3D({
                     isRadialPlanShape(output.planShape) &&
                     output.planShape !== 'circular'
                   ) {
+                    if (wallUnitIsRadial) {
+                      const footprint = buildRadialWallUnitFootprint({
+                        center: placement,
+                        rotationY: placement.rotationY,
+                        lengthFt: renderedLengthFt,
+                        widthFt: renderedWidthFt,
+                        taperFactor:
+                          getRadialWallUnitTaperFactor(output.resolvedUnit.name),
+                      });
+                      const footprintCenter = averagePoints(footprint);
+                      if (!shouldRenderInCutaway(footprintCenter.x, footprintCenter.z)) {
+                        return null;
+                      }
+
+                      return (
+                        <ExtrudedXZPolygon
+                          key={`${course.courseIndex}-${brickIdx}`}
+                          polygonPoints={footprint}
+                          heightFt={renderedHeightFt}
+                          y={y}
+                          color={perBrickColor}
+                          wireframe={effectiveWireframe}
+                          showEdges={effectiveShowBrickOutlines}
+                        />
+                      );
+                    }
+
+                    if (isRockWallVisual) {
+                      return (
+                        <mesh
+                          key={`${course.courseIndex}-${brickIdx}`}
+                          position={[placement.x, y, placement.z]}
+                          rotation={[0, placement.rotationY, 0]}
+                          onPointerOver={handleBrickPointerOver(brickId)}
+                          onPointerOut={handleBrickPointerOut(brickId)}
+                          onClick={handleBrickSelect(brickInfo)}
+                        >
+                          {renderOuterWallUnitSurface(
+                            course.courseIndex,
+                            brickIdx,
+                            renderedLengthFt,
+                            renderedHeightFt,
+                            renderedWidthFt,
+                            perBrickColor,
+                            brickId,
+                            {
+                              isRockWallVisual: true,
+                              rockVisualStyle,
+                            },
+                          )}
+                        </mesh>
+                      );
+                    }
+
                     const piecesPerFace = Math.max(
                       1,
                       Math.round(course.unitCount / wallRadialSegments),
@@ -3977,6 +4132,65 @@ export default function Stage3D({
                     !isSpacer &&
                     !isRadialPlanShape(output.planShape)
                   ) {
+                    if (wallUnitIsRadial) {
+                      const footprint = buildRadialWallUnitFootprint({
+                        center: placement,
+                        rotationY: placement.rotationY,
+                        lengthFt: renderedLengthFt,
+                        widthFt: renderedWidthFt,
+                        taperFactor:
+                          getRadialWallUnitTaperFactor(output.resolvedUnit.name),
+                      });
+                      const footprintCenter = averagePoints(footprint);
+                      if (
+                        !shouldRenderInCutaway(
+                          footprintCenter.x,
+                          footprintCenter.z,
+                        )
+                      ) {
+                        return null;
+                      }
+
+                      return (
+                        <ExtrudedXZPolygon
+                          key={`${course.courseIndex}-${brickIdx}`}
+                          polygonPoints={footprint}
+                          heightFt={renderedHeightFt}
+                          y={y}
+                          color={perBrickColor}
+                          wireframe={effectiveWireframe}
+                          showEdges={effectiveShowBrickOutlines}
+                        />
+                      );
+                    }
+
+                    if (isRockWallVisual) {
+                      return (
+                        <mesh
+                          key={`${course.courseIndex}-${brickIdx}`}
+                          position={[placement.x, y, placement.z]}
+                          rotation={[0, placement.rotationY, 0]}
+                          onPointerOver={handleBrickPointerOver(brickId)}
+                          onPointerOut={handleBrickPointerOut(brickId)}
+                          onClick={handleBrickSelect(brickInfo)}
+                        >
+                          {renderOuterWallUnitSurface(
+                            course.courseIndex,
+                            brickIdx,
+                            renderedLengthFt,
+                            renderedHeightFt,
+                            renderedWidthFt,
+                            perBrickColor,
+                            brickId,
+                            {
+                              isRockWallVisual: true,
+                              rockVisualStyle,
+                            },
+                          )}
+                        </mesh>
+                      );
+                    }
+
                     const sideCounts = distributeRectangularRingUnits(
                       course.unitCount,
                       geometry.wallSpanWidthFt,
@@ -4511,6 +4725,60 @@ export default function Stage3D({
                                     course.courseIndex * geometry.courseRiseFt +
                                     mortarJointFt / 2;
                                   const perBrickColor = getWallBrickColor(course, false);
+                                  if (outerWallUnitIsRadial) {
+                                    const footprint = buildRadialWallUnitFootprint({
+                                      center: placement,
+                                      rotationY: placement.rotationY,
+                                      lengthFt: outerRenderedBrickLengthFt,
+                                      widthFt: visBrickWidthFt,
+                                      taperFactor: getRadialWallUnitTaperFactor(
+                                        outerWallMaterialName,
+                                      ),
+                                    });
+                                    const footprintCenter = averagePoints(footprint);
+                                    if (
+                                      !shouldRenderInCutaway(
+                                        footprintCenter.x,
+                                        footprintCenter.z,
+                                      )
+                                    ) {
+                                      return null;
+                                    }
+                                    return (
+                                      <ExtrudedXZPolygon
+                                        key={`outer-${course.courseIndex}-${brickIdx}`}
+                                        polygonPoints={footprint}
+                                        heightFt={visBrickHeightFt}
+                                        y={y}
+                                        color={perBrickColor}
+                                        wireframe={effectiveWireframe}
+                                        showEdges={effectiveShowBrickOutlines}
+                                      />
+                                    );
+                                  }
+                                  if (outerIsRockWallVisual) {
+                                    return (
+                                      <mesh
+                                        key={`outer-${course.courseIndex}-${brickIdx}`}
+                                        position={[placement.x, y, placement.z]}
+                                        rotation={[0, placement.rotationY, 0]}
+                                      >
+                                        {renderOuterWallUnitSurface(
+                                          course.courseIndex,
+                                          brickIdx,
+                                          outerRenderedBrickLengthFt,
+                                          visBrickHeightFt,
+                                          visBrickWidthFt,
+                                          perBrickColor,
+                                          `outer-${course.courseIndex}-${brickIdx}`,
+                                          {
+                                            isRockWallVisual: true,
+                                            rockVisualStyle: outerRockVisualStyle,
+                                          },
+                                        )}
+                                      </mesh>
+                                    );
+                                  }
                                   if (output.planShape !== 'circular') {
                                     const piecesPerFace = Math.max(
                                       1,
@@ -4570,6 +4838,10 @@ export default function Stage3D({
                                         visBrickWidthFt,
                                         perBrickColor,
                                         `outer-${course.courseIndex}-${brickIdx}`,
+                                        {
+                                          isRockWallVisual: outerIsRockWallVisual,
+                                          rockVisualStyle: outerRockVisualStyle,
+                                        },
                                       )}
                                     </mesh>
                                   );
@@ -4585,7 +4857,11 @@ export default function Stage3D({
                           outerRadiusFt={thermalOuterShellOuterRadiusFt}
                           heightFt={wallHeightFt}
                           y={wallHeightFt / 2}
-                          color={palette.wallOddColor}
+                          color={
+                            outerIsRockWallVisual
+                              ? rockPalette[1] ?? palette.wallOddColor
+                              : palette.wallOddColor
+                          }
                           opacity={1}
                           wireframe={effectiveWireframe}
                           showEdges={false}
@@ -4691,6 +4967,75 @@ export default function Stage3D({
                                   course.courseIndex * geometry.courseRiseFt +
                                   mortarJointFt / 2;
                                 const perBrickColor = getWallBrickColor(course, false);
+                                if (outerWallUnitIsRadial) {
+                                  const footprint = buildRadialWallUnitFootprint({
+                                    center: placement,
+                                    rotationY: placement.rotationY,
+                                    lengthFt: outerRenderedBrickLengthFt,
+                                    widthFt: visBrickWidthFt,
+                                    taperFactor: getRadialWallUnitTaperFactor(
+                                      outerWallMaterialName,
+                                    ),
+                                  });
+                                  const footprintCenter = averagePoints(footprint);
+                                  if (
+                                    !shouldRenderInCutaway(
+                                      footprintCenter.x,
+                                      footprintCenter.z,
+                                    )
+                                  ) {
+                                    return null;
+                                  }
+                                  return (
+                                    <ExtrudedXZPolygon
+                                      key={`outer-rect-${course.courseIndex}-${brickIdx}`}
+                                      polygonPoints={footprint}
+                                      heightFt={visBrickHeightFt}
+                                      y={y}
+                                      color={perBrickColor}
+                                      wireframe={effectiveWireframe}
+                                      showEdges={effectiveShowBrickOutlines}
+                                    />
+                                  );
+                                }
+                                if (outerIsRockWallVisual) {
+                                  return (
+                                    <mesh
+                                      key={`outer-rect-${course.courseIndex}-${brickIdx}`}
+                                      position={[placement.x, y, placement.z]}
+                                      rotation={[0, placement.rotationY, 0]}
+                                      onPointerOver={handleBrickPointerOver(
+                                        `outer-${course.courseIndex}-${brickIdx}`,
+                                      )}
+                                      onPointerOut={handleBrickPointerOut(
+                                        `outer-${course.courseIndex}-${brickIdx}`,
+                                      )}
+                                      onClick={handleBrickSelect({
+                                        id: `outer-${course.courseIndex}-${brickIdx}`,
+                                        courseIndex: course.courseIndex,
+                                        brickIndex: brickIdx,
+                                        kind: 'wall-brick',
+                                        isSpacer: false,
+                                        requiresTaperCut: false,
+                                        isVent: false,
+                                      })}
+                                    >
+                                      {renderOuterWallUnitSurface(
+                                        course.courseIndex,
+                                        brickIdx,
+                                        outerRenderedBrickLengthFt,
+                                        visBrickHeightFt,
+                                        visBrickWidthFt,
+                                        perBrickColor,
+                                        `outer-${course.courseIndex}-${brickIdx}`,
+                                        {
+                                          isRockWallVisual: true,
+                                          rockVisualStyle: outerRockVisualStyle,
+                                        },
+                                      )}
+                                    </mesh>
+                                  );
+                                }
                                 const sideCounts =
                                   distributeRectangularRingUnits(
                                     outerRectUnitCount,
@@ -5706,6 +6051,114 @@ export default function Stage3D({
                 }
                 wireframe={effectiveWireframe}
               />
+            )}
+
+            {smokelessSpec?.enabled && (
+              <>
+                <mesh position={[0, linerMidY, 0]}>
+                  <cylinderGeometry
+                    args={[
+                      smokelessInsertFlangeRadiusFt,
+                      smokelessInsertFlangeRadiusFt,
+                      Math.max(0.08, linerHeightFt * 0.62),
+                      96,
+                      1,
+                      true,
+                      cutawayThetaStartRad,
+                      cutawayThetaLengthRad,
+                    ]}
+                  />
+                  <meshStandardMaterial
+                    color='#8a5a13'
+                    metalness={0.2}
+                    roughness={0.45}
+                    transparent
+                    opacity={0.22}
+                    wireframe={effectiveWireframe}
+                  />
+                </mesh>
+                <mesh position={[0, linerMidY, 0]}>
+                  <cylinderGeometry
+                    args={[
+                      smokelessInsertBaseRadiusFt,
+                      smokelessInsertBaseRadiusFt,
+                      Math.max(0.06, linerHeightFt * 0.5),
+                      96,
+                      1,
+                      true,
+                      cutawayThetaStartRad,
+                      cutawayThetaLengthRad,
+                    ]}
+                  />
+                  <meshStandardMaterial
+                    color='#c17b2b'
+                    metalness={0.14}
+                    roughness={0.55}
+                    transparent
+                    opacity={0.36}
+                    wireframe={effectiveWireframe}
+                  />
+                </mesh>
+                {Array.from({ length: smokelessPrimaryHoleCount }, (_, holeIdx) => {
+                  const angle = (holeIdx / Math.max(1, smokelessPrimaryHoleCount)) * Math.PI * 2;
+                  const holeRadius = Math.max(
+                    smokelessInsertBaseRadiusFt - smokelessPrimaryHoleRadiusFt * 0.8,
+                    smokelessPrimaryHoleRadiusFt * 1.5,
+                  );
+                  return (
+                    <mesh
+                      key={`smokeless-primary-hole-${holeIdx}`}
+                      position={[
+                        Math.cos(angle) * holeRadius,
+                        linerMidY - linerHeightFt * 0.18,
+                        Math.sin(angle) * holeRadius,
+                      ]}
+                    >
+                      <sphereGeometry args={[smokelessPrimaryHoleRadiusFt, 8, 8]} />
+                      <meshStandardMaterial
+                        color='#f59e0b'
+                        emissive='#f97316'
+                        emissiveIntensity={0.35}
+                        roughness={0.7}
+                        metalness={0.05}
+                        wireframe={effectiveWireframe}
+                      />
+                    </mesh>
+                  );
+                })}
+                {Array.from({ length: smokelessSecondaryHoleCount }, (_, holeIdx) => {
+                  const angle = (holeIdx / Math.max(1, smokelessSecondaryHoleCount)) * Math.PI * 2;
+                  const holeRadius = Math.max(
+                    smokelessInsertBaseRadiusFt - smokelessSecondaryHoleRadiusFt * 0.5,
+                    smokelessSecondaryHoleRadiusFt * 1.4,
+                  );
+                  return (
+                    <mesh
+                      key={`smokeless-secondary-hole-${holeIdx}`}
+                      position={[
+                        Math.cos(angle) * holeRadius,
+                        linerMidY + linerHeightFt * 0.2,
+                        Math.sin(angle) * holeRadius,
+                      ]}
+                    >
+                      <sphereGeometry args={[smokelessSecondaryHoleRadiusFt, 8, 8]} />
+                      <meshStandardMaterial
+                        color='#fb7185'
+                        emissive='#f43f5e'
+                        emissiveIntensity={0.28}
+                        roughness={0.72}
+                        metalness={0.03}
+                        wireframe={effectiveWireframe}
+                      />
+                    </mesh>
+                  );
+                })}
+                <Html position={[0, linerMidY + linerHeightFt * 0.35, 0]} center transform distanceFactor={8}>
+                  <div className='stage3d-label rounded-full border border-amber-900/35 bg-white/90 px-1.5 py-0.5 text-[10px] font-bold text-amber-950 shadow'>
+                    Smokeless insert + hole pattern
+                  </div>
+                </Html>
+              </>
             )}
 
             {isRadialPlanShape(output.planShape) ? (
