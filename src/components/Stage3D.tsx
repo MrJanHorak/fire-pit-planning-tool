@@ -963,6 +963,14 @@ function rotateLocalOffset(x: number, z: number, rotationY: number): Point2D {
   };
 }
 
+function getOutwardNormal(x: number, z: number): Point2D {
+  const length = Math.hypot(x, z);
+  if (length <= 0.0001) {
+    return { x: 0, z: 1 };
+  }
+  return { x: x / length, z: z / length };
+}
+
 export function buildCircularCapJointQuad(
   input: CircularCapJointGeometryInput,
 ): CircularCapJointQuad {
@@ -3831,9 +3839,23 @@ export default function Stage3D({
                   }
 
                   return isVentOpening ? (
+                    (() => {
+                      const ventMarkerDepthFt = Math.max(0.025, mortarJointFt * 0.45);
+                      const outwardNormal = getOutwardNormal(
+                        placement.x,
+                        placement.z,
+                      );
+                      const ventFaceOffsetFt =
+                        renderedWidthFt / 2 + ventMarkerDepthFt / 2 + 0.006;
+                      const ventX =
+                        placement.x + outwardNormal.x * ventFaceOffsetFt;
+                      const ventZ =
+                        placement.z + outwardNormal.z * ventFaceOffsetFt;
+
+                      return (
                     <group key={`${course.courseIndex}-${brickIdx}-vent`}>
                       <mesh
-                        position={[placement.x, y, placement.z]}
+                        position={[ventX, y, ventZ]}
                         rotation={[0, placement.rotationY, 0]}
                         onPointerOver={handleBrickPointerOver(brickId)}
                         onPointerOut={handleBrickPointerOut(brickId)}
@@ -3843,7 +3865,7 @@ export default function Stage3D({
                           args={[
                             ventOpeningLengthFt,
                             ventOpeningHeightFt,
-                            brickWidthFt + 0.05,
+                            ventMarkerDepthFt,
                           ]}
                         />
                         <meshStandardMaterial
@@ -3866,9 +3888,9 @@ export default function Stage3D({
                           output.ventSpec.targetCourseIndexes[0] && (
                           <Html
                             position={[
-                              placement.x,
+                              ventX,
                               y + brickHeightFt * 0.64,
-                              placement.z,
+                              ventZ,
                             ]}
                             center
                             transform
@@ -3885,6 +3907,8 @@ export default function Stage3D({
                           </Html>
                         )}
                     </group>
+                      );
+                    })()
                   ) : (
                     <mesh
                       key={`${course.courseIndex}-${brickIdx}`}
