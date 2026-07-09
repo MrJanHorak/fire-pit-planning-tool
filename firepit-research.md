@@ -172,6 +172,8 @@ Status key:
 
 - Circular firepit geometry using the centerline formula.
 - Rectangular firepit geometry with shape-aware spans and quantity calculations.
+- Square firepit geometry with even course count snapping for symmetric corner pairing.
+- **Hexagonal and octagonal plan shapes** — corner-count-based perimeter math, clipped polygon ring footprints, vent markers anchored to outer polygon face midpoints, and full 3D rendering.
 - Actual modular brick dimensions as the default baseline.
 - Configurable mortar joint.
 - Running bond with 50% alternating course offset.
@@ -185,28 +187,36 @@ Status key:
 - Thermal liner modeling with fire-brick and steel-ring options.
 - Liner expansion-gap modeling in calculations and output.
 - Double-wall cavity assembly planning, including cap-bridge rows and closure-unit estimates.
+- **Separate inner/outer wall material presets** — heat ratings (°F), and mortar types (refractory / Type N / Type S) per zone with split Bill of Materials.
+- **Smokeless secondary-combustion mode** — stack-effect ΔP formula, intake/outlet vent area ratio (1.2–1.5 optimal), secondary jet sizing, base-course block omission count, and flange overlap safety check.
+- **Commercial smokeless insert fitment** — Solo Stove Bonfire 2.0, Breeo X19/X24/X30, Tiki Brand Patio, Custom/DIY profiles; auto-calculated masonry ID, flange overlap status, base-course omission count.
 - Layer-by-layer SVG construction output.
 - 3D geometry preview using React Three Fiber, driven by resolved wall and cap unit dimensions.
 - Logistics estimates for waste, brick weight, stone weight, cap units, and mortar volume.
 - Tight-radius circular advisory (`tight-radius-half-bat-recommended`) and cut-plan half-bat guidance below 24 in inner diameter.
 - Mortar curing advisory (`mortar-curing-required`) when mortar joints are present.
 - Capstone preset support including matching, flat stone, rowlock, and additional cap profiles.
+- **Capstone cut strategies** — full taper-cut (all joints wedge-fit), corner-only miter (fewest cuts for polygon/circular), and butt-joint/DIY (zero cuts for square/rectangular plans). Per-strategy cut schedules with SVG cut diagrams, placement guides, and tool guidance.
 - Construction packet details covering liner guidance, vent layout, gas-line routing checks, and 28-day curing guidance.
+- **Plan shape selector with distinct SVG icons** — inline polygon SVGs for hex and oct; consistent center-aligned icon+label layout for all five shape buttons.
 - Reference tests for circular counts, rectangular plans, vent placement behavior, gas-line routing, cap logic, and safety warnings.
 
 ### Partial
 
-- Square planning exists via rectangular dimensions, but there is no dedicated square-specific mode or corner-bonding guidance set.
 - Wood venting is implemented, but airflow performance is still represented as design guidance rather than combustion simulation.
 - Capstone overhang and presets are implemented, but explicit drip-edge detailing rules remain advisory-focused rather than geometry-enforced.
 - Logistics estimates are broad and useful, but still do not include adhesive-specific quantity modeling.
 - Thermal behavior modeling remains rule-based and advisory (not transient heat-transfer simulation).
+- Corner bonding and cut details for hex/oct shapes are implemented at the geometry level; construction-grade step-by-step corner sequences in the build packet are still advisory text rather than per-course diagrams.
 
 ### Missing
 
 - Advanced transient thermal simulation for cavity/liner assemblies (CFD/FEA class modeling).
 - Dedicated soldier-course cap behavior.
 - Manufacturer-specific material presets and exact per-unit weight models.
+- Keyhole (circle + cooking channel), in-ground, and raised-pedestal build modes.
+- Ash cleanout door, removable ash pan, and drain hole options.
+- PBR material shaders (3D renderer uses flat colors).
 
 ## Open Gaps in the Current Code Implementation
 
@@ -217,36 +227,33 @@ The most important remaining gaps, based on current implementation and the resea
 The code now supports liner selection, expansion-gap output, double-wall cavity planning, cap-bridge row schedules, and closure-unit logistics.  
 Remaining gap: advanced heat-transfer simulation (time-dependent thermal behavior, moisture migration, and material-specific heat cycling) is not modeled.
 
-### 2. Corner and Non-Circular Bonding Details Need More Depth
+### 2. Visualization Accuracy Lags Behind the Engine
 
-The engine supports circular, square, and rectangular planning with corner guidance, but construction-grade corner detailing can still be expanded (e.g., richer corner cut schedules and step-by-step corner sequences).
+The 3D stage correctly clips all wall footprints (rectangular ring pieces for square/rect, polygon ring pieces for hex/oct, wedge quads for circular) and anchors vent markers to actual outer faces. Remaining visualization gaps are around richer rendering intent overlays — dedicated corner interlock call-outs and per-course color coding for inner vs. outer wall in double-wall mode.
 
-### 3. Visualization Accuracy Lags Behind the Engine
+### 3. Ventilation Output Is Directionally Correct but Not Construction-Grade
 
-The 3D stage now consumes resolved unit dimensions from output. Remaining visualization gaps are mostly around richer construction intent overlays (for example, explicit corner interlock and vertical exclusion visualization).
+The model now includes fuel-specific placement, gas vent-area range warnings, secondary combustion jet sizing, and gas-line entry checks. Remaining limits include:
 
-### 4. Ventilation Output Is Directionally Correct but Not Construction-Grade
-
-The model now includes fuel-specific placement, gas vent-area range warnings, and gas-line entry checks. Remaining limits include:
-
-- hardware-specific compliance,
+- hardware-specific compliance verification,
 - burner-manufacturer-specific cavity diagrams.
 
-### 5. Safety Coverage Is Implemented but Baseline-Oriented
+### 4. Safety Coverage Is Implemented but Baseline-Oriented
 
 The warning system now includes both horizontal setback and overhead clearance checks.  
-Remaining opportunity: fuel-specific setback recommendations (e.g., stricter advisory ranges for wood vs gas) in addition to the current baseline minimum rule.
+Remaining opportunity: fuel-specific setback recommendations (e.g., stricter advisory ranges for wood vs. gas) in addition to the current baseline minimum rule.
 
-### 6. Construction Packet Is Strong but Still Expandable
+### 5. Construction Packet Is Strong but Still Expandable
 
-The exported packet now includes quantities, warnings, cap-bridge row schedules, course SVG output, liner guidance, gas-line checks, and stepwise build sequence guidance.  
-Remaining opportunity: add more cap-style-specific install variants and richer field QA checklists.
+The exported packet now includes quantities, warnings, cap-bridge row schedules, course SVG output, liner guidance, gas-line checks, and stepwise build sequence guidance. Per-strategy capstone cut schedules, SVG placement diagrams, and cut-type diagrams are also included.  
+Remaining opportunity: richer field QA checklists for pre-ignition acceptance and inspection sign-off; dedicated soldier-course install variants.
 
 ## Recommended Next Implementation Order
 
-1. Add fuel-specific clearance advisory bands while preserving baseline minimum code checks.
-2. Expand rectangular/square corner detailing to construction-grade corner cut and overlap sequences.
-3. Increase thermal fidelity (advanced cavity/liner heat-transfer behavior and moisture-response modeling).
-4. Expand manufacturer-specific presets and per-unit weight fidelity.
-5. Add richer cap-style instruction variants (including dedicated soldier-course workflows) in packet output.
-6. Deepen field QA checklists for pre-ignition acceptance and inspection sign-off.
+1. Fuel-specific clearance advisory bands (stricter wood vs. gas) while preserving baseline minimum code checks.
+2. Increase thermal fidelity (advanced cavity/liner heat-transfer behavior and moisture-response modeling).
+3. Expand manufacturer-specific presets and per-unit weight fidelity.
+4. Add richer cap-style instruction variants (including dedicated soldier-course workflows) in packet output.
+5. Deepen field QA checklists for pre-ignition acceptance and inspection sign-off.
+6. PBR material shaders for the 3D renderer (firebrick, natural stone, stainless, Corten steel).
+7. Keyhole, in-ground, and raised-pedestal plan/build modes.

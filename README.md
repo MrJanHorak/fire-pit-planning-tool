@@ -53,7 +53,7 @@ Adding feature-focused screenshots will improve adoption and clarity. Suggested 
 
 ## Current Capabilities
 
-- Parametric circular, square, and rectangular firepit design.
+- Parametric circular, square, rectangular, hexagonal, and octagonal firepit design.
 - Engineering-aware wall, capstone, venting, liner, and foundation calculations.
 - **Separate inner/outer wall material selection in double-wall mode** — distinct material presets, heat ratings (°F), and mortar types (refractory / Type N / Type S) for the firebox inner shell and outer decorative shell. Split Bill of Materials.
 - **Smokeless secondary-combustion mode** — stack-effect draft pressure (ΔP formula), intake/outlet vent area ratio check (1.2–1.5 optimal range), secondary jet sizing, base-course block omission count, and flange overlap safety status.
@@ -69,6 +69,8 @@ Adding feature-focused screenshots will improve adoption and clarity. Suggested 
 - Vertical + horizontal safety visualization including overhead-clearance review.
 - Gas hardware templates (generic, drop-in pan, linear, high-BTU) that tune vent-area guidance.
 - Rectangular/square corner interlock guidance and permit/inspection checklist output in build packet.
+- **Capstone cut strategy selection** — full taper-cut (all joints wedge-fit), corner-only miter cut (fewest cuts), and DIY butt-joint (zero cuts for square/rectangular plans). Cut schedule, placement SVGs, and tool guidance in build packet.
+- **Plan shape selector with distinct SVG icons** — circle, square, rectangle, hexagon, and octagon buttons display accurate shape geometry for quick visual identification.
 - Field Toolkit for no-DB field workflows (progress checklist, notes/photos, measurement validation, weather checks).
 - Shareable compact URL + QR project handoff, with backward compatibility for older share links.
 - Offline-first basics via manifest + service worker app-shell caching (PWA-style behavior).
@@ -83,7 +85,8 @@ The following capabilities are identified and on the roadmap but not yet impleme
 | **Smokeless secondary-combustion mode** | ✅ **Implemented** — stack-effect ΔP, intake/outlet ratio, jet sizing, base-course omissions, flange overlap. |
 | **Commercial insert fitment** | ✅ **Implemented** — Solo Stove, Breeo X19/X24/X30, Tiki Brand presets with auto-calc masonry ID. |
 | **Mortar type distinction** | ✅ **Implemented** — refractory vs. Type N/S tracked and warned per wall zone. |
-| **Hex/octagonal shapes** | Only circular, square, and rectangular plans are currently supported. |
+| **Hex/octagonal shapes** | ✅ **Implemented** — full geometry, clipped wall footprints, vent markers anchored to polygon faces, and 3D rendering. |
+| **Capstone cut schedule and DIY mode** | ✅ **Implemented** — taper-cut, corner-only miter, and butt-joint (zero-cut) strategies with SVG diagrams and build guidance. |
 | **Keyhole firepit shape** | Cooking-focused keyhole (circle + coal channel) shape is not yet available. |
 | **In-ground / raised-pedestal build modes** | All builds are modeled as above-grade masonry walls. |
 | **Ash cleanout features** | Hinged cleanout door, removable ash pan, and drain hole options are not yet modeled. |
@@ -140,12 +143,12 @@ The following capabilities are identified and on the roadmap but not yet impleme
 | Foundation sizing | Baseline quantity model fixed; soil/drainage/frost context is advisory. |
 | Gas venting | Rule-based guidance using fuel + hardware template ranges; confirm exact manufacturer requirements. |
 | Thermal assembly depth | Double-wall cavity depth and cap-bridge row/closure planning are modeled; thermal behavior remains rule-based. |
-| Inner/outer wall materials | **Currently same material for both shells.** Separate inner (firebrick) / outer (stone) with split BOM is planned (Phase 1). |
-| Smokeless venting | **Not yet modeled.** `thermalCavityVentMode: 'vented'` is a cavity behavior flag, not a secondary-combustion system. Full stack-effect calc is Phase 1. |
-| Commercial insert fitment | **Not yet modeled.** Solo Stove / Breeo / Tiki profiles with flange overlap check are Phase 1. |
-| Plan shapes | Circular, square, rectangular only. Hex/octagonal planned for Phase 2. |
-| Build modes | Above-grade masonry only. In-ground and raised-pedestal modes planned for Phase 2. |
-| 3D materials | Flat colors only. PBR shaders and cross-section cutaway planned for Phase 3. |
+| Inner/outer wall materials | **Implemented** — separate inner (firebrick/refractory) and outer (stone/brick/CMU) material presets with split BOM and mortar type per zone. |
+| Smokeless venting | **Implemented** — stack-effect ΔP formula, intake/outlet vent area ratio (1.2–1.5), secondary jet sizing, base-course omissions, and flange overlap safety check. |
+| Commercial insert fitment | **Implemented** — Solo Stove, Breeo X19/X24/X30, Tiki Brand, and Custom/DIY profiles with auto-calculated masonry ID and flange overlap status. |
+| Plan shapes | Circular, square, rectangular, hexagonal, and octagonal. Keyhole, in-ground, and raised-pedestal modes planned. |
+| Build modes | Above-grade masonry only. In-ground and raised-pedestal modes planned. |
+| 3D materials | Flat colors only. PBR shaders and cross-section cutaway planned. |
 
 ## Field Validation Steps (On Site)
 
@@ -169,24 +172,25 @@ The following capabilities are identified and on the roadmap but not yet impleme
 
 Current roadmap priorities:
 
-### Phase 1 — Thermodynamic Engine Integration (Highest Impact)
+### Phase 1 — Thermodynamic Engine Integration ✅ Completed
 
-1. **Separate inner/outer wall materials** — Allow distinct `innerWallPresetKey` and `outerWallPresetKey` in double-wall mode. Inner: firebrick, refractory castable, high-alumina. Outer: natural stone, standard brick, CMU. Separate mortar type per zone (refractory vs. Type N/S). Split BOM line items.
-2. **Smokeless secondary-combustion mode** — Add `smokelessMode` flag that enables stack-effect draft pressure calculation, intake/outlet vent area ratio enforcement, and secondary jet sizing. Works with both double-wall AND single-wall + steel ring liner.
-3. **Commercial insert preset database** — Pre-configured fitment profiles for Solo Stove Bonfire 2.0, Breeo X19/X24/X30, Tiki Brand Patio, and custom DIY. Auto-calculates required masonry ID, flange overlap status, and base-course vent omission count.
+1. ✅ **Separate inner/outer wall materials** — Distinct `innerWallPresetKey` and `outerWallPresetKey` in double-wall mode. Inner: firebrick, refractory castable, high-alumina. Outer: natural stone, standard brick, CMU. Separate mortar type per zone (refractory vs. Type N/S). Split BOM line items.
+2. ✅ **Smokeless secondary-combustion mode** — `smokelessMode` flag with stack-effect draft pressure calculation, intake/outlet vent area ratio enforcement, and secondary jet sizing. Works with both double-wall AND single-wall + steel ring liner.
+3. ✅ **Commercial insert preset database** — Pre-configured fitment profiles for Solo Stove Bonfire 2.0, Breeo X19/X24/X30, Tiki Brand Patio, and custom DIY. Auto-calculates required masonry ID, flange overlap status, and base-course vent omission count.
 
 ### Phase 2 — Shape and Configuration Expansion
 
-4. **Hexagonal and octagonal plan shapes** — New `PlanShape` variants with corner-count-based perimeter math, corner interlock guidance, and 3D rendering.
-5. **Keyhole firepit shape** — Circle + rectangular cooking channel for coal-rake cooking configurations.
-6. **In-ground and raised-pedestal build modes** — In-ground mode changes foundation from slab to excavation + drainage pocket + gravel fill calc.
-7. **Ash cleanout features** — Hinged cleanout door, removable ash pan, or drain holes; affects first-course layout and BOM.
+4. ✅ **Hexagonal and octagonal plan shapes** — `PlanShape` variants with corner-count-based perimeter math, clipped wall footprints, vent markers anchored to polygon faces, and full 3D rendering.
+5. ✅ **Capstone cut schedules and DIY mode** — Full taper-cut, corner-only miter, and butt-joint (zero-cut) strategies for all plan shapes with SVG cut diagrams, placement guides, and material counts.
+6. **Keyhole firepit shape** — Circle + rectangular cooking channel for coal-rake cooking configurations.
+7. **In-ground and raised-pedestal build modes** — In-ground mode changes foundation from slab to excavation + drainage pocket + gravel fill calc.
+8. **Ash cleanout features** — Hinged cleanout door, removable ash pan, or drain holes; affects first-course layout and BOM.
 
 ### Phase 3 — Visualizer and Rendering Upgrades
 
-8. **PBR material shaders** — MeshStandardMaterial with per-material roughness/metalness: firebrick (rough 0.9), natural stone (rough 0.85–0.95), brushed stainless (metalness 1.0, rough 0.2), Corten steel (metalness 0.2, rough 0.75 + rust tint).
-9. **Cross-sectional cutaway tool** — WebGL clipping plane toggle revealing annular air gap width, insert flange resting on cap, and gravel foundation layers.
-10. **Convective airflow particle simulation** — GPU particle system for smokeless mode: blue particles entering base vents → transitioning to red as they rise through the cavity → high-velocity jets from top rim holes.
+9. **PBR material shaders** — MeshStandardMaterial with per-material roughness/metalness: firebrick (rough 0.9), natural stone (rough 0.85–0.95), brushed stainless (metalness 1.0, rough 0.2), Corten steel (metalness 0.2, rough 0.75 + rust tint).
+10. **Cross-sectional cutaway tool** — WebGL clipping plane toggle revealing annular air gap width, insert flange resting on cap, and gravel foundation layers.
+11. **Convective airflow particle simulation** — GPU particle system for smokeless mode: blue particles entering base vents → transitioning to red as they rise through the cavity → high-velocity jets from top rim holes.
 
 ### Deferred / Future Consideration
 
