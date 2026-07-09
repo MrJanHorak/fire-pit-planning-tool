@@ -424,6 +424,7 @@ describe('MasonryEngine', () => {
       output.outerSpanWidthIn,
     );
     expect(output.unitsPerCourseRounded).toBeGreaterThan(0);
+    expect(output.unitsPerCourseRounded % 2).toBe(0);
     expect(output.cutPlan.requiresCutting).toBe(false);
   });
 

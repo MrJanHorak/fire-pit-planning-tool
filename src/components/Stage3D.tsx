@@ -763,7 +763,7 @@ function buildRegularPolygonRingPiecePoints({
   ];
 }
 
-function distributeRectangularRingUnits(
+export function distributeRectangularRingUnits(
   unitCount: number,
   widthFt: number,
   depthFt: number,
@@ -793,7 +793,7 @@ function distributeRectangularRingUnits(
   return [widthCount, depthCount, widthCount, depthCount];
 }
 
-function getRectangularRingPieceIndex(
+export function getRectangularRingPieceIndex(
   brickIndex: number,
   sideCounts: [number, number, number, number],
 ): { sideIndex: number; pieceIndex: number; piecesOnSide: number } {
@@ -812,7 +812,7 @@ function getRectangularRingPieceIndex(
   };
 }
 
-function buildRectangularRingPiecePoints({
+export function buildRectangularRingPiecePoints({
   spanWidthFt,
   spanDepthFt,
   ringWidthFt,
@@ -3838,6 +3838,50 @@ export default function Stage3D({
                     );
                   }
 
+                  if (
+                    !isVentOpening &&
+                    !isSpacer &&
+                    !isRadialPlanShape(output.planShape)
+                  ) {
+                    const sideCounts = distributeRectangularRingUnits(
+                      course.unitCount,
+                      geometry.wallSpanWidthFt,
+                      geometry.wallSpanDepthFt,
+                    );
+                    const { sideIndex, pieceIndex, piecesOnSide } =
+                      getRectangularRingPieceIndex(brickIdx, sideCounts);
+                    const footprint = buildRectangularRingPiecePoints({
+                      spanWidthFt: geometry.wallSpanWidthFt,
+                      spanDepthFt: geometry.wallSpanDepthFt,
+                      ringWidthFt: renderedWidthFt,
+                      sideIndex,
+                      pieceIndex,
+                      piecesOnSide,
+                      jointFt: mortarJointFt,
+                    });
+                    const footprintCenter = averagePoints(footprint);
+                    if (
+                      !shouldRenderInCutaway(
+                        footprintCenter.x,
+                        footprintCenter.z,
+                      )
+                    ) {
+                      return null;
+                    }
+
+                    return (
+                      <ExtrudedXZPolygon
+                        key={`${course.courseIndex}-${brickIdx}`}
+                        polygonPoints={footprint}
+                        heightFt={renderedHeightFt}
+                        y={y}
+                        color={perBrickColor}
+                        wireframe={effectiveWireframe}
+                        showEdges={effectiveShowBrickOutlines}
+                      />
+                    );
+                  }
+
                   return isVentOpening ? (
                     (() => {
                       const ventMarkerDepthFt = Math.max(0.025, mortarJointFt * 0.45);
@@ -4386,22 +4430,51 @@ export default function Stage3D({
                                   course.courseIndex * geometry.courseRiseFt +
                                   mortarJointFt / 2;
                                 const perBrickColor = getWallBrickColor(course, false);
+                                const sideCounts =
+                                  distributeRectangularRingUnits(
+                                    outerRectUnitCount,
+                                    outerSpanWidthFt,
+                                    outerSpanDepthFt,
+                                  );
+                                const {
+                                  sideIndex,
+                                  pieceIndex,
+                                  piecesOnSide,
+                                } = getRectangularRingPieceIndex(
+                                  brickIdx,
+                                  sideCounts,
+                                );
+                                const footprint =
+                                  buildRectangularRingPiecePoints({
+                                    spanWidthFt: outerSpanWidthFt,
+                                    spanDepthFt: outerSpanDepthFt,
+                                    ringWidthFt:
+                                      thermalOuterShellThicknessFt,
+                                    sideIndex,
+                                    pieceIndex,
+                                    piecesOnSide,
+                                    jointFt: mortarJointFt,
+                                  });
+                                const footprintCenter =
+                                  averagePoints(footprint);
+                                if (
+                                  !shouldRenderInCutaway(
+                                    footprintCenter.x,
+                                    footprintCenter.z,
+                                  )
+                                ) {
+                                  return null;
+                                }
                                 return (
-                                  <mesh
+                                  <ExtrudedXZPolygon
                                     key={`outer-rect-${course.courseIndex}-${brickIdx}`}
-                                    position={[placement.x, y, placement.z]}
-                                    rotation={[0, placement.rotationY, 0]}
-                                  >
-                                    {renderOuterWallUnitSurface(
-                                      course.courseIndex,
-                                      brickIdx,
-                                      outerRenderedBrickLengthFt,
-                                      visBrickHeightFt,
-                                      visBrickWidthFt,
-                                      perBrickColor,
-                                      `outer-rect-${course.courseIndex}-${brickIdx}`,
-                                    )}
-                                  </mesh>
+                                    polygonPoints={footprint}
+                                    heightFt={visBrickHeightFt}
+                                    y={y}
+                                    color={perBrickColor}
+                                    wireframe={effectiveWireframe}
+                                    showEdges={effectiveShowBrickOutlines}
+                                  />
                                 );
                               },
                             )}

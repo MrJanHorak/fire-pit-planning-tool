@@ -880,7 +880,9 @@ export class MasonryEngine {
               polygonSideCount,
               Math.ceil(unitCountRaw / polygonSideCount) * polygonSideCount,
             )
-          : Math.max(1, Math.floor(unitCountRaw));
+          : planMetrics.planShape === 'square' || planMetrics.planShape === 'rectangular'
+            ? Math.max(4, Math.ceil(unitCountRaw / 2) * 2)
+            : Math.max(1, Math.floor(unitCountRaw));
 
       return {
         unitCountRaw,

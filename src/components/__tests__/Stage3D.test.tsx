@@ -5,8 +5,11 @@ import {
   buildSeatingReferencePlacements,
   buildCircularCapBrickQuad,
   buildCircularCapJointQuad,
+  buildRectangularRingPiecePoints,
   computeStage3DGeometry,
+  distributeRectangularRingUnits,
   getMaxCircularSeatingCount,
+  getRectangularRingPieceIndex,
   getSeatingGuideInsetFt,
   getSeatingSurfaceVisual,
   getStageGroundRadiusForShapeFt,
@@ -142,6 +145,48 @@ describe('Stage3D geometry', () => {
     expect(geometry.wallSpanDepthFt).toBeCloseTo(
       output.centerlineSpanDepthIn / 12,
     );
+  });
+
+  it('builds clipped rectangular wall footprints inside the outer corner bounds', () => {
+    const engine = new MasonryEngine();
+    const output = engine.calculateDesign({
+      ...baseInput,
+      planShape: 'rectangular',
+      innerWidthIn: 48,
+      innerDepthIn: 30,
+    });
+    const geometry = computeStage3DGeometry(output);
+    const wallWidthFt = output.resolvedUnit.widthIn / 12;
+    const sideCounts = distributeRectangularRingUnits(
+      output.unitsPerCourseRounded,
+      geometry.wallSpanWidthFt,
+      geometry.wallSpanDepthFt,
+    );
+    const totalSideUnits = sideCounts.reduce((sum, count) => sum + count, 0);
+    const outerHalfW = geometry.wallSpanWidthFt / 2 + wallWidthFt / 2;
+    const outerHalfD = geometry.wallSpanDepthFt / 2 + wallWidthFt / 2;
+
+    expect(output.unitsPerCourseRounded % 2).toBe(0);
+    expect(totalSideUnits).toBe(output.unitsPerCourseRounded);
+
+    Array.from({ length: output.unitsPerCourseRounded }, (_, unitIndex) => {
+      const { sideIndex, pieceIndex, piecesOnSide } =
+        getRectangularRingPieceIndex(unitIndex, sideCounts);
+      const points = buildRectangularRingPiecePoints({
+        spanWidthFt: geometry.wallSpanWidthFt,
+        spanDepthFt: geometry.wallSpanDepthFt,
+        ringWidthFt: wallWidthFt,
+        sideIndex,
+        pieceIndex,
+        piecesOnSide,
+        jointFt: output.mortarJointIn / 12,
+      });
+
+      points.forEach((point) => {
+        expect(Math.abs(point.x)).toBeLessThanOrEqual(outerHalfW);
+        expect(Math.abs(point.z)).toBeLessThanOrEqual(outerHalfD);
+      });
+    });
   });
 
   it('detects half-round coping cap units by name', () => {
