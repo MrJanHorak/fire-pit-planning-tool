@@ -17,9 +17,9 @@ export const quickStartSteps: ContentSection[] = [
     intro:
       'Begin with the opening you want to gather around, then set plan shape, wall height, and brick size that fit that scale.',
     bullets: [
-      'Choose plan shape first (circular, square, or rectangular). Rectangular plans use both inner width and inner depth, while square keeps width and depth aligned.',
+      'Choose plan shape first: circular, square, rectangular, hexagonal, or octagonal. Rectangular plans use both inner width and inner depth; square keeps width and depth aligned. Hexagonal and octagonal plans use a flat-to-flat inner span and automatically compute polygon perimeter, corner count, corner-interlock guidance, and miter/taper cut requirements for both wall and cap courses.',
       'Use the inner size as the main driver. The layout updates the outer wall, centerline, and course count from that value.',
-      'A 36 in circular opening is a solid starting point for a medium gathering pit.',
+      'A 36 in circular opening is a solid starting point for a medium gathering pit. For polygon shapes (hex, oct), a flat-to-flat span of 36–40 in gives a comparable firebox opening with the visual interest of angled sides.',
       'Stick with modular brick and a 3/8 in joint if you want counts that align with common masonry references.',
       'Natural stone presets (ledgestone, fieldstone, mosaic) offer an alternative to modular brick. Stone is heavier, weathers differently, and requires careful stone type selection because some minerals absorb water and can explode under heat. See the stone type selector and safety warnings for high-risk types.',
     ],
@@ -53,7 +53,8 @@ export const quickStartSteps: ContentSection[] = [
     intro:
       'Once the main size feels right, make small changes that improve finish quality and reduce cutting.',
     bullets: [
-      'For circular pits, compare the no-cut sizes if you want cleaner wall and cap courses.',
+      'For circular pits, compare the no-cut sizes if you want cleaner wall and cap courses. For square and rectangular pits in DIY butt-joint cap mode, all corner cap cuts are eliminated — one run extends through the corner and the crossing run butts into it flush.',
+      'Select a capstone cut strategy once cap size is stable: full-fit (every cap tapered or mitered for tight coverage), corner-only (face caps stay rectangular, only corner pieces are cut), or DIY butt-joint for square/rectangular plans (zero saw cuts, straight runs). The build packet generates a cut schedule, SVG placement diagram, and tool guidance for the selected strategy.',
       'Tune wall course strategy after geometry is stable: uniform running bond, shim spacer, or vented accent.',
       'Use cap orientation and cap placement mode to control how the top course reads and how far it projects inward versus outward.',
       'Keep cap overhang modest so the top course sheds water without feeling oversized.',
@@ -81,6 +82,26 @@ export const designBestPractices: ContentSection[] = [
       'Natural stone selection is critical: granite, basalt, and marble are safe choices; river-rock, sandstone, limestone, and shale are high-risk because they absorb moisture and can fail catastrophically under repeated heating.',
       'For stone, the face-foot estimate tells you how many linear feet of stone face area will be exposed in the finished wall. The tool calculates tonnage at 8 in and 4 in depths with 10–15% waste buffers so you can order the right quantity.',
       'Dry-stack stone has a rustic aesthetic and no curing time, but relies on gravity and friction. Mortared stone offers more security and allows tighter joints, but requires 28-day curing before the first fire and is more vulnerable to joint cracking in wet or freeze-thaw climates unless drainage is detailed carefully.',
+    ],
+  },
+  {
+    title: 'Polygon and multi-sided plan shapes',
+    bullets: [
+      'Hexagonal and octagonal plans produce a polygon wall with clipped corner units on every course. Corner units are marked C in the course layout and require miter cuts so adjacent faces close cleanly.',
+      'Vent openings on hex/oct shapes are centered on flat side faces. Never place vent openings at a polygon corner — corner units are structural closure pieces that block and distort airflow.',
+      'Cap cut strategy matters more on polygon shapes: full-fit gives the cleanest cap coverage with all tapers and miters; corner-only keeps face caps rectangular and only cuts the polygon corner pieces. Both produce accurate coverage when cut to the listed angles.',
+      'Polygon cap pieces are always cut to a specific miter angle — the angle depends on the side count (hex = 60° corners, oct = 45° corners). Review the cut-type SVG diagram in the build packet before setting the saw.',
+      'Double-wall polygon pits require the outer shell to follow the same polygon geometry on a larger centerline. Check outer course row counts and outer corner alignment separately from the inner shell.',
+    ],
+  },
+  {
+    title: 'Capstone cut strategy',
+    bullets: [
+      'Full-fit: every cap unit is tapered or mitered to conform to the ring. This produces the tightest mortar joints and cleanest coverage, but requires the most saw work. Recommended when visual quality is the priority.',
+      'Corner-only (DIY): face capstones stay full rectangular units; only the corner caps are cut. Outer joints on face runs will be wider or less uniform. This is the best balance of cut reduction and ring coverage for circular, hex, and oct plans.',
+      'DIY butt-joint (square/rectangular only): one cap run extends straight through each corner; the perpendicular run butts flush into it. Zero saw cuts are needed. Review the build packet for which axis should be the through-run vs. butt-run.',
+      'The build packet generates a separate cut schedule table, an SVG placement diagram, and saw-setup guidance for each strategy. Review all three before cutting stock.',
+      'Wall cut settings and cap cut settings are always independent — do not interchange them. The wall taper angle applies to wall bricks only; the cap taper angle applies to capstone units only.',
     ],
   },
   {
@@ -168,7 +189,7 @@ export const researchHighlights: ContentSection[] = [
     intro:
       'The smoothest installs are won during planning. Good sequencing removes guesswork before mortar and saw work start.',
     bullets: [
-      'Square and rectangular layouts need explicit corner overlap logic so each course locks through the corner instead of creating a vertical crack line.',
+      'Square, rectangular, hexagonal, and octagonal layouts need explicit corner overlap logic so each course locks through the corner instead of creating a vertical crack line. For polygon shapes, every corner unit is a miter-cut closure piece — mark those locations in the dry-lay before mortaring.',
       'Tight-radius circles often require half-bats, tapered cuts, or radial units. Planning that early keeps joints consistent and prevents rushed saw work late in the project.',
       'Use a two-track cut workflow: manual marking uses equal per-side offsets from the inner edge, while table/miter saw workflow uses the listed angle off square and mirrored side cuts. Both methods should produce the same taper.',
       'Cap design is both visual and functional. A modest overhang and drip strategy improve water shedding and can extend wall life in freeze-thaw climates.',
@@ -202,7 +223,16 @@ export const researchHighlights: ContentSection[] = [
 
 export const faqItems: FaqItem[] = [
   {
-    question: 'What should a first-time user change first?',
+    question: 'How do hexagonal and octagonal plans work?',
+    answer:
+      'Hex and oct plans use polygon perimeter math rather than circular centerline formulas. Each course includes corner units that are miter-cut to close the polygon face. Vent openings are placed on flat face sides only — polygon corners are structural closure pieces that block airflow and should never be used as vents. The 3D preview clips each wall and cap unit to its correct polygon footprint, so you can verify coverage before building.',
+  },
+  {
+    question: 'What is the difference between full-fit, corner-only, and DIY butt-joint cap strategies?',
+    answer:
+      'Full-fit tapers or miters every cap unit for the tightest possible ring coverage — most saw work but cleanest joints. Corner-only keeps all face cap units full rectangular and only cuts the polygon or ring corner pieces — a good balance for hex/oct and circular plans. DIY butt-joint is available for square and rectangular plans only: one cap run extends straight through each corner and the crossing run butts flush into it, requiring zero saw cuts. The build packet generates a cut schedule, SVG placement diagram, and tool guidance for whichever strategy you choose.',
+  },
+  {
     answer:
       'Start with plan shape, inner size, wall height, fuel type, and brick preset. Those five inputs determine most of the geometry and safety behavior. Leave mortar, cap, and vent tuning until the main form is stable.',
   },
