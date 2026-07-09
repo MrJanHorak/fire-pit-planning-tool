@@ -462,6 +462,7 @@ export class MasonryEngine {
       input.mortarJointIn,
       input.capstoneOverhangIn,
       input.capPlacementMode,
+      input.capCutStrategy,
     );
     thermalAssembly = this.applyCapBridgePlanning(
       input,
@@ -1695,6 +1696,7 @@ export class MasonryEngine {
     jointIn: number,
     overhangIn: number,
     placementMode: MasonryInput['capPlacementMode'],
+    cutStrategy: MasonryInput['capCutStrategy'] = 'full-fit',
   ): CapstoneSpec {
     const requestedInnerExtensionIn =
       placementMode === 'symmetric' ? overhangIn / 2 : 0;
@@ -1800,6 +1802,7 @@ export class MasonryEngine {
       capCenterlineDepthIn,
       capUnitsPerCourseRaw,
       capUnitsPerCourseRounded,
+      cutStrategy: cutStrategy ?? 'full-fit',
       joint: {
         actualJointIn,
         innerJointIn,

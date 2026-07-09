@@ -98,6 +98,10 @@ export function normalizeMasonryInput(
       value.capPlacementMode,
       defaults.capPlacementMode,
     ) as MasonryInput['capPlacementMode'],
+    capCutStrategy: coerceString(
+      value.capCutStrategy,
+      defaults.capCutStrategy ?? 'full-fit',
+    ) as MasonryInput['capCutStrategy'],
     soilType: coerceString(
       value.soilType,
       defaults.soilType ?? 'unknown',

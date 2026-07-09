@@ -1207,6 +1207,64 @@ export default function ControlPanel({
           </div>
         </div>
 
+        <div className='flex flex-col gap-1 sm:col-span-2'>
+          <FieldLabel
+            label='Capstone Cut Strategy'
+            tip='Full-fit trims every cap to follow the finished ring. DIY corner-only leaves face caps square and cuts only corner pieces, reducing saw work but allowing larger or less-uniform joints.'
+          />
+          <div
+            className='grid grid-cols-2 gap-1 rounded-lg border border-amber-700/25 bg-white p-1'
+            role='group'
+            aria-label='Capstone cut strategy'
+          >
+            {[
+              {
+                value: 'full-fit' as const,
+                label: 'Full-fit',
+                hint: 'Best coverage',
+              },
+              {
+                value: 'corner-only' as const,
+                label: 'DIY corner-only',
+                hint: 'Fewer cuts',
+              },
+            ].map((option) => {
+              const selected =
+                (input.capCutStrategy ?? 'full-fit') === option.value;
+
+              return (
+                <button
+                  key={option.value}
+                  type='button'
+                  className={`rounded-md px-2 py-2 text-left transition-colors ${
+                    selected
+                      ? 'bg-amber-900 text-amber-50 shadow-sm'
+                      : 'bg-white text-amber-900 hover:bg-amber-100/80'
+                  }`}
+                  onClick={() =>
+                    setInput((prev) => ({
+                      ...prev,
+                      capCutStrategy: option.value,
+                    }))
+                  }
+                  aria-pressed={selected}
+                >
+                  <span className='block text-sm font-semibold leading-tight'>
+                    {option.label}
+                  </span>
+                  <span
+                    className={`block text-xs leading-tight ${
+                      selected ? 'text-amber-100/90' : 'text-amber-700/80'
+                    }`}
+                  >
+                    {option.hint}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <label className='flex flex-col gap-1'>
           <FieldLabel
             label={

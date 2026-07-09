@@ -231,6 +231,20 @@ describe('construction packet export', () => {
     expect(svg).toContain('CAP R1');
   });
 
+  it('documents DIY corner-only cap strategy as fewer cuts', () => {
+    const cornerOnlyInput: MasonryInput = {
+      ...input,
+      planShape: 'octagonal',
+      capCutStrategy: 'corner-only',
+    };
+    const output = new MasonryEngine().calculateDesign(cornerOnlyInput);
+    const html = buildConstructionPacketHtml(cornerOnlyInput, output);
+
+    expect(html).toContain('DIY corner-only mode');
+    expect(html).toContain('face units remain full');
+    expect(html).toContain('Capstone Cut Type Diagrams');
+  });
+
   it('builds clearance diagram with pass status when distance meets code', () => {
     const output = new MasonryEngine().calculateDesign({
       ...input,

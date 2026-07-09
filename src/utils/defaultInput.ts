@@ -19,6 +19,7 @@ export const DEFAULT_MASONRY_INPUT: MasonryInput = {
   gasLineEntryAngleDeg: 225,
   capstoneOverhangIn: 2,
   capPlacementMode: 'outward-only',
+  capCutStrategy: 'full-fit',
   soilType: 'unknown',
   drainageCondition: 'unknown',
   frostClimate: false,

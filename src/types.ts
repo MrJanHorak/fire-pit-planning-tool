@@ -7,6 +7,7 @@ export type LinerType = 'none' | 'fire-brick' | 'steel-ring';
 export type PlanShape = 'circular' | 'square' | 'rectangular' | 'hexagonal' | 'octagonal';
 export type AshCleanoutType = 'none' | 'hinged-door' | 'removable-pan' | 'drain-holes';
 export type CapPlacementMode = 'outward-only' | 'symmetric';
+export type CapCutStrategy = 'full-fit' | 'corner-only';
 export type SoilType =
   | 'unknown'
   | 'dense-granular'
@@ -87,6 +88,7 @@ export interface MasonryInput {
   gasLineEntryAngleDeg: number;
   capstoneOverhangIn: number;
   capPlacementMode: CapPlacementMode;
+  capCutStrategy?: CapCutStrategy;
   thermalAssemblyMode?: ThermalAssemblyMode;
   thermalCavityFill?: ThermalCavityFill;
   thermalCavityVentMode?: ThermalCavityVentMode;
@@ -358,6 +360,7 @@ export interface CapstoneSpec {
   capCenterlineDepthIn: number;
   capUnitsPerCourseRaw: number;
   capUnitsPerCourseRounded: number;
+  cutStrategy: CapCutStrategy;
   joint: CapstoneJointSpec;
 }
 

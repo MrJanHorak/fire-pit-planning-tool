@@ -4534,7 +4534,9 @@ export default function Stage3D({
                         : undefined;
 
                       if (output.planShape !== 'circular') {
-                        const footprint = isRadialPlanShape(output.planShape)
+                        const capCutStrategy =
+                          output.capstone.cutStrategy ?? 'full-fit';
+                        const capFootprint = isRadialPlanShape(output.planShape)
                           ? (() => {
                               const safePiecesPerFace = Math.max(
                                 1,
@@ -4545,15 +4547,20 @@ export default function Stage3D({
                               );
                               const pieceIdx =
                                 capIdx - faceIdx * safePiecesPerFace;
-                              return buildRegularPolygonRingPiecePoints({
-                                apothemFt: rowRadiusFt,
-                                sideCount: wallRadialSegments,
-                                ringWidthFt: capBrickWidthFt,
-                                faceIndex: faceIdx % wallRadialSegments,
-                                pieceIndex: pieceIdx,
-                                piecesOnFace: safePiecesPerFace,
-                                jointFt: capJointLengthFt,
-                              });
+                              return {
+                                isCornerCut:
+                                  pieceIdx === 0 ||
+                                  pieceIdx === safePiecesPerFace - 1,
+                                points: buildRegularPolygonRingPiecePoints({
+                                  apothemFt: rowRadiusFt,
+                                  sideCount: wallRadialSegments,
+                                  ringWidthFt: capBrickWidthFt,
+                                  faceIndex: faceIdx % wallRadialSegments,
+                                  pieceIndex: pieceIdx,
+                                  piecesOnFace: safePiecesPerFace,
+                                  jointFt: capJointLengthFt,
+                                }),
+                              };
                             })()
                           : (() => {
                               const sideCounts = distributeRectangularRingUnits(
@@ -4569,36 +4576,48 @@ export default function Stage3D({
                                 capIdx,
                                 sideCounts,
                               );
-                              return buildRectangularRingPiecePoints({
-                                spanWidthFt: rowSpanWidthFt,
-                                spanDepthFt: rowSpanDepthFt,
-                                ringWidthFt: capBrickWidthFt,
-                                sideIndex,
-                                pieceIndex,
-                                piecesOnSide,
-                                jointFt: capJointLengthFt,
-                              });
+                              return {
+                                isCornerCut:
+                                  pieceIndex === 0 ||
+                                  pieceIndex === piecesOnSide - 1,
+                                points: buildRectangularRingPiecePoints({
+                                  spanWidthFt: rowSpanWidthFt,
+                                  spanDepthFt: rowSpanDepthFt,
+                                  ringWidthFt: capBrickWidthFt,
+                                  sideIndex,
+                                  pieceIndex,
+                                  piecesOnSide,
+                                  jointFt: capJointLengthFt,
+                                }),
+                              };
                             })();
-                        const footprintCenter = averagePoints(footprint);
                         if (
-                          !shouldRenderInCutaway(
-                            footprintCenter.x,
-                            footprintCenter.z,
-                          )
+                          capCutStrategy === 'full-fit' ||
+                          capFootprint.isCornerCut
                         ) {
-                          return null;
+                          const footprintCenter = averagePoints(
+                            capFootprint.points,
+                          );
+                          if (
+                            !shouldRenderInCutaway(
+                              footprintCenter.x,
+                              footprintCenter.z,
+                            )
+                          ) {
+                            return null;
+                          }
+                          return (
+                            <ExtrudedXZPolygon
+                              key={`cap-row-${capRowIdx}-${capIdx}`}
+                              polygonPoints={capFootprint.points}
+                              heightFt={visCapBrickHeightFt}
+                              y={y}
+                              color={palette.capColor}
+                              wireframe={effectiveWireframe}
+                              showEdges={effectiveShowBrickOutlines}
+                            />
+                          );
                         }
-                        return (
-                          <ExtrudedXZPolygon
-                            key={`cap-row-${capRowIdx}-${capIdx}`}
-                            polygonPoints={footprint}
-                            heightFt={visCapBrickHeightFt}
-                            y={y}
-                            color={palette.capColor}
-                            wireframe={effectiveWireframe}
-                            showEdges={effectiveShowBrickOutlines}
-                          />
-                        );
                       }
 
                       return (

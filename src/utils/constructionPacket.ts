@@ -242,13 +242,16 @@ function buildCapstoneCutScheduleTable(
         rowIndex * (output.resolvedCapUnit.widthIn + output.mortarJointIn);
       const rowWidthIn = output.capstone.capCenterlineWidthIn + rowOffsetIn * 2;
       const rowDepthIn = output.capstone.capCenterlineDepthIn + rowOffsetIn * 2;
+      const capCutStrategy = output.capstone.cutStrategy ?? 'full-fit';
       const taperUnits =
         output.planShape === 'circular'
           ? capCut.requiresCutting
             ? unitCount
             : 0
           : sideCount > 0
-            ? unitCount
+            ? capCutStrategy === 'corner-only'
+              ? 0
+              : unitCount
             : 0;
       const miterUnits =
         sideCount > 0
@@ -259,9 +262,16 @@ function buildCapstoneCutScheduleTable(
               rowDepthIn,
             )
           : 0;
-      const fullUnits = Math.max(0, unitCount - taperUnits);
+      const fullUnits = Math.max(
+        0,
+        unitCount -
+          taperUnits -
+          (capCutStrategy === 'corner-only' ? miterUnits : 0),
+      );
       const cutGuide =
-        taperUnits > 0
+        capCutStrategy === 'corner-only' && miterUnits > 0
+          ? `${miterUnits} corner units only @ ${capCut.recommendedCutAngleDeg.toFixed(1)} deg; face units remain full`
+          : taperUnits > 0
           ? output.planShape === 'circular'
             ? `${capCut.recommendedCutPerSideIn.toFixed(3)} in per side taper`
             : `${capCut.recommendedCutPerSideIn.toFixed(3)} in per side taper; ${miterUnits} M units @ ${capCut.recommendedCutAngleDeg.toFixed(1)} deg`
@@ -462,10 +472,11 @@ export function buildCapstonePlacementSampleSvg(output: MasonryOutput): string {
     const rowSummary = capRows
       .map((count, idx) => `R${idx + 1}: ${count}`)
       .join('  ');
+    const cutStrategy = output.capstone.cutStrategy ?? 'full-fit';
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 250" width="100%" role="img" aria-label="Capstone placement detail diagram">
       <rect x="0" y="0" width="620" height="244" fill="#fffdf7" />
       <text x="14" y="24" font-size="16" fill="#2f2110" font-weight="700">Capstone Placement Detail (Plan View)</text>
-      <text x="14" y="48" font-size="12" fill="#4a3720">Non-circular capstones are clipped to the ring: side pieces use taper cuts and corner pieces use miters.</text>
+      <text x="14" y="48" font-size="12" fill="#4a3720">${cutStrategy === 'corner-only' ? 'DIY corner-only mode: face capstones stay rectangular; only corner capstones are miter/cut.' : 'Full-fit mode: non-circular capstones are clipped to the ring; side pieces taper and corner pieces miter.'}</text>
       <polygon points="126,88 274,76 292,158 146,170" fill="#ccb085" stroke="#6e4728" stroke-width="2" />
       <polygon points="324,76 494,88 474,170 306,158" fill="#ccb085" stroke="#6e4728" stroke-width="2" />
       <polygon points="274,76 324,76 306,158 292,158" fill="#c6b39a" stroke="#4a3a28" stroke-width="1.5" />
@@ -523,6 +534,53 @@ export function buildCapstonePlacementSampleSvg(output: MasonryOutput): string {
 
     <text x="14" y="206" font-size="12" fill="#2f2110" font-weight="700">${capCut.requiresCutting ? `Capstone taper cuts required here (about ${capCutPerSide} in per side at ${capCutAngle} deg).` : 'Capstone taper cuts are not required at this size.'}</text>
     <text x="14" y="228" font-size="12" fill="#4a3720">Cap course rows shown in Course Layout: ${circularRowSummary}. Each bridge row has its own count.</text>
+  </svg>`;
+}
+
+export function buildCapstoneCutTypeDiagramsSvg(output: MasonryOutput): string {
+  const capCut = getCapstoneCutMetrics(output);
+  const sideCount = getPlanCornerSideCount(output.planShape);
+  const cutStrategy = output.capstone.cutStrategy ?? 'full-fit';
+  const miterAngle =
+    sideCount > 0 ? capCut.recommendedCutAngleDeg.toFixed(1) : 'n/a';
+  const taperPerSide = capCut.recommendedCutPerSideIn.toFixed(3);
+  const strategyNote =
+    cutStrategy === 'corner-only'
+      ? 'DIY corner-only mode: only M corner units are cut; face capstones remain full rectangular units.'
+      : 'Full-fit mode: T face units are tapered; M corner units receive both taper and miter cuts.';
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 270" width="100%" role="img" aria-label="Capstone cut type diagrams">
+    <rect x="0" y="0" width="760" height="270" fill="#fffdf7" />
+    <text x="16" y="26" font-size="16" fill="#2f2110" font-weight="700">Capstone Cut Type Diagrams</text>
+    <text x="16" y="48" font-size="12" fill="#4a3720">${strategyNote}</text>
+
+    <g transform="translate(24 76)">
+      <text x="0" y="-12" font-size="13" fill="#2f2110" font-weight="700">T — taper-cut face unit</text>
+      <polygon points="18,22 202,36 184,104 36,118" fill="#e2cfa6" stroke="#6e4728" stroke-width="2" />
+      <line x1="18" y1="22" x2="36" y2="118" stroke="#a01d1d" stroke-width="3" />
+      <line x1="202" y1="36" x2="184" y2="104" stroke="#a01d1d" stroke-width="3" />
+      <text x="12" y="146" font-size="11" fill="#4a3720">Side taper: ${taperPerSide} in/side</text>
+      <text x="12" y="164" font-size="11" fill="#4a3720">Used for full-fit face caps</text>
+    </g>
+
+    <g transform="translate(278 76)">
+      <text x="0" y="-12" font-size="13" fill="#2f2110" font-weight="700">M — corner miter + taper unit</text>
+      <polygon points="36,24 204,42 166,116 20,116" fill="#9f8050" stroke="#6e4728" stroke-width="2" />
+      <line x1="36" y1="24" x2="20" y2="116" stroke="#a01d1d" stroke-width="3" />
+      <line x1="204" y1="42" x2="166" y2="116" stroke="#a01d1d" stroke-width="3" />
+      <line x1="166" y1="116" x2="204" y2="42" stroke="#a01d1d" stroke-width="3" stroke-dasharray="5 4" />
+      <text x="12" y="146" font-size="11" fill="#4a3720">Miter angle: ${miterAngle} deg</text>
+      <text x="12" y="164" font-size="11" fill="#4a3720">Also receives taper in full-fit mode</text>
+    </g>
+
+    <g transform="translate(532 76)">
+      <text x="0" y="-12" font-size="13" fill="#2f2110" font-weight="700">Full face unit — DIY mode</text>
+      <rect x="26" y="28" width="168" height="82" rx="2" fill="#ccb085" stroke="#6e4728" stroke-width="2" />
+      <text x="12" y="146" font-size="11" fill="#4a3720">No taper on face units</text>
+      <text x="12" y="164" font-size="11" fill="#4a3720">Tradeoff: less perfect coverage / joints</text>
+    </g>
+
+    <text x="16" y="248" font-size="12" fill="#2f2110" font-weight="700">Always dry-fit one full side plus both corners before batch cutting.</text>
   </svg>`;
 }
 
@@ -1061,7 +1119,9 @@ export function buildCoursePlanSvg(
       );
       const isCapTaperCut =
         !!isCap &&
-        (output.planShape !== 'circular' || output.capstone.requiresTaperCutting);
+        (output.planShape === 'circular'
+          ? output.capstone.requiresTaperCutting
+          : (output.capstone.cutStrategy ?? 'full-fit') === 'full-fit');
       const isCapMiterCut =
         !!isCap && isCorner && getPlanCornerSideCount(output.planShape) > 0;
       const unitFill = isAshCleanout
@@ -1213,8 +1273,8 @@ export function buildCoursePlanSvg(
   const capTitle = sectionTitle(
     'CAPSTONE COURSE LAYOUT',
     capRowCounts.length > 1
-      ? `Double-wall cap bridge rows: ${capRowCounts.map((count, idx) => `R${idx + 1}=${count}`).join(', ')}; T=taper, M=miter+taper`
-      : `${output.capstone.capUnitsPerCourseRounded} cap units on primary cap ring; T=taper, M=miter+taper`,
+      ? `Double-wall cap bridge rows: ${capRowCounts.map((count, idx) => `R${idx + 1}=${count}`).join(', ')}; ${(output.capstone.cutStrategy ?? 'full-fit') === 'corner-only' ? 'DIY mode: M=corner miter/cut, face caps full' : 'T=taper, M=miter+taper'}`
+      : `${output.capstone.capUnitsPerCourseRounded} cap units on primary cap ring; ${(output.capstone.cutStrategy ?? 'full-fit') === 'corner-only' ? 'DIY mode: M=corner miter/cut, face caps full' : 'T=taper, M=miter+taper'}`,
   );
   const capRows = capRowCounts
     .map((unitCount, rowIdx) => {
@@ -1266,7 +1326,7 @@ export function buildCoursePlanSvg(
     <text x="154" y="${legendY + 31}" font-size="11" fill="#3c2a11">T = cap taper-cut unit</text>
     <rect x="294" y="${legendY + 22}" width="14" height="10" rx="2" fill="#9f8050" opacity="0.9" />
     <text x="314" y="${legendY + 31}" font-size="11" fill="#3c2a11">M = cap corner/miter+taper unit</text>
-    <text x="8" y="${legendY + 64}" font-size="11" fill="#4a3720">For clean non-circular cap coverage, the 3D preview uses cut-footprint capstones: T units are tapered; M units are tapered and mitered. ${strategyLegendText}</text>
+    <text x="8" y="${legendY + 64}" font-size="11" fill="#4a3720">${(output.capstone.cutStrategy ?? 'full-fit') === 'corner-only' ? 'DIY corner-only cap mode: face caps remain full rectangular units; M units are the corner cuts. Expect larger or less-uniform joints.' : 'For clean non-circular cap coverage, the 3D preview uses cut-footprint capstones: T units are tapered; M units are tapered and mitered.'} ${strategyLegendText}</text>
     ${doubleWallLegend}
   </g>`;
 
@@ -1384,6 +1444,7 @@ export function buildConstructionPacketHtml(
       : `<p>Gas Line Entry: ${output.ventSpec.gasLineEntryAngleDeg.toFixed(0)} deg at unit ${output.ventSpec.gasLineEntryBrickIndex} (${output.ventSpec.gasLineEntryClear ? 'clear of vents' : 'conflicts with vent layout'}${output.ventSpec.gasLineAutoAdjusted ? ', auto-adjusted' : ''}).</p>`;
   const taperCutSample = buildWallBrickTaperCutSvg(output);
   const capstonePlacementSample = buildCapstonePlacementSampleSvg(output);
+  const capstoneCutTypeSample = buildCapstoneCutTypeDiagramsSvg(output);
   const designSummaryRows: Array<[string, string]> = [
     ['Fuel Type', formatFuelName(input.fuelType)],
     ['Plan Shape', formatShapeName(input.planShape)],
@@ -1615,6 +1676,8 @@ export function buildConstructionPacketHtml(
       ${output.thermalAssembly.mode === 'double-wall' ? `<h3>Cap Bridge Row Schedule</h3><p>Rows are listed from inside to outside. Joint and cut guidance are computed per row to avoid overlap and preserve buildable spacing.</p>${buildCapBridgeRowScheduleTable(output, capCut)}` : ''}
       <h3>Capstone Placement Detail</h3>
       ${capstonePlacementSample}
+      <h3>Capstone Cut Type Diagrams</h3>
+      ${capstoneCutTypeSample}
     </section>
 
     <section class="block avoid-break">

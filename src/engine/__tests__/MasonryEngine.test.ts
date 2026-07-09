@@ -349,6 +349,17 @@ describe('MasonryEngine', () => {
     expect(output.capstone.capUnitsPerCourseRounded % 2).toBe(0);
   });
 
+  it('preserves selected cap cut strategy in capstone output', () => {
+    const engine = new MasonryEngine();
+    const output = engine.calculateDesign({
+      ...baseInput,
+      planShape: 'octagonal',
+      capCutStrategy: 'corner-only',
+    });
+
+    expect(output.capstone.cutStrategy).toBe('corner-only');
+  });
+
   it('supports independent capstone orientation selection', () => {
     const engine = new MasonryEngine();
     const matchWall = engine.calculateDesign({

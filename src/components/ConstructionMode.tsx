@@ -4,6 +4,7 @@ import type { MasonryInput } from '../types';
 import {
   buildEngineeringReportHtml,
   buildCapstonePlacementSampleSvg,
+  buildCapstoneCutTypeDiagramsSvg,
   buildConstructionPacketHtml,
   buildCoursePlanSvg,
   buildCutScheduleTablesHtml,
@@ -45,6 +46,7 @@ export default function ConstructionMode({
   const coursePlanMarkup = buildCoursePlanSvg(output, input);
   const wallBrickCutMarkup = buildWallBrickTaperCutSvg(output);
   const capstonePlacementMarkup = buildCapstonePlacementSampleSvg(output);
+  const capstoneCutTypesMarkup = buildCapstoneCutTypeDiagramsSvg(output);
   const cutScheduleMarkup = buildCutScheduleTablesHtml(output);
   const wallCutPerSideIn = output.cutPlan.recommendedCutPerSideIn;
   const wallCutAngleDeg = output.cutPlan.recommendedCutAngleDeg;
@@ -363,9 +365,11 @@ export default function ConstructionMode({
                 </p>
                 <ul className='mt-1 list-disc space-y-1 pl-5 text-sm text-amber-950/80'>
                   <li>
-                    <strong>Face pieces:</strong> Cut to the listed face module
-                    length; side edges are trimmed so the inner and outer cap
-                    edges follow the finished ring.
+                    <strong>Face pieces:</strong>{' '}
+                    {(output.capstone.cutStrategy ?? 'full-fit') ===
+                    'corner-only'
+                      ? 'Leave cap face units rectangular/full-length where practical; use dry-fit spacing to absorb the visual compromise.'
+                      : 'Cut to the listed face module length; side edges are trimmed so the inner and outer cap edges follow the finished ring.'}
                   </li>
                   <li>
                     <strong>Corner pieces:</strong>{' '}
@@ -374,9 +378,19 @@ export default function ConstructionMode({
                     close the vertex with the adjacent face.
                   </li>
                   <li>
-                    Cap taper reference: about{' '}
-                    <strong>{capCutPerSideIn.toFixed(3)} in per side</strong>{' '}
-                    between inner and outer edges.
+                    {(output.capstone.cutStrategy ?? 'full-fit') ===
+                    'corner-only' ? (
+                      <>
+                        DIY tradeoff: fewer cuts, but less perfect cap coverage
+                        and larger or less-uniform joints.
+                      </>
+                    ) : (
+                      <>
+                        Cap taper reference: about{' '}
+                        <strong>{capCutPerSideIn.toFixed(3)} in per side</strong>{' '}
+                        between inner and outer edges.
+                      </>
+                    )}
                   </li>
                   <li>
                     Wall pieces on hex/oct plans use the same clipped-face
@@ -458,6 +472,16 @@ export default function ConstructionMode({
             <div
               className='overflow-hidden rounded-lg border border-amber-900/20 bg-white p-2'
               dangerouslySetInnerHTML={{ __html: capstonePlacementMarkup }}
+            />
+          </div>
+
+          <div className='rounded-lg border border-amber-900/20 bg-white p-3'>
+            <h4 className='text-sm font-semibold text-amber-950'>
+              Capstone Cut Type Diagrams
+            </h4>
+            <div
+              className='mt-2 overflow-hidden rounded-lg border border-amber-900/20 bg-white p-2'
+              dangerouslySetInnerHTML={{ __html: capstoneCutTypesMarkup }}
             />
           </div>
 

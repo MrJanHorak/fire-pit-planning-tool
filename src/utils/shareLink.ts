@@ -22,6 +22,7 @@ const SHARE_FIELD_MAP: Array<[keyof MasonryInput, string]> = [
   ['gasLineEntryAngleDeg', 'ga'],
   ['capstoneOverhangIn', 'ov'],
   ['capPlacementMode', 'cp'],
+  ['capCutStrategy', 'cs'],
   ['soilType', 'so'],
   ['drainageCondition', 'dr'],
   ['frostClimate', 'fc'],
