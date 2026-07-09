@@ -6,6 +6,7 @@ import {
   buildCapstonePlacementSampleSvg,
   buildConstructionPacketHtml,
   buildCoursePlanSvg,
+  buildCutScheduleTablesHtml,
   buildWallBrickTaperCutSvg,
 } from '../utils/constructionPacket';
 import { buildFoundationAdvisory } from '../utils/foundationAdvisory';
@@ -44,6 +45,7 @@ export default function ConstructionMode({
   const coursePlanMarkup = buildCoursePlanSvg(output, input);
   const wallBrickCutMarkup = buildWallBrickTaperCutSvg(output);
   const capstonePlacementMarkup = buildCapstonePlacementSampleSvg(output);
+  const cutScheduleMarkup = buildCutScheduleTablesHtml(output);
   const wallCutPerSideIn = output.cutPlan.recommendedCutPerSideIn;
   const wallCutAngleDeg = output.cutPlan.recommendedCutAngleDeg;
   const capCount = Math.max(1, output.capstone.capUnitsPerCourseRounded);
@@ -456,6 +458,16 @@ export default function ConstructionMode({
             <div
               className='overflow-hidden rounded-lg border border-amber-900/20 bg-white p-2'
               dangerouslySetInnerHTML={{ __html: capstonePlacementMarkup }}
+            />
+          </div>
+
+          <div className='rounded-lg border border-amber-900/20 bg-white p-3'>
+            <h4 className='text-sm font-semibold text-amber-950'>
+              Wall And Capstone Cut Schedule
+            </h4>
+            <div
+              className='mt-2 overflow-x-auto text-sm'
+              dangerouslySetInnerHTML={{ __html: cutScheduleMarkup }}
             />
           </div>
         </div>

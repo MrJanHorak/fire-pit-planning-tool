@@ -110,7 +110,65 @@ function getCapstoneCutMetrics(output: MasonryOutput): {
   };
 }
 
-function buildCutScheduleTable(output: MasonryOutput): string {
+function countCornerCutUnits(
+  unitCount: number,
+  shape: MasonryOutput['planShape'],
+  widthIn: number,
+  depthIn: number,
+): number {
+  if (getPlanCornerSideCount(shape) === 0) return 0;
+  return Array.from({ length: unitCount }, (_, unitIdx) =>
+    isCornerPiece(unitIdx, unitCount, shape, widthIn, depthIn),
+  ).filter(Boolean).length;
+}
+
+function wallCutSummaryForCourse(
+  output: MasonryOutput,
+  unitCount: number,
+  ventOpenings: number,
+): { fullUnits: number; taperUnits: number; cornerUnits: number; cutGuide: string } {
+  const sideCount = getPlanCornerSideCount(output.planShape);
+  const activeUnits = Math.max(0, unitCount - ventOpenings);
+
+  if (output.planShape === 'circular') {
+    const taperUnits = output.cutPlan.requiresCutting ? activeUnits : 0;
+    return {
+      fullUnits: Math.max(0, activeUnits - taperUnits),
+      taperUnits,
+      cornerUnits: 0,
+      cutGuide: output.cutPlan.requiresCutting
+        ? `${output.cutPlan.recommendedCutPerSideIn.toFixed(3)} in per side`
+        : 'None',
+    };
+  }
+
+  if (sideCount > 0) {
+    const cornerUnits = countCornerCutUnits(
+      unitCount,
+      output.planShape,
+      output.centerlineSpanWidthIn,
+      output.centerlineSpanDepthIn,
+    );
+    return {
+      fullUnits: 0,
+      taperUnits: activeUnits,
+      cornerUnits: Math.min(activeUnits, cornerUnits),
+      cutGuide:
+        sideCount > 4
+          ? `Taper all active units; miter ${Math.min(activeUnits, cornerUnits)} corner units @ ${(180 / sideCount).toFixed(1)} deg`
+          : `Taper/trim all active units; miter ${Math.min(activeUnits, cornerUnits)} corner units @ 45.0 deg`,
+    };
+  }
+
+  return {
+    fullUnits: activeUnits,
+    taperUnits: 0,
+    cornerUnits: 0,
+    cutGuide: 'None',
+  };
+}
+
+function buildWallCutScheduleTable(output: MasonryOutput): string {
   const rows = output.courses
     .map((course) => {
       const spacerUnits =
@@ -123,10 +181,11 @@ function buildCutScheduleTable(output: MasonryOutput): string {
       )
         ? output.ventSpec.ventBrickIndexes.length
         : 0;
-      const taperUnits = output.cutPlan.requiresCutting
-        ? Math.max(0, mainUnits - ventOpenings)
-        : 0;
-      const fullUnits = Math.max(0, mainUnits - taperUnits - ventOpenings);
+      const cutSummary = wallCutSummaryForCourse(
+        output,
+        mainUnits,
+        ventOpenings,
+      );
       const offsetLabel =
         course.offsetIn > 0 ? 'Half-module start' : 'Standard start';
 
@@ -136,10 +195,11 @@ function buildCutScheduleTable(output: MasonryOutput): string {
         <td>${mainUnits}</td>
         <td>${spacerUnits}</td>
         <td>${accentUnits}</td>
-        <td>${fullUnits}</td>
-        <td>${taperUnits}</td>
+        <td>${cutSummary.fullUnits}</td>
+        <td>${cutSummary.taperUnits}</td>
+        <td>${cutSummary.cornerUnits}</td>
         <td>${ventOpenings}</td>
-        <td>${output.cutPlan.requiresCutting ? `${output.cutPlan.recommendedCutPerSideIn.toFixed(3)} in per side` : 'None'}</td>
+        <td>${cutSummary.cutGuide}</td>
         <td>${offsetLabel}</td>
       </tr>`;
     })
@@ -154,14 +214,92 @@ function buildCutScheduleTable(output: MasonryOutput): string {
         <th>Spacer Units</th>
         <th>Accent Units</th>
         <th>Full Bricks</th>
-        <th>Cut Bricks</th>
+        <th>Cut Bricks (Taper / Trim Units)</th>
+        <th>Corner / Miter Units</th>
         <th>Vent Gaps</th>
-        <th>Cut At Each Side</th>
+        <th>Cut Guide</th>
         <th>Course Start</th>
       </tr>
     </thead>
     <tbody>${rows}</tbody>
   </table>`;
+}
+
+function buildCapstoneCutScheduleTable(
+  output: MasonryOutput,
+  capCut: ReturnType<typeof getCapstoneCutMetrics>,
+): string {
+  const rowCounts =
+    output.thermalAssembly.mode === 'double-wall' &&
+    output.thermalAssembly.capBridgeCourseUnitCounts.length > 0
+      ? output.thermalAssembly.capBridgeCourseUnitCounts
+      : [output.capstone.capUnitsPerCourseRounded];
+  const sideCount = getPlanCornerSideCount(output.planShape);
+
+  const rows = rowCounts
+    .map((unitCount, rowIndex) => {
+      const rowOffsetIn =
+        rowIndex * (output.resolvedCapUnit.widthIn + output.mortarJointIn);
+      const rowWidthIn = output.capstone.capCenterlineWidthIn + rowOffsetIn * 2;
+      const rowDepthIn = output.capstone.capCenterlineDepthIn + rowOffsetIn * 2;
+      const taperUnits =
+        output.planShape === 'circular'
+          ? capCut.requiresCutting
+            ? unitCount
+            : 0
+          : sideCount > 0
+            ? unitCount
+            : 0;
+      const miterUnits =
+        sideCount > 0
+          ? countCornerCutUnits(
+              unitCount,
+              output.planShape,
+              rowWidthIn,
+              rowDepthIn,
+            )
+          : 0;
+      const fullUnits = Math.max(0, unitCount - taperUnits);
+      const cutGuide =
+        taperUnits > 0
+          ? output.planShape === 'circular'
+            ? `${capCut.recommendedCutPerSideIn.toFixed(3)} in per side taper`
+            : `${capCut.recommendedCutPerSideIn.toFixed(3)} in per side taper; ${miterUnits} M units @ ${capCut.recommendedCutAngleDeg.toFixed(1)} deg`
+          : 'None';
+
+      return `<tr>
+        <td>${rowCounts.length > 1 ? `R${rowIndex + 1}` : 'CAP'}</td>
+        <td>${unitCount}</td>
+        <td>${fullUnits}</td>
+        <td>${taperUnits}</td>
+        <td>${miterUnits}</td>
+        <td>${cutGuide}</td>
+      </tr>`;
+    })
+    .join('');
+
+  return `<table>
+    <thead>
+      <tr>
+        <th>Cap Row</th>
+        <th>Total Cap Units</th>
+        <th>Full Units</th>
+        <th>Taper Units (T)</th>
+        <th>Miter + Taper Units (M)</th>
+        <th>Cut Guide</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+export function buildCutScheduleTablesHtml(output: MasonryOutput): string {
+  const capCut = getCapstoneCutMetrics(output);
+  return `<h3>Wall Cut Schedule</h3>
+    ${buildWallCutScheduleTable(output)}
+    <h3>Capstone Cut Schedule</h3>
+    <p>T units match the cap taper markers in the course layout. M units are corner capstones that need both taper and miter cuts.</p>
+    ${buildCapstoneCutScheduleTable(output, capCut)}`;
 }
 
 function buildCapBridgeRowScheduleTable(
@@ -1540,7 +1678,7 @@ export function buildConstructionPacketHtml(
       <h3>Wall Brick Cut Detail</h3>
       ${taperCutSample}
       <h3>Cut Schedule</h3>
-      ${buildCutScheduleTable(output)}
+      ${buildCutScheduleTablesHtml(output)}
     </section>
 
     <section class="block avoid-break">
