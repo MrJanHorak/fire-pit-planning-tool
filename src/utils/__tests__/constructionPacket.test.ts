@@ -231,6 +231,28 @@ describe('construction packet export', () => {
     expect(svg).toContain('CAP R1');
   });
 
+  it('documents polygon vents as face-center openings, not corner cuts', () => {
+    const polygonInput: MasonryInput = {
+      ...input,
+      planShape: 'octagonal',
+      innerWidthIn: 48,
+      ventCount: 4,
+    };
+    const output = new MasonryEngine().calculateDesign(polygonInput);
+    const html = buildConstructionPacketHtml(polygonInput, output);
+    const sideCount = 8;
+    const piecesPerFace = Math.round(output.unitsPerCourseRounded / sideCount);
+    const middlePieceIndex = Math.floor(piecesPerFace / 2);
+
+    expect(
+      output.ventSpec.ventBrickIndexes.every(
+        (index) => index % piecesPerFace === middlePieceIndex,
+      ),
+    ).toBe(true);
+    expect(html).toContain('vent openings are centered on flat side faces');
+    expect(html).toContain('not vent openings');
+  });
+
   it('documents DIY corner-only cap strategy as fewer cuts', () => {
     const cornerOnlyInput: MasonryInput = {
       ...input,

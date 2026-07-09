@@ -1403,11 +1403,15 @@ export class MasonryEngine {
         ? Math.max(4, input.ventCount)
         : Math.max(2, input.ventCount);
     const totalOpenAreaSqIn = ventCount * input.ventOpeningAreaSqIn;
-    const ventAnchors = this.calculateVentAnchors(planMetrics, ventCount);
+    const ventAnchors = this.calculateVentAnchors(
+      planMetrics,
+      ventCount,
+      unitCount,
+    );
     const ventAnglesDeg = ventAnchors.map((anchor) => anchor.ratio * 360);
     const ventBrickIndexes = this.uniqueIndexes(
       ventAnchors.map((anchor) =>
-        this.ratioToBrickIndex(anchor.ratio, unitCount),
+        anchor.brickIndex ?? this.ratioToBrickIndex(anchor.ratio, unitCount),
       ),
     );
     const isGasFuel = input.fuelType !== 'wood';
@@ -2367,10 +2371,41 @@ export class MasonryEngine {
   private calculateVentAnchors(
     planMetrics: PlanMetrics,
     ventCount: number,
-  ): Array<{ ratio: number }> {
+    unitCount: number,
+  ): Array<{ ratio: number; brickIndex?: number }> {
     if (planMetrics.planShape === 'circular') {
       return Array.from({ length: ventCount }, (_, index) => ({
         ratio: index / ventCount,
+      }));
+    }
+
+    const polygonSideCount = this.polygonSides(
+      planMetrics.planShape as PlanShape,
+    );
+    if (polygonSideCount > 0) {
+      const piecesPerFace = Math.max(
+        1,
+        Math.round(unitCount / polygonSideCount),
+      );
+      const faceIndexes =
+        ventCount === 2
+          ? [0, Math.floor(polygonSideCount / 2)]
+          : Array.from({ length: ventCount }, (_, index) =>
+              Math.round((index * polygonSideCount) / ventCount) %
+              polygonSideCount,
+            );
+
+      return this.uniqueIndexes(
+        faceIndexes.map((faceIndex) => {
+          const middlePieceIndex = Math.floor(piecesPerFace / 2);
+          return Math.min(
+            unitCount - 1,
+            faceIndex * piecesPerFace + middlePieceIndex,
+          );
+        }),
+      ).map((brickIndex) => ({
+        ratio: (brickIndex + 0.5) / Math.max(1, unitCount),
+        brickIndex,
       }));
     }
 

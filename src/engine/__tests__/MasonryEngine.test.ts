@@ -489,6 +489,28 @@ describe('MasonryEngine', () => {
     ).toBe(true);
   });
 
+  it('anchors polygon vents on face-center units instead of corner cut units', () => {
+    const engine = new MasonryEngine();
+    const output = engine.calculateDesign({
+      ...baseInput,
+      planShape: 'octagonal',
+      innerWidthIn: 48,
+      ventCount: 4,
+    });
+
+    const sideCount = 8;
+    const piecesPerFace = Math.round(output.unitsPerCourseRounded / sideCount);
+    const middlePieceIndex = Math.floor(piecesPerFace / 2);
+
+    expect(piecesPerFace).toBeGreaterThanOrEqual(3);
+    expect(output.ventSpec.ventBrickIndexes).toHaveLength(4);
+    expect(
+      output.ventSpec.ventBrickIndexes.every(
+        (index) => index % piecesPerFace === middlePieceIndex,
+      ),
+    ).toBe(true);
+  });
+
   it('always emits mortar-curing-required advisory when mortarJointIn is positive', () => {
     const engine = new MasonryEngine();
     const output = engine.calculateDesign(baseInput);

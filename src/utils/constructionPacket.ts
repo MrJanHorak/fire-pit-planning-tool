@@ -614,6 +614,10 @@ function buildDiyStepsHtml(input: MasonryInput, output: MasonryOutput): string {
     input.ashCleanoutType && input.ashCleanoutType !== 'none'
       ? `Ash cleanout: reserve the marked C1 cleanout location before mortaring the base course. For ${input.ashCleanoutType.replace('-', ' ')}, keep it clear of vent openings and gas-line routing, then frame or screen it according to the cut notes.`
       : null;
+  const polygonVentStep =
+    getPlanCornerSideCount(output.planShape) > 4
+      ? 'For polygon layouts, vent openings are centered on flat side faces. Do not use corner/cut units as vents; those units are mitred closures that would block or distort airflow.'
+      : null;
   const cutStep = output.cutPlan.requiresCutting
     ? `Cut wall bricks as wedges before installation. Remove approximately ${output.cutPlan.recommendedCutPerSideIn.toFixed(3)} in from each side of the inner face and set the saw to about ${output.cutPlan.recommendedCutAngleDeg.toFixed(2)} deg off square.`
     : 'Dry-fit the first full course and confirm joints remain consistent before mixing mortar.';
@@ -641,6 +645,7 @@ function buildDiyStepsHtml(input: MasonryInput, output: MasonryOutput): string {
     strategyStep,
     ...(doubleWallStep ? [doubleWallStep] : []),
     `Leave vent openings in ${ventCourses} at brick indexes ${output.ventSpec.ventBrickIndexes.join(', ')}. This provides ${output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in of vent area for the selected ${formatFuelName(input.fuelType).toLowerCase()} configuration.`,
+    ...(polygonVentStep ? [polygonVentStep] : []),
     ...(ashCleanoutStep ? [ashCleanoutStep] : []),
     linerStep,
     `Set the primary cap ring with ${output.capstone.capUnitsPerCourseRounded} units on the cap centerline. Maintain a centerline cap joint of ${output.capstone.joint.actualJointIn.toFixed(3)} in.`,
@@ -1759,7 +1764,7 @@ export function buildConstructionPacketHtml(
     <section class="block print-break-before">
       <h2>Layer-By-Layer Layout</h2>
       <p>Course legend: C1 is the bottom wall course. In double-wall plans C1 is the bottom inner-wall course, O1 is the matching outer-wall course, and CAP R1/R2/etc are capstone bridge rows from inside to outside.</p>
-      <p>Red highlights indicate planned vent openings. Blue highlights indicate gas line entry. Dark highlights indicate ash cleanout locations. Units marked C are corner/cut units that need extra dry-fit attention.</p>
+      <p>Red highlights indicate planned vent openings. Blue highlights indicate gas line entry. Dark highlights indicate ash cleanout locations. Units marked C are corner/cut units that need extra dry-fit attention, not vent openings.</p>
       <p>Course strategy: ${output.courseStrategy.strategy}. ${output.courseStrategy.strategy === 'shim-spacer' ? `Shim spacer units planned: ${output.courseStrategy.shimUnitCount}.` : output.courseStrategy.strategy === 'vented-accent' ? `Accent courses: ${output.courseStrategy.accentCourseIndexes.map((index) => `C${index + 1}`).join(', ') || 'none'}.` : 'No special course overrides active.'}</p>
       ${svg}
       ${output.thermalAssembly.mode === 'double-wall' ? `<h3>Capstone Course Rows</h3>${buildCapBridgeRowScheduleTable(output, capCut)}` : ''}
