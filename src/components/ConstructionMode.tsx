@@ -126,6 +126,16 @@ export default function ConstructionMode({
       chipClassName: 'border-stone-900/20 bg-stone-100 text-stone-950',
     },
     {
+      label: 'Cap taper-cut marker',
+      dotClassName: 'bg-[#e2cfa6]',
+      chipClassName: 'border-amber-900/20 bg-amber-100 text-amber-950',
+    },
+    {
+      label: 'Cap miter+taper marker',
+      dotClassName: 'bg-[#9f8050]',
+      chipClassName: 'border-yellow-900/20 bg-yellow-100 text-yellow-950',
+    },
+    {
       label: 'Gas line entry marker',
       dotClassName: 'bg-[#2b6f9b]',
       chipClassName: 'border-sky-900/20 bg-sky-100 text-sky-950',

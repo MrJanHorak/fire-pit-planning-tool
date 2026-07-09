@@ -226,6 +226,8 @@ describe('construction packet export', () => {
 
     expect(svg).toContain('Ash cleanout (hinged door)');
     expect(svg).toContain('C = corner/cut unit');
+    expect(svg).toContain('T = cap taper-cut unit');
+    expect(svg).toContain('M = cap corner/miter+taper unit');
     expect(svg).toContain('CAP R1');
   });
 

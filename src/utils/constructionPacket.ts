@@ -921,6 +921,11 @@ export function buildCoursePlanSvg(
         widthIn,
         depthIn,
       );
+      const isCapTaperCut =
+        !!isCap &&
+        (output.planShape !== 'circular' || output.capstone.requiresTaperCutting);
+      const isCapMiterCut =
+        !!isCap && isCorner && getPlanCornerSideCount(output.planShape) > 0;
       const unitFill = isAshCleanout
         ? '#2f2f2f'
         : isGasLineBrick
@@ -929,25 +934,42 @@ export function buildCoursePlanSvg(
             ? '#c13a1f'
             : isSpacer
               ? '#5f4f96'
-              : isCorner
+              : isCapMiterCut
                 ? cornerFill
+                : isCapTaperCut
+                  ? '#e2cfa6'
+                  : isCorner
+                    ? cornerFill
                 : fill;
       const brickWidthPx = isSpacer ? spacerBrickWidthPx : mainBrickWidthPx;
       const xInsetPx = (mainBrickWidthPx - brickWidthPx) / 2;
       const x = brickStartX + offsetPx + unitIdx * modulePx + xInsetPx;
-      const stroke = isCorner && !isVentBrick && !isGasLineBrick && !isAshCleanout
+      const stroke =
+        (isCorner || isCapTaperCut) &&
+        !isVentBrick &&
+        !isGasLineBrick &&
+        !isAshCleanout
         ? '#2f2110'
         : 'none';
       const strokeWidth = stroke === 'none' ? 0 : 1.5;
-      const cornerLabel =
-        isCorner && getPlanCornerSideCount(output.planShape) > 0
-          ? `<text x="${x + brickWidthPx / 2}" y="${y + 12}" text-anchor="middle" font-size="9" fill="#fff8ea">C</text>`
+      const markerLabel = isCapMiterCut
+        ? 'M'
+        : isCapTaperCut
+          ? 'T'
+          : isCorner && getPlanCornerSideCount(output.planShape) > 0
+            ? 'C'
+            : '';
+      const markerText =
+        markerLabel !== ''
+          ? `<text x="${x + brickWidthPx / 2}" y="${y + 12}" text-anchor="middle" font-size="9" fill="#fff8ea">${markerLabel}</text>`
           : '';
       const capLabel =
-        isCap && isCorner && getPlanCornerSideCount(output.planShape) > 0
-          ? `<title>Corner/miter cap unit ${unitIdx + 1}</title>`
+        isCapMiterCut
+          ? `<title>Corner/miter plus taper cap unit ${unitIdx + 1}</title>`
+          : isCapTaperCut
+            ? `<title>Taper-cut cap unit ${unitIdx + 1}</title>`
           : '';
-      return `<rect x="${x}" y="${y}" width="${brickWidthPx}" height="16" rx="2" fill="${unitFill}" opacity="0.9" stroke="${stroke}" stroke-width="${strokeWidth}" />${cornerLabel}${capLabel}`;
+      return `<rect x="${x}" y="${y}" width="${brickWidthPx}" height="16" rx="2" fill="${unitFill}" opacity="0.9" stroke="${stroke}" stroke-width="${strokeWidth}" />${markerText}${capLabel}`;
     }).join('');
 
     return `<g><text x="${labelX}" y="${y + 13}" font-size="11" fill="#3c2a11">${label}${courseTag}</text>${bricks}</g>`;
@@ -1053,8 +1075,8 @@ export function buildCoursePlanSvg(
   const capTitle = sectionTitle(
     'CAPSTONE COURSE LAYOUT',
     capRowCounts.length > 1
-      ? `Double-wall cap bridge rows: ${capRowCounts.map((count, idx) => `R${idx + 1}=${count}`).join(', ')}`
-      : `${output.capstone.capUnitsPerCourseRounded} cap units on primary cap ring`,
+      ? `Double-wall cap bridge rows: ${capRowCounts.map((count, idx) => `R${idx + 1}=${count}`).join(', ')}; T=taper, M=miter+taper`
+      : `${output.capstone.capUnitsPerCourseRounded} cap units on primary cap ring; T=taper, M=miter+taper`,
   );
   const capRows = capRowCounts
     .map((unitCount, rowIdx) => {
@@ -1102,11 +1124,11 @@ export function buildCoursePlanSvg(
     ${cleanoutLegend}
     <rect x="8" y="${legendY + 22}" width="14" height="10" rx="2" fill="#2b6f9b" opacity="0.9" />
     <text x="28" y="${legendY + 31}" font-size="11" fill="#3c2a11">Gas line entry</text>
-    <rect x="134" y="${legendY + 22}" width="14" height="10" rx="2" fill="#ccb085" opacity="0.9" />
-    <text x="154" y="${legendY + 31}" font-size="11" fill="#3c2a11">Cap row unit</text>
-    <rect x="254" y="${legendY + 22}" width="14" height="10" rx="2" fill="#9f8050" opacity="0.9" />
-    <text x="274" y="${legendY + 31}" font-size="11" fill="#3c2a11">Cap corner/miter unit</text>
-    <text x="8" y="${legendY + 64}" font-size="11" fill="#4a3720">Vent openings remain red; gas line entry remains blue. ${strategyLegendText} Verify vent and cleanout locations during dry fit before cutting.</text>
+    <rect x="134" y="${legendY + 22}" width="14" height="10" rx="2" fill="#e2cfa6" opacity="0.9" />
+    <text x="154" y="${legendY + 31}" font-size="11" fill="#3c2a11">T = cap taper-cut unit</text>
+    <rect x="294" y="${legendY + 22}" width="14" height="10" rx="2" fill="#9f8050" opacity="0.9" />
+    <text x="314" y="${legendY + 31}" font-size="11" fill="#3c2a11">M = cap corner/miter+taper unit</text>
+    <text x="8" y="${legendY + 64}" font-size="11" fill="#4a3720">For clean non-circular cap coverage, the 3D preview uses cut-footprint capstones: T units are tapered; M units are tapered and mitered. ${strategyLegendText}</text>
     ${doubleWallLegend}
   </g>`;
 
