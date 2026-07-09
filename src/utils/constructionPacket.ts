@@ -1144,7 +1144,7 @@ export function buildCoursePlanSvg(
   );
   const svgWidth = Math.max(940, brickStartX + maxUnits * modulePx + 24);
   const totalRows = wallRows + (includeOuterWall ? wallRows : 0) + capRowCounts.length;
-  const legendHeight = 78;
+  const legendHeight = 110;
   const svgHeight =
     28 +
     totalRows * rowHeight +
@@ -1392,7 +1392,7 @@ export function buildCoursePlanSvg(
     .join('');
   yCursor += capRowCounts.length * rowHeight + sectionGap;
 
-  const legendY = svgHeight - 58;
+  const legendY = svgHeight - 100;
   const cleanoutLegend =
     input?.ashCleanoutType && input.ashCleanoutType !== 'none'
       ? `<rect x="532" y="${legendY}" width="14" height="10" rx="2" fill="#2f2f2f" opacity="0.9" />
