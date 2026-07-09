@@ -4,8 +4,17 @@ export type UnitOrientation = 'stretcher' | 'header';
 export type CapOrientation = 'match-wall' | UnitOrientation;
 export type WallCourseStrategy = 'uniform' | 'shim-spacer' | 'vented-accent';
 export type LinerType = 'none' | 'fire-brick' | 'steel-ring';
-export type PlanShape = 'circular' | 'square' | 'rectangular' | 'hexagonal' | 'octagonal';
-export type AshCleanoutType = 'none' | 'hinged-door' | 'removable-pan' | 'drain-holes';
+export type PlanShape =
+  | 'circular'
+  | 'square'
+  | 'rectangular'
+  | 'hexagonal'
+  | 'octagonal';
+export type AshCleanoutType =
+  | 'none'
+  | 'hinged-door'
+  | 'removable-pan'
+  | 'drain-holes';
 export type CapPlacementMode = 'outward-only' | 'symmetric';
 export type CapCutStrategy = 'full-fit' | 'corner-only';
 export type SoilType =
@@ -53,7 +62,11 @@ export type GasHardwareTemplate =
 export type ThermalAssemblyMode = 'single-wall' | 'double-wall';
 export type ThermalCavityFill = 'air-gap' | 'sand-fill' | 'insulation-board';
 export type ThermalCavityVentMode = 'vented' | 'sealed';
-export type MortarType = 'refractory' | 'type-n' | 'type-s' | 'construction-adhesive';
+export type MortarType =
+  | 'refractory'
+  | 'type-n'
+  | 'type-s'
+  | 'construction-adhesive';
 export type SmokelessInsertPresetKey =
   | 'solo-stove-bonfire-2'
   | 'breeo-x19'
@@ -185,9 +198,9 @@ export interface SafetyWarning {
     | 'smokeless-vent-ratio-high'
     | 'smokeless-flange-unsafe'
     | 'smokeless-depth-insufficient';
-    message: string;
-    actualValue?: number;
-    requiredValue?: number;
+  message: string;
+  actualValue?: number;
+  requiredValue?: number;
 }
 
 export interface CutPlanSpec {
@@ -404,15 +417,20 @@ export interface SmokelessSpec {
   /** Number of primary (base) air intake holes. */
   primaryVentCount: number;
   /** Diameter of each primary intake hole (in). */
+  /** Diameter of each primary intake hole (in). */
   primaryVentDiameterIn: number;
   /** Total intake area: primaryVentCount × π×(d/2)² (sq in). */
   primaryVentTotalAreaSqIn: number;
+  /** Height of primary intake hole centers above the bottom edge of the insert (in). */
+  primaryHeightFromBottomIn: number;
   /** Number of secondary combustion jet holes at the top inner rim. */
   secondaryVentCount: number;
   /** Diameter of each secondary jet hole (in). */
   secondaryVentDiameterIn: number;
   /** Total secondary jet area: secondaryVentCount × π×(d/2)² (sq in). */
   secondaryVentTotalAreaSqIn: number;
+  /** Height of secondary jet hole centers below the top rim of the insert (in). */
+  secondaryHeightFromTopIn: number;
   /** A_intake / A_holes ratio. Optimal range: 1.2 – 1.5. */
   intakeOutletRatio: number;
   /** Whether the ratio is in the optimal range, below (starved), or above (overcooled). */

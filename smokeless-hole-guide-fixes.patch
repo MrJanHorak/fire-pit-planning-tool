@@ -1,0 +1,156 @@
+diff --git a/src/components/ControlPanel.tsx b/src/components/ControlPanel.tsx
+index bce2c40..0509eb6 100644
+--- a/src/components/ControlPanel.tsx
++++ b/src/components/ControlPanel.tsx
+@@ -916,10 +916,19 @@ export default function ControlPanel({
+                   <span className='text-xs font-medium text-amber-900'>Insert Flange OD (in)</span>
+                   <input
+                     type='number' min={6} step={0.25}
+-                    className='rounded-md border border-amber-700/30 bg-white px-2 py-1.5 text-sm'
++                    className={`rounded-md border bg-white px-2 py-1.5 text-sm ${
++                      (input.smokelessInsertFlangeOD ?? 21.0) <= (input.smokelessInsertBaseOD ?? 19.0)
++                        ? 'border-red-500 focus:border-red-500'
++                        : 'border-amber-700/30'
++                    }`}
+                     value={input.smokelessInsertFlangeOD ?? 21.0}
+                     onChange={(e) => setInput((prev) => ({ ...prev, smokelessInsertFlangeOD: Number(e.target.value) }))}
+                   />
++                  {(input.smokelessInsertFlangeOD ?? 21.0) <= (input.smokelessInsertBaseOD ?? 19.0) && (
++                    <span className='text-xs text-red-700'>
++                      Flange OD must be larger than Base OD — the flange rests on top of the masonry and can't be narrower than the insert body.
++                    </span>
++                  )}
+                 </label>
+                 <label className='flex flex-col gap-1'>
+                   <span className='text-xs font-medium text-amber-900'>Min. Pit Depth (in)</span>
+diff --git a/src/engine/MasonryEngine.ts b/src/engine/MasonryEngine.ts
+index 2e5772b..def5eac 100644
+--- a/src/engine/MasonryEngine.ts
++++ b/src/engine/MasonryEngine.ts
+@@ -1944,6 +1944,12 @@ export class MasonryEngine {
+     const secondaryVentCount = Math.max(3, input.smokelessSecondaryVentCount ?? 20);
+     const secondaryVentDiameterIn = Math.max(0.25, input.smokelessSecondaryVentDiameterIn ?? 0.5);
+ 
++    // --- Vertical hole placement ---
++    // Primary intake holes sit low enough to stay clear of the fire grate and ash bed.
++    // Secondary jet holes sit just below the flange weld so cavity air is fully heated before it exits.
++    const primaryHeightFromBottomIn = 2.0;
++    const secondaryHeightFromTopIn = 1.5;
++
+     const ventCircleAreaSqIn = (d: number) => Math.PI * Math.pow(d / 2, 2);
+     const primaryVentTotalAreaSqIn = primaryVentCount * ventCircleAreaSqIn(primaryVentDiameterIn);
+     const secondaryVentTotalAreaSqIn = secondaryVentCount * ventCircleAreaSqIn(secondaryVentDiameterIn);
+@@ -1990,6 +1996,8 @@ export class MasonryEngine {
+       `Stack-effect draft pressure: ~${draftPressurePa.toFixed(1)} Pa at current wall height.`,
+       `First course: omit ${baseVentBlockOmissions} blocks evenly spaced to create primary air intake openings.`,
+       `Minimum pit depth required: ${insertMinDepthIn} in — current wall height: ${wallHeightIn} in.`,
++      `Primary intake holes: drill ${primaryHeightFromBottomIn.toFixed(1)} in up from the bottom edge of the insert.`,
++      `Secondary jet holes: drill ${secondaryHeightFromTopIn.toFixed(1)} in down from the top rim, just below the flange weld.`,
+     ];
+ 
+     return {
+@@ -2004,9 +2012,11 @@ export class MasonryEngine {
+       primaryVentCount,
+       primaryVentDiameterIn,
+       primaryVentTotalAreaSqIn,
++      primaryHeightFromBottomIn,
+       secondaryVentCount,
+       secondaryVentDiameterIn,
+       secondaryVentTotalAreaSqIn,
++      secondaryHeightFromTopIn,
+       intakeOutletRatio,
+       intakeOutletRatioStatus,
+       draftPressurePa,
+diff --git a/src/types.ts b/src/types.ts
+index 5290a59..afc8c40 100644
+--- a/src/types.ts
++++ b/src/types.ts
+@@ -407,12 +407,16 @@ export interface SmokelessSpec {
+   primaryVentDiameterIn: number;
+   /** Total intake area: primaryVentCount × π×(d/2)² (sq in). */
+   primaryVentTotalAreaSqIn: number;
++  /** Height of primary intake hole centers above the bottom edge of the insert (in). */
++  primaryHeightFromBottomIn: number;
+   /** Number of secondary combustion jet holes at the top inner rim. */
+   secondaryVentCount: number;
+   /** Diameter of each secondary jet hole (in). */
+   secondaryVentDiameterIn: number;
+   /** Total secondary jet area: secondaryVentCount × π×(d/2)² (sq in). */
+   secondaryVentTotalAreaSqIn: number;
++  /** Height of secondary jet hole centers below the top rim of the insert (in). */
++  secondaryHeightFromTopIn: number;
+   /** A_intake / A_holes ratio. Optimal range: 1.2 – 1.5. */
+   intakeOutletRatio: number;
+   /** Whether the ratio is in the optimal range, below (starved), or above (overcooled). */
+diff --git a/src/utils/constructionPacket.ts b/src/utils/constructionPacket.ts
+index 904ee52..811a31a 100644
+--- a/src/utils/constructionPacket.ts
++++ b/src/utils/constructionPacket.ts
+@@ -103,13 +103,24 @@ export function buildSmokelessHoleGuideHtml(output: MasonryOutput): string {
+   }
+ 
+   const spec = output.smokelessSpec;
+-  const primarySpacingIn =
++
++  // Both hole rows are drilled into the vertical cylinder wall, so both must be spaced
++  // off the base OD circumference — the flange is a flat horizontal lip, not part of
++  // the wall circumference, and must never be used for hole-spacing math.
++  const primaryArcSpacingIn =
++    spec.primaryVentCount > 0 ? (Math.PI * spec.insertBaseOD) / spec.primaryVentCount : 0;
++  const secondaryArcSpacingIn =
++    spec.secondaryVentCount > 0 ? (Math.PI * spec.insertBaseOD) / spec.secondaryVentCount : 0;
++
++  // Chord spacing: straight-line, center-to-center distance for calipers/rigid tape,
++  // as opposed to arc spacing measured with a flexible tape wrapped around the curve.
++  const primaryChordSpacingIn =
+     spec.primaryVentCount > 0
+-      ? (Math.PI * spec.insertBaseOD) / spec.primaryVentCount
++      ? spec.insertBaseOD * Math.sin(Math.PI / spec.primaryVentCount)
+       : 0;
+-  const secondarySpacingIn =
++  const secondaryChordSpacingIn =
+     spec.secondaryVentCount > 0
+-      ? (Math.PI * spec.insertFlangeOD) / spec.secondaryVentCount
++      ? spec.insertBaseOD * Math.sin(Math.PI / spec.secondaryVentCount)
+       : 0;
+ 
+   return `<h3>Hole Cutting Guide</h3>
+@@ -119,7 +130,9 @@ export function buildSmokelessHoleGuideHtml(output: MasonryOutput): string {
+           <th>Hole Row</th>
+           <th>Count</th>
+           <th>Diameter</th>
+-          <th>Layout Spacing</th>
++          <th>Height</th>
++          <th>Arc Spacing</th>
++          <th>Chord Spacing</th>
+         </tr>
+       </thead>
+       <tbody>
+@@ -127,19 +140,24 @@ export function buildSmokelessHoleGuideHtml(output: MasonryOutput): string {
+           <td>Primary intake holes</td>
+           <td>${spec.primaryVentCount}</td>
+           <td>${spec.primaryVentDiameterIn.toFixed(2)} in</td>
+-          <td>${primarySpacingIn.toFixed(2)} in around the base OD</td>
++          <td>${spec.primaryHeightFromBottomIn.toFixed(2)} in up from the bottom edge</td>
++          <td>${primaryArcSpacingIn.toFixed(2)} in</td>
++          <td>${primaryChordSpacingIn.toFixed(2)} in</td>
+         </tr>
+         <tr>
+           <td>Secondary jet holes</td>
+           <td>${spec.secondaryVentCount}</td>
+           <td>${spec.secondaryVentDiameterIn.toFixed(2)} in</td>
+-          <td>${secondarySpacingIn.toFixed(2)} in around the flange OD</td>
++          <td>${spec.secondaryHeightFromTopIn.toFixed(2)} in down from the top rim</td>
++          <td>${secondaryArcSpacingIn.toFixed(2)} in</td>
++          <td>${secondaryChordSpacingIn.toFixed(2)} in</td>
+         </tr>
+       </tbody>
+     </table>
+     <ul>
+       <li>Mark all hole centers evenly around the insert shell before drilling.</li>
+-      <li>Use the base OD for primary intake spacing and the flange OD for secondary jet spacing.</li>
++      <li>Both rows are drilled on the vertical cylinder wall — always space holes off the base OD, never the flange OD (the flange is a flat lip, not part of the wall circumference).</li>
++      <li>Arc spacing = distance measured with a flexible tape wrapped around the curve. Chord spacing = straight-line, center-to-center distance for calipers or a rigid ruler. Either works; use whichever tool you have.</li>
+       <li>For custom DIY inserts, drill pilot holes first, then open them to the final diameters listed above.</li>
+     </ul>`;
+ }
