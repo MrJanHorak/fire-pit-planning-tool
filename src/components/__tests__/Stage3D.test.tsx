@@ -7,6 +7,7 @@ import {
   buildCircularCapJointQuad,
   buildOuterFaceMarkerPlacement,
   buildRegularPolygonRingPiecePoints,
+  buildRectangularButtJointCapPlacement,
   buildRectangularRingPiecePoints,
   computeStage3DGeometry,
   distributeRectangularRingUnits,
@@ -219,6 +220,45 @@ describe('Stage3D geometry', () => {
       outerMidpoint.x * marker.outwardNormal.x +
         outerMidpoint.z * marker.outwardNormal.z,
     );
+  });
+
+  it('places square DIY capstones as through-run and butt-joint corners', () => {
+    const spanWidthFt = 5;
+    const spanDepthFt = 5;
+    const capWidthFt = 0.75;
+    const capLengthFt = 1;
+    const jointFt = 0.04;
+    const unitCount = 24;
+    const placements = Array.from({ length: unitCount }, (_, capIndex) =>
+      buildRectangularButtJointCapPlacement({
+        capIndex,
+        unitCount,
+        spanWidthFt,
+        spanDepthFt,
+        capWidthFt,
+        capLengthFt,
+        jointFt,
+      }),
+    );
+    const topRun = placements.filter((placement) => placement.sideIndex === 0);
+    const rightRun = placements.filter((placement) => placement.sideIndex === 1);
+    const topStart = Math.min(
+      ...topRun.map((placement) => placement.x - placement.renderLengthFt / 2),
+    );
+    const topEnd = Math.max(
+      ...topRun.map((placement) => placement.x + placement.renderLengthFt / 2),
+    );
+    const rightStart = Math.min(
+      ...rightRun.map((placement) => placement.z - placement.renderLengthFt / 2),
+    );
+    const rightEnd = Math.max(
+      ...rightRun.map((placement) => placement.z + placement.renderLengthFt / 2),
+    );
+
+    expect(topStart).toBeLessThan(-spanWidthFt / 2);
+    expect(topEnd).toBeGreaterThan(spanWidthFt / 2);
+    expect(rightStart).toBeGreaterThan(-spanDepthFt / 2);
+    expect(rightEnd).toBeLessThan(spanDepthFt / 2);
   });
 
   it('detects half-round coping cap units by name', () => {

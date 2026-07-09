@@ -859,6 +859,93 @@ export function getRectangularRingPieceIndex(
   };
 }
 
+export function buildRectangularButtJointCapPlacement({
+  capIndex,
+  unitCount,
+  spanWidthFt,
+  spanDepthFt,
+  capWidthFt,
+  capLengthFt,
+  jointFt,
+}: {
+  capIndex: number;
+  unitCount: number;
+  spanWidthFt: number;
+  spanDepthFt: number;
+  capWidthFt: number;
+  capLengthFt: number;
+  jointFt: number;
+}): Placement & {
+  renderLengthFt: number;
+  sideIndex: number;
+  pieceIndex: number;
+  piecesOnSide: number;
+} {
+  const throughRunWidthFt = spanWidthFt + capWidthFt;
+  const buttRunDepthFt = Math.max(0.1, spanDepthFt - capWidthFt);
+  const sideCounts = distributeRectangularRingUnits(
+    unitCount,
+    throughRunWidthFt,
+    buttRunDepthFt,
+  );
+  const { sideIndex, pieceIndex, piecesOnSide } =
+    getRectangularRingPieceIndex(capIndex, sideCounts);
+  const runLengthFt = sideIndex % 2 === 0 ? throughRunWidthFt : buttRunDepthFt;
+  const moduleFt = runLengthFt / Math.max(1, piecesOnSide);
+  const renderLengthFt = Math.max(
+    0.08,
+    Math.min(capLengthFt, moduleFt - Math.max(0, jointFt)),
+  );
+  const positionAlongRunFt =
+    -runLengthFt / 2 + moduleFt * (pieceIndex + 0.5);
+
+  if (sideIndex === 0) {
+    return {
+      x: positionAlongRunFt,
+      z: -spanDepthFt / 2,
+      rotationY: 0,
+      renderLengthFt,
+      sideIndex,
+      pieceIndex,
+      piecesOnSide,
+    };
+  }
+
+  if (sideIndex === 1) {
+    return {
+      x: spanWidthFt / 2,
+      z: positionAlongRunFt,
+      rotationY: Math.PI / 2,
+      renderLengthFt,
+      sideIndex,
+      pieceIndex,
+      piecesOnSide,
+    };
+  }
+
+  if (sideIndex === 2) {
+    return {
+      x: -positionAlongRunFt,
+      z: spanDepthFt / 2,
+      rotationY: 0,
+      renderLengthFt,
+      sideIndex,
+      pieceIndex,
+      piecesOnSide,
+    };
+  }
+
+  return {
+    x: -spanWidthFt / 2,
+    z: -positionAlongRunFt,
+    rotationY: Math.PI / 2,
+    renderLengthFt,
+    sideIndex,
+    pieceIndex,
+    piecesOnSide,
+  };
+}
+
 export function buildRectangularRingPiecePoints({
   spanWidthFt,
   spanDepthFt,
@@ -4749,10 +4836,25 @@ export default function Stage3D({
                   const polyFaceLen =
                     2 * rowRadiusFt * Math.tan(Math.PI / wallRadialSegments);
                   const polyFaceModSpacingFt = polyFaceLen / polyBricksPerFace;
+                  const rowUsesButtJointCapCorners =
+                    !isRadialPlanShape(output.planShape) &&
+                    (output.capstone.cutStrategy ?? 'full-fit') ===
+                      'corner-only';
 
                   return Array.from(
                     { length: rowUnitCount },
                     (_, capIdx) => {
+                      const buttJointCapPlacement = rowUsesButtJointCapCorners
+                        ? buildRectangularButtJointCapPlacement({
+                            capIndex: capIdx,
+                            unitCount: rowUnitCount,
+                            spanWidthFt: rowSpanWidthFt,
+                            spanDepthFt: rowSpanDepthFt,
+                            capWidthFt: capBrickWidthFt,
+                            capLengthFt: capBrickLengthFt,
+                            jointFt: capJointLengthFt + overlapSafetyFt,
+                          })
+                        : undefined;
                       const placement =
                         output.planShape === 'circular'
                           ? getCircularPlacement(
@@ -4785,7 +4887,8 @@ export default function Stage3D({
                                   rotationY: -(Math.PI / 2 + faceAngle),
                                 };
                               })()
-                            : getRectangularPlacement(
+                            : buttJointCapPlacement ??
+                              getRectangularPlacement(
                                 capIdx,
                                 rowUnitCount,
                                 capstoneOffsetIn,
@@ -4803,6 +4906,9 @@ export default function Stage3D({
                             brickLengthIn: rowRenderedCapBrickLengthFt * 12,
                           })
                         : undefined;
+                      const renderedCapLengthFt =
+                        buttJointCapPlacement?.renderLengthFt ??
+                        rowRenderedCapBrickLengthFt;
 
                       if (output.planShape !== 'circular') {
                         const capCutStrategy =
@@ -4862,9 +4968,12 @@ export default function Stage3D({
                                 }),
                               };
                             })();
-                        if (
+                        const shouldRenderCutFootprint =
                           capCutStrategy === 'full-fit' ||
-                          capFootprint.isCornerCut
+                          (capFootprint.isCornerCut &&
+                            isRadialPlanShape(output.planShape));
+                        if (
+                          shouldRenderCutFootprint
                         ) {
                           const footprintCenter = averagePoints(
                             capFootprint.points,
@@ -4917,7 +5026,7 @@ export default function Stage3D({
                               >
                                 <boxGeometry
                                   args={[
-                                    rowRenderedCapBrickLengthFt,
+                                    renderedCapLengthFt,
                                     halfRoundBaseHeightFt,
                                     capBrickWidthFt,
                                   ]}
@@ -4950,7 +5059,7 @@ export default function Stage3D({
                                   args={[
                                     halfRoundCrownRadiusFt,
                                     halfRoundCrownRadiusFt,
-                                    rowRenderedCapBrickLengthFt,
+                                    renderedCapLengthFt,
                                     20,
                                   ]}
                                 />
@@ -4967,7 +5076,7 @@ export default function Stage3D({
                             <>
                               <boxGeometry
                                 args={[
-                                  rowRenderedCapBrickLengthFt,
+                                  renderedCapLengthFt,
                                   visCapBrickHeightFt,
                                   capBrickWidthFt,
                                 ]}
@@ -5100,10 +5209,18 @@ export default function Stage3D({
                       rotationY: -(Math.PI / 2 + faceAngle),
                     };
                   };
+                  const rowUsesButtJointCapCorners =
+                    !isRadialPlanShape(output.planShape) &&
+                    (output.capstone.cutStrategy ?? 'full-fit') ===
+                      'corner-only';
 
                   return Array.from(
                     { length: rowUnitCount },
                     (_, capIdx) => {
+                      if (rowUsesButtJointCapCorners) {
+                        return null;
+                      }
+
                       const jointPlacement =
                         output.planShape === 'circular'
                           ? getCircularPlacement(

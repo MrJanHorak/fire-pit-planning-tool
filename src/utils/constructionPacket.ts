@@ -26,6 +26,17 @@ function formatShapeName(shape: MasonryInput['planShape']): string {
   return shape.charAt(0).toUpperCase() + shape.slice(1);
 }
 
+function isRectangularPlan(shape: MasonryOutput['planShape']): boolean {
+  return shape === 'square' || shape === 'rectangular';
+}
+
+function usesButtJointCapCorners(output: MasonryOutput): boolean {
+  return (
+    isRectangularPlan(output.planShape) &&
+    (output.capstone.cutStrategy ?? 'full-fit') === 'corner-only'
+  );
+}
+
 function formatSeatingGroundTypeName(
   groundType: NonNullable<MasonryInput['seatingGroundType']>,
 ): string {
@@ -243,6 +254,7 @@ function buildCapstoneCutScheduleTable(
       const rowWidthIn = output.capstone.capCenterlineWidthIn + rowOffsetIn * 2;
       const rowDepthIn = output.capstone.capCenterlineDepthIn + rowOffsetIn * 2;
       const capCutStrategy = output.capstone.cutStrategy ?? 'full-fit';
+      const buttJointCorners = usesButtJointCapCorners(output);
       const taperUnits =
         output.planShape === 'circular'
           ? capCut.requiresCutting
@@ -254,7 +266,7 @@ function buildCapstoneCutScheduleTable(
               : unitCount
             : 0;
       const miterUnits =
-        sideCount > 0
+        sideCount > 0 && !buttJointCorners
           ? countCornerCutUnits(
               unitCount,
               output.planShape,
@@ -269,7 +281,9 @@ function buildCapstoneCutScheduleTable(
           (capCutStrategy === 'corner-only' ? miterUnits : 0),
       );
       const cutGuide =
-        capCutStrategy === 'corner-only' && miterUnits > 0
+        buttJointCorners
+          ? 'No miter cuts in DIY butt-joint mode; extend one run and butt the crossing run into it'
+          : capCutStrategy === 'corner-only' && miterUnits > 0
           ? `${miterUnits} corner units only @ ${capCut.recommendedCutAngleDeg.toFixed(1)} deg; face units remain full`
           : taperUnits > 0
           ? output.planShape === 'circular'
@@ -305,10 +319,13 @@ function buildCapstoneCutScheduleTable(
 
 export function buildCutScheduleTablesHtml(output: MasonryOutput): string {
   const capCut = getCapstoneCutMetrics(output);
+  const capCutNote = usesButtJointCapCorners(output)
+    ? 'Square/rectangle DIY corner-only mode uses butt-joint cap corners: one straight cap run extends through the corner and the crossing run butts into it, so no M corner miter cuts are scheduled.'
+    : 'T units match the cap taper markers in the course layout. M units are corner capstones that need both taper and miter cuts.';
   return `<h3>Wall Cut Schedule</h3>
     ${buildWallCutScheduleTable(output)}
     <h3>Capstone Cut Schedule</h3>
-    <p>T units match the cap taper markers in the course layout. M units are corner capstones that need both taper and miter cuts.</p>
+    <p>${capCutNote}</p>
     ${buildCapstoneCutScheduleTable(output, capCut)}`;
 }
 
@@ -345,9 +362,11 @@ function buildCapBridgeRowScheduleTable(
       const taperRequired =
         output.planShape === 'circular'
           ? rowIndex === 0 && capCut.requiresCutting
-          : sideCount > 0;
+          : sideCount > 0 && !usesButtJointCapCorners(output);
       const rowCutGuide = taperRequired
         ? `${capCut.recommendedCutPerSideIn.toFixed(3)} in per side @ ${capCut.recommendedCutAngleDeg.toFixed(2)} deg; corner units marked in layout`
+        : usesButtJointCapCorners(output)
+          ? 'DIY butt-joint corners: extend one straight run and butt the crossing run into it'
         : 'Not required';
 
       return `<tr>
@@ -464,6 +483,7 @@ export function buildCapstonePlacementSampleSvg(output: MasonryOutput): string {
         ? `${(180 / polygonSides).toFixed(1)} deg corner miter`
         : '45.0 deg corner miter';
     const taperLabel = capCut.recommendedCutPerSideIn.toFixed(3);
+    const buttJointCorners = usesButtJointCapCorners(output);
     const capRows =
       output.thermalAssembly.mode === 'double-wall' &&
       output.thermalAssembly.capBridgeCourseUnitCounts.length > 0
@@ -476,21 +496,21 @@ export function buildCapstonePlacementSampleSvg(output: MasonryOutput): string {
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 250" width="100%" role="img" aria-label="Capstone placement detail diagram">
       <rect x="0" y="0" width="620" height="244" fill="#fffdf7" />
       <text x="14" y="24" font-size="16" fill="#2f2110" font-weight="700">Capstone Placement Detail (Plan View)</text>
-      <text x="14" y="48" font-size="12" fill="#4a3720">${cutStrategy === 'corner-only' ? 'DIY corner-only mode: face capstones stay rectangular; only corner capstones are miter/cut.' : 'Full-fit mode: non-circular capstones are clipped to the ring; side pieces taper and corner pieces miter.'}</text>
+      <text x="14" y="48" font-size="12" fill="#4a3720">${buttJointCorners ? 'DIY butt-joint mode: square/rectangle capstones stay rectangular; one run extends through each corner.' : cutStrategy === 'corner-only' ? 'DIY corner-only mode: face capstones stay rectangular; only polygon corner capstones are miter/cut.' : 'Full-fit mode: non-circular capstones are clipped to the ring; side pieces taper and corner pieces miter.'}</text>
       <polygon points="126,88 274,76 292,158 146,170" fill="#ccb085" stroke="#6e4728" stroke-width="2" />
       <polygon points="324,76 494,88 474,170 306,158" fill="#ccb085" stroke="#6e4728" stroke-width="2" />
       <polygon points="274,76 324,76 306,158 292,158" fill="#c6b39a" stroke="#4a3a28" stroke-width="1.5" />
       <line x1="126" y1="88" x2="146" y2="170" stroke="#a01d1d" stroke-width="3" />
       <line x1="274" y1="76" x2="292" y2="158" stroke="#a01d1d" stroke-width="3" />
       <line x1="324" y1="76" x2="306" y2="158" stroke="#a01d1d" stroke-width="3" />
-      <text x="18" y="92" font-size="12" fill="#a01d1d">Side taper: about ${taperLabel} in per side</text>
-      <text x="18" y="112" font-size="12" fill="#a01d1d">Corner miter: ${angleLabel}</text>
+      <text x="18" y="92" font-size="12" fill="#a01d1d">${buttJointCorners ? 'No miter cuts scheduled in this DIY mode' : `Side taper: about ${taperLabel} in per side`}</text>
+      <text x="18" y="112" font-size="12" fill="#a01d1d">${buttJointCorners ? 'Use butt joints: long run passes corner; crossing run butts in.' : `Corner miter: ${angleLabel}`}</text>
       <text x="18" y="132" font-size="12" fill="#a01d1d">Dry-fit each face; do not force rectangular caps through vertices.</text>
       <text x="206" y="188" font-size="12" fill="#4a3720">Cut capstone unit</text>
       <text x="386" y="188" font-size="12" fill="#4a3720">Cut capstone unit</text>
       <text x="278" y="66" font-size="12" fill="#4a3720">Mortar joint between cut edges</text>
-      <text x="14" y="206" font-size="12" fill="#2f2110" font-weight="700">Capstone cuts are required for clean ${formatShapeName(output.planShape).toLowerCase()} coverage.</text>
-      <text x="14" y="228" font-size="12" fill="#4a3720">Cap course rows shown in Course Layout: ${rowSummary}. Each row has its own count and corner/miter units.</text>
+      <text x="14" y="206" font-size="12" fill="#2f2110" font-weight="700">${buttJointCorners ? 'Square/rectangle DIY mode trades perfect clipped coverage for no corner miter cuts.' : `Capstone cuts are required for clean ${formatShapeName(output.planShape).toLowerCase()} coverage.`}</text>
+      <text x="14" y="228" font-size="12" fill="#4a3720">Cap course rows shown in Course Layout: ${rowSummary}. ${buttJointCorners ? 'Rows use full rectangular units with butt-joint corners.' : 'Each row has its own count and corner/miter units.'}</text>
     </svg>`;
   }
 
@@ -544,8 +564,11 @@ export function buildCapstoneCutTypeDiagramsSvg(output: MasonryOutput): string {
   const miterAngle =
     sideCount > 0 ? capCut.recommendedCutAngleDeg.toFixed(1) : 'n/a';
   const taperPerSide = capCut.recommendedCutPerSideIn.toFixed(3);
+  const buttJointCorners = usesButtJointCapCorners(output);
   const strategyNote =
-    cutStrategy === 'corner-only'
+    buttJointCorners
+      ? 'DIY butt-joint mode: square/rectangle capstones remain full units; no M corner miter cuts are scheduled.'
+      : cutStrategy === 'corner-only'
       ? 'DIY corner-only mode: only M corner units are cut; face capstones remain full rectangular units.'
       : 'Full-fit mode: T face units are tapered; M corner units receive both taper and miter cuts.';
 
@@ -564,13 +587,13 @@ export function buildCapstoneCutTypeDiagramsSvg(output: MasonryOutput): string {
     </g>
 
     <g transform="translate(278 76)">
-      <text x="0" y="-12" font-size="13" fill="#2f2110" font-weight="700">M — corner miter + taper unit</text>
+      <text x="0" y="-12" font-size="13" fill="#2f2110" font-weight="700">${buttJointCorners ? 'B — butt-joint corner (no miter cut)' : 'M — corner miter + taper unit'}</text>
       <polygon points="36,24 204,42 166,116 20,116" fill="#9f8050" stroke="#6e4728" stroke-width="2" />
       <line x1="36" y1="24" x2="20" y2="116" stroke="#a01d1d" stroke-width="3" />
       <line x1="204" y1="42" x2="166" y2="116" stroke="#a01d1d" stroke-width="3" />
       <line x1="166" y1="116" x2="204" y2="42" stroke="#a01d1d" stroke-width="3" stroke-dasharray="5 4" />
-      <text x="12" y="146" font-size="11" fill="#4a3720">Miter angle: ${miterAngle} deg</text>
-      <text x="12" y="164" font-size="11" fill="#4a3720">Also receives taper in full-fit mode</text>
+      <text x="12" y="146" font-size="11" fill="#4a3720">${buttJointCorners ? 'Miter angle: none' : `Miter angle: ${miterAngle} deg`}</text>
+      <text x="12" y="164" font-size="11" fill="#4a3720">${buttJointCorners ? 'One straight run extends; crossing run butts in' : 'Also receives taper in full-fit mode'}</text>
     </g>
 
     <g transform="translate(532 76)">
@@ -1128,7 +1151,10 @@ export function buildCoursePlanSvg(
           ? output.capstone.requiresTaperCutting
           : (output.capstone.cutStrategy ?? 'full-fit') === 'full-fit');
       const isCapMiterCut =
-        !!isCap && isCorner && getPlanCornerSideCount(output.planShape) > 0;
+        !!isCap &&
+        isCorner &&
+        getPlanCornerSideCount(output.planShape) > 0 &&
+        !usesButtJointCapCorners(output);
       const unitFill = isAshCleanout
         ? '#2f2f2f'
         : isGasLineBrick
@@ -1278,8 +1304,8 @@ export function buildCoursePlanSvg(
   const capTitle = sectionTitle(
     'CAPSTONE COURSE LAYOUT',
     capRowCounts.length > 1
-      ? `Double-wall cap bridge rows: ${capRowCounts.map((count, idx) => `R${idx + 1}=${count}`).join(', ')}; ${(output.capstone.cutStrategy ?? 'full-fit') === 'corner-only' ? 'DIY mode: M=corner miter/cut, face caps full' : 'T=taper, M=miter+taper'}`
-      : `${output.capstone.capUnitsPerCourseRounded} cap units on primary cap ring; ${(output.capstone.cutStrategy ?? 'full-fit') === 'corner-only' ? 'DIY mode: M=corner miter/cut, face caps full' : 'T=taper, M=miter+taper'}`,
+      ? `Double-wall cap bridge rows: ${capRowCounts.map((count, idx) => `R${idx + 1}=${count}`).join(', ')}; ${usesButtJointCapCorners(output) ? 'DIY butt-joint corners, no cap M cuts' : (output.capstone.cutStrategy ?? 'full-fit') === 'corner-only' ? 'DIY mode: M=corner miter/cut, face caps full' : 'T=taper, M=miter+taper'}`
+      : `${output.capstone.capUnitsPerCourseRounded} cap units on primary cap ring; ${usesButtJointCapCorners(output) ? 'DIY butt-joint corners, no cap M cuts' : (output.capstone.cutStrategy ?? 'full-fit') === 'corner-only' ? 'DIY mode: M=corner miter/cut, face caps full' : 'T=taper, M=miter+taper'}`,
   );
   const capRows = capRowCounts
     .map((unitCount, rowIdx) => {
@@ -1330,8 +1356,8 @@ export function buildCoursePlanSvg(
     <rect x="134" y="${legendY + 22}" width="14" height="10" rx="2" fill="#e2cfa6" opacity="0.9" />
     <text x="154" y="${legendY + 31}" font-size="11" fill="#3c2a11">T = cap taper-cut unit</text>
     <rect x="294" y="${legendY + 22}" width="14" height="10" rx="2" fill="#9f8050" opacity="0.9" />
-    <text x="314" y="${legendY + 31}" font-size="11" fill="#3c2a11">M = cap corner/miter+taper unit</text>
-    <text x="8" y="${legendY + 64}" font-size="11" fill="#4a3720">${(output.capstone.cutStrategy ?? 'full-fit') === 'corner-only' ? 'DIY corner-only cap mode: face caps remain full rectangular units; M units are the corner cuts. Expect larger or less-uniform joints.' : 'For clean non-circular cap coverage, the 3D preview uses cut-footprint capstones: T units are tapered; M units are tapered and mitered.'} ${strategyLegendText}</text>
+    <text x="314" y="${legendY + 31}" font-size="11" fill="#3c2a11">${usesButtJointCapCorners(output) ? 'M not used in square/rect DIY butt-joint mode' : 'M = cap corner/miter+taper unit'}</text>
+    <text x="8" y="${legendY + 64}" font-size="11" fill="#4a3720">${usesButtJointCapCorners(output) ? 'DIY butt-joint cap mode: square/rectangle cap runs stay straight; one run extends through each corner and the crossing run butts into it.' : (output.capstone.cutStrategy ?? 'full-fit') === 'corner-only' ? 'DIY corner-only cap mode: face caps remain full rectangular units; M units are the corner cuts. Expect larger or less-uniform joints.' : 'For clean non-circular cap coverage, the 3D preview uses cut-footprint capstones: T units are tapered; M units are tapered and mitered.'} ${strategyLegendText}</text>
     ${doubleWallLegend}
   </g>`;
 

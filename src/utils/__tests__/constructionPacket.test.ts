@@ -267,6 +267,23 @@ describe('construction packet export', () => {
     expect(html).toContain('Capstone Cut Type Diagrams');
   });
 
+  it('documents square DIY cap strategy as butt-joint corners without miter cuts', () => {
+    const buttJointInput: MasonryInput = {
+      ...input,
+      planShape: 'square',
+      capCutStrategy: 'corner-only',
+    };
+    const output = new MasonryEngine().calculateDesign(buttJointInput);
+    const html = buildConstructionPacketHtml(buttJointInput, output);
+    const svg = buildCoursePlanSvg(output, buttJointInput);
+
+    expect(html).toContain('DIY butt-joint mode');
+    expect(html).toContain('no M corner miter cuts are scheduled');
+    expect(html).toContain('No miter cuts in DIY butt-joint mode');
+    expect(svg).toContain('DIY butt-joint cap mode');
+    expect(svg).toContain('M not used in square/rect DIY butt-joint mode');
+  });
+
   it('builds clearance diagram with pass status when distance meets code', () => {
     const output = new MasonryEngine().calculateDesign({
       ...input,

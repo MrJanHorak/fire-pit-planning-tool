@@ -326,14 +326,38 @@ export default function ControlPanel({
                 value: 'hexagonal' as const,
                 label: 'Hex',
                 icon: (
-                  <span className='inline-block h-3.5 w-3.5 rounded-[3px] border-2 border-current' />
+                  <svg
+                    className='h-4 w-4'
+                    viewBox='0 0 20 20'
+                    aria-hidden='true'
+                  >
+                    <polygon
+                      points='10,2.5 16.5,6.25 16.5,13.75 10,17.5 3.5,13.75 3.5,6.25'
+                      fill='none'
+                      stroke='currentColor'
+                      strokeWidth='2.4'
+                      strokeLinejoin='round'
+                    />
+                  </svg>
                 ),
               },
               {
                 value: 'octagonal' as const,
                 label: 'Oct',
                 icon: (
-                  <span className='inline-block h-3.5 w-3.5 rounded-[4px] border-2 border-current' />
+                  <svg
+                    className='h-4 w-4'
+                    viewBox='0 0 20 20'
+                    aria-hidden='true'
+                  >
+                    <polygon
+                      points='7,2.5 13,2.5 17.5,7 17.5,13 13,17.5 7,17.5 2.5,13 2.5,7'
+                      fill='none'
+                      stroke='currentColor'
+                      strokeWidth='2.4'
+                      strokeLinejoin='round'
+                    />
+                  </svg>
                 ),
               },
             ].map((option) => {
