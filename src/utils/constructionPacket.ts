@@ -103,13 +103,24 @@ export function buildSmokelessHoleGuideHtml(output: MasonryOutput): string {
   }
 
   const spec = output.smokelessSpec;
-  const primarySpacingIn =
+
+  // Both hole rows are drilled into the vertical cylinder wall, so both must be spaced
+  // off the base OD circumference - the flange is a flat horizontal lip, not part of
+  // the wall circumference, and must never be used for hole-spacing math.
+  const primaryArcSpacingIn =
+    spec.primaryVentCount > 0 ? (Math.PI * spec.insertBaseOD) / spec.primaryVentCount : 0;
+  const secondaryArcSpacingIn =
+    spec.secondaryVentCount > 0 ? (Math.PI * spec.insertBaseOD) / spec.secondaryVentCount : 0;
+
+  // Chord spacing: straight-line, center-to-center distance for calipers/rigid tape,
+  // as opposed to arc spacing measured with a flexible tape wrapped around the curve.
+  const primaryChordSpacingIn =
     spec.primaryVentCount > 0
-      ? (Math.PI * spec.insertBaseOD) / spec.primaryVentCount
+      ? spec.insertBaseOD * Math.sin(Math.PI / spec.primaryVentCount)
       : 0;
-  const secondarySpacingIn =
+  const secondaryChordSpacingIn =
     spec.secondaryVentCount > 0
-      ? (Math.PI * spec.insertFlangeOD) / spec.secondaryVentCount
+      ? spec.insertBaseOD * Math.sin(Math.PI / spec.secondaryVentCount)
       : 0;
 
   return `<h3>Hole Cutting Guide</h3>
@@ -119,7 +130,9 @@ export function buildSmokelessHoleGuideHtml(output: MasonryOutput): string {
           <th>Hole Row</th>
           <th>Count</th>
           <th>Diameter</th>
-          <th>Layout Spacing</th>
+          <th>Height</th>
+          <th>Arc Spacing</th>
+          <th>Chord Spacing</th>
         </tr>
       </thead>
       <tbody>
@@ -127,19 +140,24 @@ export function buildSmokelessHoleGuideHtml(output: MasonryOutput): string {
           <td>Primary intake holes</td>
           <td>${spec.primaryVentCount}</td>
           <td>${spec.primaryVentDiameterIn.toFixed(2)} in</td>
-          <td>${primarySpacingIn.toFixed(2)} in around the base OD</td>
+          <td>${spec.primaryHeightFromBottomIn.toFixed(2)} in up from the bottom edge</td>
+          <td>${primaryArcSpacingIn.toFixed(2)} in</td>
+          <td>${primaryChordSpacingIn.toFixed(2)} in</td>
         </tr>
         <tr>
           <td>Secondary jet holes</td>
           <td>${spec.secondaryVentCount}</td>
           <td>${spec.secondaryVentDiameterIn.toFixed(2)} in</td>
-          <td>${secondarySpacingIn.toFixed(2)} in around the flange OD</td>
+          <td>${spec.secondaryHeightFromTopIn.toFixed(2)} in down from the top rim</td>
+          <td>${secondaryArcSpacingIn.toFixed(2)} in</td>
+          <td>${secondaryChordSpacingIn.toFixed(2)} in</td>
         </tr>
       </tbody>
     </table>
     <ul>
       <li>Mark all hole centers evenly around the insert shell before drilling.</li>
-      <li>Use the base OD for primary intake spacing and the flange OD for secondary jet spacing.</li>
+      <li>Both rows are drilled on the vertical cylinder wall - always space holes off the base OD, never the flange OD (the flange is a flat lip, not part of the wall circumference).</li>
+      <li>Arc spacing = distance measured with a flexible tape wrapped around the curve. Chord spacing = straight-line, center-to-center distance for calipers or a rigid ruler. Either works; use whichever tool you have.</li>
       <li>For custom DIY inserts, drill pilot holes first, then open them to the final diameters listed above.</li>
     </ul>`;
 }

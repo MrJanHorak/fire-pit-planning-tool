@@ -80,7 +80,9 @@ const DEFAULT_MORTAR_TYPE: Record<string, import('../types').MortarType> = {
   rockMosaic: 'type-n',
 };
 
-function defaultMortarForPreset(presetKey: string): import('../types').MortarType {
+function defaultMortarForPreset(
+  presetKey: string,
+): import('../types').MortarType {
   return DEFAULT_MORTAR_TYPE[presetKey] ?? 'type-n';
 }
 
@@ -93,7 +95,11 @@ const WALL_UNIT_WEIGHT_OVERRIDES_LB: Record<string, number> = {
 
 const GAS_HARDWARE_TEMPLATES: Record<
   GasHardwareTemplate,
-  { label: string; recommendedAreaMinSqIn: number; recommendedAreaMaxSqIn: number }
+  {
+    label: string;
+    recommendedAreaMinSqIn: number;
+    recommendedAreaMaxSqIn: number;
+  }
 > = {
   'generic-firepit': {
     label: 'Generic firepit cavity',
@@ -118,11 +124,11 @@ const GAS_HARDWARE_TEMPLATES: Record<
 };
 
 /** Physical constants for the stack-effect draft pressure formula. */
-const STACK_PATM_PA = 101325;   // atmospheric pressure (Pa)
-const STACK_G_MS2 = 9.81;       // gravitational acceleration (m/s²)
-const STACK_R_AIR = 287.05;     // specific gas constant for air (J/kg·K)
-const STACK_T0_K = 293;         // ambient temperature (K) ≈ 20°C
-const STACK_TI_K = 673;         // heated cavity air temperature (K) ≈ 400°C / 750°F
+const STACK_PATM_PA = 101325; // atmospheric pressure (Pa)
+const STACK_G_MS2 = 9.81; // gravitational acceleration (m/s²)
+const STACK_R_AIR = 287.05; // specific gas constant for air (J/kg·K)
+const STACK_T0_K = 293; // ambient temperature (K) ≈ 20°C
+const STACK_TI_K = 673; // heated cavity air temperature (K) ≈ 400°C / 750°F
 
 /** Optimal intake-to-outlet vent area ratio range for smokeless secondary combustion. */
 const SMOKELESS_RATIO_MIN = 1.2;
@@ -130,10 +136,10 @@ const SMOKELESS_RATIO_MAX = 1.5;
 
 interface SmokelessInsertPresetDef {
   label: string;
-  baseOD: number;    // in
-  flangeOD: number;  // in
-  minDepth: number;  // in
-  airGap: number;    // in
+  baseOD: number; // in
+  flangeOD: number; // in
+  minDepth: number; // in
+  airGap: number; // in
 }
 
 /**
@@ -674,7 +680,9 @@ export class MasonryEngine {
     wallWidthIn: number,
   ): PlanMetrics {
     const innerWidthIn =
-      input.planShape === 'circular' || input.planShape === 'hexagonal' || input.planShape === 'octagonal'
+      input.planShape === 'circular' ||
+      input.planShape === 'hexagonal' ||
+      input.planShape === 'octagonal'
         ? input.innerDiameterIn
         : input.innerWidthIn;
     const innerDepthIn =
@@ -704,7 +712,10 @@ export class MasonryEngine {
 
     const n = this.polygonSides(planMetrics.planShape as PlanShape);
     if (n > 0) {
-      return this.polygonPerimeter(n, planMetrics.centerlineWidthIn) / (unitLengthIn + jointIn);
+      return (
+        this.polygonPerimeter(n, planMetrics.centerlineWidthIn) /
+        (unitLengthIn + jointIn)
+      );
     }
 
     return (
@@ -880,7 +891,8 @@ export class MasonryEngine {
               polygonSideCount,
               Math.ceil(unitCountRaw / polygonSideCount) * polygonSideCount,
             )
-          : planMetrics.planShape === 'square' || planMetrics.planShape === 'rectangular'
+          : planMetrics.planShape === 'square' ||
+              planMetrics.planShape === 'rectangular'
             ? Math.max(4, Math.ceil(unitCountRaw / 2) * 2)
             : Math.max(1, Math.floor(unitCountRaw));
 
@@ -1201,15 +1213,20 @@ export class MasonryEngine {
 
     // In double-wall mode the inner shell uses wallUnit (brickPresetKey)
     // and the outer shell uses the resolved outer wall unit.
-    const outerWallUnit = mode === 'double-wall'
-      ? this.resolveOrientedUnit(this.resolveOuterWallUnit(input), input.orientation)
-      : wallUnit;
+    const outerWallUnit =
+      mode === 'double-wall'
+        ? this.resolveOrientedUnit(
+            this.resolveOuterWallUnit(input),
+            input.orientation,
+          )
+        : wallUnit;
 
     const innerShellThicknessIn = Math.max(
       wallUnit.widthIn,
       linerSpec.enabled ? linerSpec.thicknessIn : wallUnit.widthIn,
     );
-    const outerShellThicknessIn = mode === 'double-wall' ? outerWallUnit.widthIn : 0;
+    const outerShellThicknessIn =
+      mode === 'double-wall' ? outerWallUnit.widthIn : 0;
     const totalWallDepthIn =
       mode === 'double-wall'
         ? innerShellThicknessIn + cavityWidthIn + outerShellThicknessIn
@@ -1223,7 +1240,9 @@ export class MasonryEngine {
             planMetrics.outerDepthIn,
           );
     const estimatedTieCount =
-      mode === 'double-wall' ? Math.max(4, Math.ceil(perimeterIn / tieSpacingIn)) : 0;
+      mode === 'double-wall'
+        ? Math.max(4, Math.ceil(perimeterIn / tieSpacingIn))
+        : 0;
     const outerShellWeightLb =
       mode === 'double-wall'
         ? estimatedTieCount * 2.25 + perimeterIn * 0.95
@@ -1244,20 +1263,25 @@ export class MasonryEngine {
 
     // Resolve material metadata for double-wall mode.
     const innerKey = input.brickPresetKey ?? 'modular';
-    const outerKey = (mode === 'double-wall' && input.outerWallBrickPresetKey)
-      ? input.outerWallBrickPresetKey
-      : innerKey;
+    const outerKey =
+      mode === 'double-wall' && input.outerWallBrickPresetKey
+        ? input.outerWallBrickPresetKey
+        : innerKey;
     const innerHeatRatingF = HEAT_RATINGS_F[innerKey] ?? 600;
     const outerHeatRatingF = HEAT_RATINGS_F[outerKey] ?? 600;
     const innerMortarType: import('../types').MortarType =
-      input.innerWallMortarType ?? (innerHeatRatingF >= INNER_WALL_MIN_HEAT_RATING_F ? 'refractory' : 'refractory');
+      input.innerWallMortarType ??
+      (innerHeatRatingF >= INNER_WALL_MIN_HEAT_RATING_F
+        ? 'refractory'
+        : 'refractory');
     const outerMortarType: import('../types').MortarType =
       input.outerWallMortarType ?? defaultMortarForPreset(outerKey);
 
     const innerMaterialName = BRICK_PRESETS[innerKey]?.name ?? wallUnit.name;
-    const outerMaterialName = mode === 'double-wall'
-      ? (BRICK_PRESETS[outerKey]?.name ?? outerWallUnit.name)
-      : undefined;
+    const outerMaterialName =
+      mode === 'double-wall'
+        ? (BRICK_PRESETS[outerKey]?.name ?? outerWallUnit.name)
+        : undefined;
 
     const notes =
       mode === 'double-wall'
@@ -1280,11 +1304,17 @@ export class MasonryEngine {
 
     if (input.ashCleanoutType && input.ashCleanoutType !== 'none') {
       const cleanoutNotes: Record<string, string> = {
-        'hinged-door': 'Ash cleanout door: frame one course-opening (≈8×8 in) in base course; use lintel brick or angle iron header; seal cast-iron frame with refractory mortar.',
-        'removable-pan': 'Removable ash pan: leave base course open on one side (≈12 in wide) with steel channel guides; pan sits on ledge stone at hearth level.',
-        'drain-holes': 'Drainage holes: omit mortar from 3–4 base-course head joints, or drill 1-in holes after cure; install stainless mesh screen over each hole to retain embers.',
+        'hinged-door':
+          'Ash cleanout door: frame one course-opening (≈8×8 in) in base course; use lintel brick or angle iron header; seal cast-iron frame with refractory mortar.',
+        'removable-pan':
+          'Removable ash pan: leave base course open on one side (≈12 in wide) with steel channel guides; pan sits on ledge stone at hearth level.',
+        'drain-holes':
+          'Drainage holes: omit mortar from 3–4 base-course head joints, or drill 1-in holes after cure; install stainless mesh screen over each hole to retain embers.',
       };
-      notes.push(cleanoutNotes[input.ashCleanoutType] ?? 'Ash cleanout: see building plans.');
+      notes.push(
+        cleanoutNotes[input.ashCleanoutType] ??
+          'Ash cleanout: see building plans.',
+      );
     }
 
     return {
@@ -1328,8 +1358,10 @@ export class MasonryEngine {
 
     const requiredCapWidthIn =
       thermalAssembly.totalWallDepthIn + Math.max(0, input.capstoneOverhangIn);
-    const capRowModuleWidthIn =
-      Math.max(0.001, capUnit.widthIn + Math.max(0, input.mortarJointIn));
+    const capRowModuleWidthIn = Math.max(
+      0.001,
+      capUnit.widthIn + Math.max(0, input.mortarJointIn),
+    );
     const capBridgeRows = Math.max(
       1,
       Math.ceil(
@@ -1412,8 +1444,9 @@ export class MasonryEngine {
     );
     const ventAnglesDeg = ventAnchors.map((anchor) => anchor.ratio * 360);
     const ventBrickIndexes = this.uniqueIndexes(
-      ventAnchors.map((anchor) =>
-        anchor.brickIndex ?? this.ratioToBrickIndex(anchor.ratio, unitCount),
+      ventAnchors.map(
+        (anchor) =>
+          anchor.brickIndex ?? this.ratioToBrickIndex(anchor.ratio, unitCount),
       ),
     );
     const isGasFuel = input.fuelType !== 'wood';
@@ -1765,13 +1798,19 @@ export class MasonryEngine {
         ? Math.PI * capInnerWidthIn
         : n > 0
           ? this.polygonPerimeter(n, capInnerWidthIn)
-          : this.calculateRectangularPerimeter(capInnerWidthIn, capInnerDepthIn);
+          : this.calculateRectangularPerimeter(
+              capInnerWidthIn,
+              capInnerDepthIn,
+            );
     const outerPerimeterIn =
       planMetrics.planShape === 'circular'
         ? Math.PI * capOuterWidthIn
         : n > 0
           ? this.polygonPerimeter(n, capOuterWidthIn)
-          : this.calculateRectangularPerimeter(capOuterWidthIn, capOuterDepthIn);
+          : this.calculateRectangularPerimeter(
+              capOuterWidthIn,
+              capOuterDepthIn,
+            );
     const innerModuleSpacingIn = innerPerimeterIn / capUnitsPerCourseRounded;
     const outerModuleSpacingIn = outerPerimeterIn / capUnitsPerCourseRounded;
     const innerJointIn = innerModuleSpacingIn - unitLengthIn;
@@ -1841,8 +1880,7 @@ export class MasonryEngine {
     const thermalCapBridgePurchasedUnits =
       thermalAssembly.mode === 'double-wall'
         ? Math.ceil(
-            thermalCapBridgeAdditionalUnits *
-              (1 + CAP_WASTE_FACTOR_PCT / 100),
+            thermalCapBridgeAdditionalUnits * (1 + CAP_WASTE_FACTOR_PCT / 100),
           )
         : 0;
     const thermalCapBridgeWeightLb =
@@ -1853,10 +1891,19 @@ export class MasonryEngine {
 
     // For double-wall, compute outer shell weight using the outer material's density.
     let outerShellUnitWeightLb = wallUnitWeightLb;
-    if (thermalAssembly.mode === 'double-wall' && input.outerWallBrickPresetKey) {
+    if (
+      thermalAssembly.mode === 'double-wall' &&
+      input.outerWallBrickPresetKey
+    ) {
       const outerUnit = this.resolveOuterWallUnit(input);
-      const tempInputOuter = { ...input, brickPresetKey: input.outerWallBrickPresetKey };
-      outerShellUnitWeightLb = this.calculateWallUnitWeightLb(tempInputOuter, outerUnit);
+      const tempInputOuter = {
+        ...input,
+        brickPresetKey: input.outerWallBrickPresetKey,
+      };
+      outerShellUnitWeightLb = this.calculateWallUnitWeightLb(
+        tempInputOuter,
+        outerUnit,
+      );
     }
     const outerShellTotalWeightLb =
       thermalAssembly.mode === 'double-wall'
@@ -1916,42 +1963,65 @@ export class MasonryEngine {
     }
 
     // --- Resolve insert preset ---
-    const presetKey: SmokelessInsertPresetKey = input.smokelessInsertPreset ?? 'custom-diy';
+    const presetKey: SmokelessInsertPresetKey =
+      input.smokelessInsertPreset ?? 'custom-diy';
     const presetDef = SMOKELESS_INSERT_PRESETS[presetKey];
     const isCustom = presetKey === 'custom-diy';
 
-    const insertBaseOD = isCustom && input.smokelessInsertBaseOD != null
-      ? input.smokelessInsertBaseOD
-      : presetDef.baseOD;
-    const insertFlangeOD = isCustom && input.smokelessInsertFlangeOD != null
-      ? input.smokelessInsertFlangeOD
-      : presetDef.flangeOD;
-    const insertMinDepthIn = isCustom && input.smokelessInsertMinDepthIn != null
-      ? input.smokelessInsertMinDepthIn
-      : presetDef.minDepth;
+    const insertBaseOD =
+      isCustom && input.smokelessInsertBaseOD != null
+        ? input.smokelessInsertBaseOD
+        : presetDef.baseOD;
+    const insertFlangeOD =
+      isCustom && input.smokelessInsertFlangeOD != null
+        ? input.smokelessInsertFlangeOD
+        : presetDef.flangeOD;
+    const insertMinDepthIn =
+      isCustom && input.smokelessInsertMinDepthIn != null
+        ? input.smokelessInsertMinDepthIn
+        : presetDef.minDepth;
 
     // Allow air gap override for any preset.
-    const airGapIn = input.smokelessInsertAirGapIn != null
-      ? Math.max(0.25, input.smokelessInsertAirGapIn)
-      : presetDef.airGap;
+    const airGapIn =
+      input.smokelessInsertAirGapIn != null
+        ? Math.max(0.25, input.smokelessInsertAirGapIn)
+        : presetDef.airGap;
 
     // D_masonry = D_base + 2 × G_air
     const requiredMasonryID = insertBaseOD + 2 * airGapIn;
 
     // --- Vent sizing ---
     const primaryVentCount = Math.max(3, input.smokelessPrimaryVentCount ?? 20);
-    const primaryVentDiameterIn = Math.max(0.25, input.smokelessPrimaryVentDiameterIn ?? 0.75);
-    const secondaryVentCount = Math.max(3, input.smokelessSecondaryVentCount ?? 20);
-    const secondaryVentDiameterIn = Math.max(0.25, input.smokelessSecondaryVentDiameterIn ?? 0.5);
+    const primaryVentDiameterIn = Math.max(
+      0.25,
+      input.smokelessPrimaryVentDiameterIn ?? 0.75,
+    );
+    const secondaryVentCount = Math.max(
+      3,
+      input.smokelessSecondaryVentCount ?? 20,
+    );
+    const secondaryVentDiameterIn = Math.max(
+      0.25,
+      input.smokelessSecondaryVentDiameterIn ?? 0.5,
+    );
+
+    // Vertical hole placement: primary intake holes sit low enough to stay clear of the
+    // fire grate and ash bed; secondary jet holes sit just below the flange weld so
+    // cavity air is fully heated before it exits.
+    const primaryHeightFromBottomIn = 2.0;
+    const secondaryHeightFromTopIn = 1.5;
 
     const ventCircleAreaSqIn = (d: number) => Math.PI * Math.pow(d / 2, 2);
-    const primaryVentTotalAreaSqIn = primaryVentCount * ventCircleAreaSqIn(primaryVentDiameterIn);
-    const secondaryVentTotalAreaSqIn = secondaryVentCount * ventCircleAreaSqIn(secondaryVentDiameterIn);
+    const primaryVentTotalAreaSqIn =
+      primaryVentCount * ventCircleAreaSqIn(primaryVentDiameterIn);
+    const secondaryVentTotalAreaSqIn =
+      secondaryVentCount * ventCircleAreaSqIn(secondaryVentDiameterIn);
 
     // --- Intake/outlet ratio check (optimal: 1.2 – 1.5) ---
-    const intakeOutletRatio = secondaryVentTotalAreaSqIn > 0
-      ? primaryVentTotalAreaSqIn / secondaryVentTotalAreaSqIn
-      : 0;
+    const intakeOutletRatio =
+      secondaryVentTotalAreaSqIn > 0
+        ? primaryVentTotalAreaSqIn / secondaryVentTotalAreaSqIn
+        : 0;
     const intakeOutletRatioStatus: SmokelessSpec['intakeOutletRatioStatus'] =
       intakeOutletRatio < SMOKELESS_RATIO_MIN
         ? 'starved'
@@ -1964,20 +2034,30 @@ export class MasonryEngine {
     const cavityHeightM = wallHeightIn * 0.0254;
     const draftPressurePa =
       STACK_PATM_PA *
-      (STACK_G_MS2 * cavityHeightM / STACK_R_AIR) *
+      ((STACK_G_MS2 * cavityHeightM) / STACK_R_AIR) *
       (1 / STACK_T0_K - 1 / STACK_TI_K);
 
     // --- Base-course block omissions for intake vents ---
     // One omitted block opening ≈ wallUnit.lengthIn × wallUnit.heightIn (sq in)
-    const singleBlockOpeningAreaSqIn = Math.max(1, wallUnit.lengthIn * wallUnit.heightIn);
-    const baseVentBlockOmissions = Math.max(3, Math.ceil(primaryVentTotalAreaSqIn / singleBlockOpeningAreaSqIn));
+    const singleBlockOpeningAreaSqIn = Math.max(
+      1,
+      wallUnit.lengthIn * wallUnit.heightIn,
+    );
+    const baseVentBlockOmissions = Math.max(
+      3,
+      Math.ceil(primaryVentTotalAreaSqIn / singleBlockOpeningAreaSqIn),
+    );
 
     // --- Flange overlap safety (D_flange ≥ D_masonry + 1.0 in is secure) ---
     const blockInnerRadius = requiredMasonryID / 2;
     const flangeRadius = insertFlangeOD / 2;
     const flangeOverlap = flangeRadius - blockInnerRadius;
     const flangeOverlapStatus: SmokelessSpec['flangeOverlapStatus'] =
-      flangeOverlap <= 0.25 ? 'unsafe' : flangeOverlap < 1.0 ? 'marginal' : 'secure';
+      flangeOverlap <= 0.25
+        ? 'unsafe'
+        : flangeOverlap < 1.0
+          ? 'marginal'
+          : 'secure';
 
     // --- Notes ---
     const notes: string[] = [
@@ -1990,6 +2070,8 @@ export class MasonryEngine {
       `Stack-effect draft pressure: ~${draftPressurePa.toFixed(1)} Pa at current wall height.`,
       `First course: omit ${baseVentBlockOmissions} blocks evenly spaced to create primary air intake openings.`,
       `Minimum pit depth required: ${insertMinDepthIn} in — current wall height: ${wallHeightIn} in.`,
+      `Primary intake holes: drill ${primaryHeightFromBottomIn.toFixed(1)} in up from the bottom edge of the insert.`,
+      `Secondary jet holes: drill ${secondaryHeightFromTopIn.toFixed(1)} in down from the top rim, just below the flange weld.`,
     ];
 
     return {
@@ -2004,9 +2086,11 @@ export class MasonryEngine {
       primaryVentCount,
       primaryVentDiameterIn,
       primaryVentTotalAreaSqIn,
+      primaryHeightFromBottomIn,
       secondaryVentCount,
       secondaryVentDiameterIn,
       secondaryVentTotalAreaSqIn,
+      secondaryHeightFromTopIn,
       intakeOutletRatio,
       intakeOutletRatioStatus,
       draftPressurePa,
@@ -2041,8 +2125,7 @@ export class MasonryEngine {
     if (overheadClearanceFt < recommendedOverheadClearanceFt) {
       warnings.push({
         code: 'vertical-clearance-low',
-        message:
-          `Overhead clearance is below the recommended ${recommendedOverheadClearanceFt} ft baseline for ${input.fuelType === 'wood' ? 'wood-burning' : 'gas'} builds near branches, soffits, and other overhead combustibles.`,
+        message: `Overhead clearance is below the recommended ${recommendedOverheadClearanceFt} ft baseline for ${input.fuelType === 'wood' ? 'wood-burning' : 'gas'} builds near branches, soffits, and other overhead combustibles.`,
         actualValue: overheadClearanceFt,
         requiredValue: recommendedOverheadClearanceFt,
       });
@@ -2090,7 +2173,10 @@ export class MasonryEngine {
       }
 
       // Warn if inner mortar is not refractory.
-      if (thermalAssembly.innerMortarType && thermalAssembly.innerMortarType !== 'refractory') {
+      if (
+        thermalAssembly.innerMortarType &&
+        thermalAssembly.innerMortarType !== 'refractory'
+      ) {
         warnings.push({
           code: 'mortar-zone-mismatch',
           message: `Inner firebox wall uses "${thermalAssembly.innerMortarType}" mortar. Refractory (fireclay) mortar is required for the inner firebox zone — standard Portland-based mortars fail above ~572°F.`,
@@ -2392,9 +2478,11 @@ export class MasonryEngine {
       const faceIndexes =
         ventCount === 2
           ? [0, Math.floor(polygonSideCount / 2)]
-          : Array.from({ length: ventCount }, (_, index) =>
-              Math.round((index * polygonSideCount) / ventCount) %
-              polygonSideCount,
+          : Array.from(
+              { length: ventCount },
+              (_, index) =>
+                Math.round((index * polygonSideCount) / ventCount) %
+                polygonSideCount,
             );
 
       return this.uniqueIndexes(

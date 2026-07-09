@@ -233,6 +233,7 @@ export const faqItems: FaqItem[] = [
       'Full-fit tapers or miters every cap unit for the tightest possible ring coverage — most saw work but cleanest joints. Corner-only keeps all face cap units full rectangular and only cuts the polygon or ring corner pieces — a good balance for hex/oct and circular plans. DIY butt-joint is available for square and rectangular plans only: one cap run extends straight through each corner and the crossing run butts flush into it, requiring zero saw cuts. The build packet generates a cut schedule, SVG placement diagram, and tool guidance for whichever strategy you choose.',
   },
   {
+    question: 'Where should I start when designing a fire pit?',
     answer:
       'Start with plan shape, inner size, wall height, fuel type, and brick preset. Those five inputs determine most of the geometry and safety behavior. Leave mortar, cap, and vent tuning until the main form is stable.',
   },
@@ -240,6 +241,11 @@ export const faqItems: FaqItem[] = [
     question: 'What do the no-cut sizes mean?',
     answer:
       'For circular plans, the no-cut suggestions show inner diameters that let the wall, the cap, or both resolve without taper cuts. They are useful when you want cleaner coursing and faster layout on site.',
+  },
+  {
+    question: 'When should I use radial units instead of taper cuts?',
+    answer:
+      'Tight-radius circles put more pressure on every wall and cap course, often requiring half-bats, tapered cuts, or radial units to close the curve cleanly. If you want a tighter, more refined curve with fewer wedge cuts, custom radial units are worth the extra cost. A quick field check: dry-lay one full course first — if the outside joints open up quickly, you are likely at a size that needs tapered cuts or radial units.',
   },
   {
     question: 'How should I read double-wall cap closure rows?',
@@ -262,6 +268,16 @@ export const faqItems: FaqItem[] = [
       "In most builds, venting is handled by the wall vent gaps, not separate holes cut through the liner. The liner's job is thermal protection. Keep the annular space and vent path unobstructed, align vented courses with cavity airflow, and always follow burner or ring manufacturer instructions for any dedicated vent or drain requirements.",
   },
   {
+    question: 'Where should vents go for propane vs. natural gas?',
+    answer:
+      'Propane vents belong low in the wall because LP gas is heavier than air and settles near the base. Natural gas vents belong high because the gas rises and needs upper relief. If your gas-line entry is close to a vent axis, adjust the routing so it stays clear of vent openings, and always confirm final vent area against your burner hardware documentation.',
+  },
+  {
+    question: 'How much total vent area does a gas fire pit need?',
+    answer:
+      'A common planning range is 18 to 36 sq in of total vent area, but always confirm the exact figure against your burner hardware documentation — vent sizing depends on the specific fuel type and manufacturer specs, not a generic decorative opening.',
+  },
+  {
     question: 'Why are some stone types flagged high-risk?',
     answer:
       'River-rock, sandstone, limestone, and shale are porous sedimentary or rounded stones that absorb and retain water. When trapped pore water heats during firing, pressure builds until the stone fails explosively. This is a predictable, high-risk failure mode. Granite, basalt, and marble are dense and non-porous, so they do not absorb significant water and are safe for fire-pit applications.',
@@ -277,6 +293,11 @@ export const faqItems: FaqItem[] = [
       'Dry-stack has no mortar joints to trap water, is faster to build, and requires no curing time. Mortared stone offers tighter joints, cleaner appearance, and more stability through seismic events. The trade-off is 28-day curing time before first fire and higher risk of joint cracking in wet or freeze-thaw climates unless drainage is detailed. Choose dry-stack for outdoor, well-drained sites with rustic aesthetic goals. Choose mortared for sites with good drainage confidence and aesthetic preference for tight joints.',
   },
   {
+    question: 'How long do I need to wait before lighting my first fire?',
+    answer:
+      "Mortared masonry needs a minimum of 28 days to cure before the first fire is lit. Dry-stacked stone has no mortar joints, so it doesn't carry this waiting period — one advantage of that build method if you want to use the pit sooner.",
+  },
+  {
     question: 'Does foundation design change with size and soil?',
     answer:
       'Yes. The app keeps a locked baseline of 8 in compacted angular stone with a footprint that extends 6 in per side, but larger footprints and weaker soils raise review priority. In practice, you should treat clay, organic fill, unknown subgrade, and very large diameters as conditions that may require deeper excavation, stabilization, or a concrete footing detail approved for your site.',
@@ -285,6 +306,26 @@ export const faqItems: FaqItem[] = [
     question: 'How is size and soil context integrated in this app?',
     answer:
       'Use the Soil Type, Drainage, and Freeze-Thaw fields in Design Inputs. The engine still reports the baseline foundation quantities, and the Designer now adds a foundation advisory level (low, moderate, or high) with site-check notes based on site context and footprint size. This gives planning guidance without silently changing your core baseline math.',
+  },
+  {
+    question: 'How deep should I excavate for the foundation?',
+    answer:
+      'Excavation depth is site-specific. Many permanent fire pits land in the 6 to 12 in range, but softer or expansive soils usually call for a more conservative footing decision. Use the Soil Type, Drainage, and Freeze-Thaw fields to review foundation risk level — this does not change the baseline 8 in quantity calculation, but it does flag when you should plan for deeper excavation or a concrete footing detail.',
+  },
+  {
+    question: 'How much clearance do I need from my house or other structures?',
+    answer:
+      'Maintain at least 10 ft of horizontal clearance to combustible structures as a baseline, then check local code for stricter setbacks. Clearance is a 3D check, not just a plan-view distance — account for overhead branches, pergolas, soffits, and nearby fencing, along with room for people to move safely around the pit.',
+  },
+  {
+    question: 'What ground surface should I use around the seating area?',
+    answer:
+      "Compacted gravel is the most popular choice: extend it at least 10 ft from the pit's outer wall and slope it 2-3% outward for drainage. Mulch feels natural underfoot but decomposes every 2-3 years, so use landscape fabric underneath. Decomposed granite is a durable, low-maintenance packed surface, and permeable pavers with grass are eco-friendly but need careful sand leveling. Hardscape (concrete or stone) is the most durable option, with 28-day curing and optional sealing. Pair your choice with foundation risk level — high-risk sites do better with permeable or hardscape surfaces that manage runoff.",
+  },
+  {
+    question: 'What operational safety practices should I follow once the pit is built?',
+    answer:
+      'Good safety practice extends past construction: check wind conditions before lighting a fire, respect local no-burn advisories, and never leave active embers unattended. These habits matter as much as clearance and venting for keeping a fire pit safe over its lifetime.',
   },
   {
     question: 'How should I use autosave, snapshots, and JSON files together?',
