@@ -3895,9 +3895,131 @@ export default function Stage3D({
                         placement.x + outwardNormal.x * ventFaceOffsetFt;
                       const ventZ =
                         placement.z + outwardNormal.z * ventFaceOffsetFt;
+                      const ventBrickBody = (() => {
+                        if (
+                          !isSpacer &&
+                          isRadialPlanShape(output.planShape) &&
+                          output.planShape !== 'circular'
+                        ) {
+                          const piecesPerFace = Math.max(
+                            1,
+                            Math.round(course.unitCount / wallRadialSegments),
+                          );
+                          const faceIdx = Math.floor(
+                            brickIdx / piecesPerFace,
+                          );
+                          const pieceIdx = brickIdx - faceIdx * piecesPerFace;
+                          const footprint = buildRegularPolygonRingPiecePoints({
+                            apothemFt: geometry.wallRadiusFt,
+                            sideCount: wallRadialSegments,
+                            ringWidthFt: renderedWidthFt,
+                            faceIndex: faceIdx % wallRadialSegments,
+                            pieceIndex: pieceIdx,
+                            piecesOnFace: piecesPerFace,
+                            jointFt: mortarJointFt,
+                          });
+                          return (
+                            <ExtrudedXZPolygon
+                              key={`${course.courseIndex}-${brickIdx}-vent-body`}
+                              polygonPoints={footprint}
+                              heightFt={renderedHeightFt}
+                              y={y}
+                              color={perBrickColor}
+                              wireframe={effectiveWireframe}
+                              showEdges={effectiveShowBrickOutlines}
+                            />
+                          );
+                        }
+
+                        if (!isSpacer && !isRadialPlanShape(output.planShape)) {
+                          const sideCounts = distributeRectangularRingUnits(
+                            course.unitCount,
+                            geometry.wallSpanWidthFt,
+                            geometry.wallSpanDepthFt,
+                          );
+                          const { sideIndex, pieceIndex, piecesOnSide } =
+                            getRectangularRingPieceIndex(
+                              brickIdx,
+                              sideCounts,
+                            );
+                          const footprint = buildRectangularRingPiecePoints({
+                            spanWidthFt: geometry.wallSpanWidthFt,
+                            spanDepthFt: geometry.wallSpanDepthFt,
+                            ringWidthFt: renderedWidthFt,
+                            sideIndex,
+                            pieceIndex,
+                            piecesOnSide,
+                            jointFt: mortarJointFt,
+                          });
+                          return (
+                            <ExtrudedXZPolygon
+                              key={`${course.courseIndex}-${brickIdx}-vent-body`}
+                              polygonPoints={footprint}
+                              heightFt={renderedHeightFt}
+                              y={y}
+                              color={perBrickColor}
+                              wireframe={effectiveWireframe}
+                              showEdges={effectiveShowBrickOutlines}
+                            />
+                          );
+                        }
+
+                        if (wallRequiresTaperCut && wallBrickQuad && !isSpacer) {
+                          return (
+                            <CircularCapJointFiller
+                              key={`${course.courseIndex}-${brickIdx}-vent-body`}
+                              polygonPoints={wallBrickQuad.polygonPoints}
+                              heightFt={renderedHeightFt}
+                              color={perBrickColor}
+                              wireframe={effectiveWireframe}
+                              showEdges={effectiveShowBrickOutlines}
+                            />
+                          );
+                        }
+
+                        return (
+                          <mesh
+                            key={`${course.courseIndex}-${brickIdx}-vent-body`}
+                            position={[placement.x, y, placement.z]}
+                            rotation={[0, placement.rotationY, 0]}
+                          >
+                            <boxGeometry
+                              args={[
+                                renderedLengthFt,
+                                renderedHeightFt,
+                                renderedWidthFt,
+                              ]}
+                            />
+                            <meshStandardMaterial
+                              color={perBrickColor}
+                              map={
+                                isPhotoreal
+                                  ? (brickDiffuseMap ?? brickAlbedoTexture)
+                                  : undefined
+                              }
+                              bumpMap={isPhotoreal ? brickBumpMap : undefined}
+                              bumpScale={isPhotoreal ? 0.05 : 1}
+                              roughnessMap={
+                                isPhotoreal ? brickRoughnessMap : undefined
+                              }
+                              roughness={isPhotoreal ? 0.76 : 0.82}
+                              metalness={isPhotoreal ? 0.03 : 0}
+                              wireframe={effectiveWireframe}
+                            />
+                            {effectiveShowBrickOutlines && (
+                              <Edges
+                                color={getBrickEdgeColor(brickId, '#2a1a10')}
+                                lineWidth={1}
+                                scale={1.003}
+                              />
+                            )}
+                          </mesh>
+                        );
+                      })();
 
                       return (
                     <group key={`${course.courseIndex}-${brickIdx}-vent`}>
+                      {ventBrickBody}
                       <mesh
                         position={[ventX, y, ventZ]}
                         rotation={[0, placement.rotationY, 0]}
