@@ -483,6 +483,13 @@ interface Point2D {
   z: number;
 }
 
+interface OuterFaceMarkerPlacement {
+  x: number;
+  z: number;
+  rotationY: number;
+  outwardNormal: Point2D;
+}
+
 interface CircularCapJointQuad {
   leftInner: Point2D;
   leftOuter: Point2D;
@@ -727,7 +734,7 @@ function pointOnRegularPolygonOffsetFace(
   };
 }
 
-function buildRegularPolygonRingPiecePoints({
+export function buildRegularPolygonRingPiecePoints({
   apothemFt,
   sideCount,
   ringWidthFt,
@@ -761,6 +768,46 @@ function buildRegularPolygonRingPiecePoints({
     pointOnRegularPolygonOffsetFace(outerApothemFt, sideCount, faceIndex, endT),
     pointOnRegularPolygonOffsetFace(outerApothemFt, sideCount, faceIndex, startT),
   ];
+}
+
+export function buildOuterFaceMarkerPlacement(
+  footprint: Point2D[],
+  markerDepthFt: number,
+  surfaceOffsetFt = 0.004,
+): OuterFaceMarkerPlacement {
+  const outerStart = footprint[3] ?? footprint[0];
+  const outerEnd = footprint[2] ?? footprint[1] ?? outerStart;
+  const edgeDx = outerEnd.x - outerStart.x;
+  const edgeDz = outerEnd.z - outerStart.z;
+  const edgeLength = Math.max(0.0001, Math.hypot(edgeDx, edgeDz));
+  const tangent = {
+    x: edgeDx / edgeLength,
+    z: edgeDz / edgeLength,
+  };
+  const midpoint = {
+    x: (outerStart.x + outerEnd.x) / 2,
+    z: (outerStart.z + outerEnd.z) / 2,
+  };
+  const candidateNormal = {
+    x: -tangent.z,
+    z: tangent.x,
+  };
+  const normalSign =
+    midpoint.x * candidateNormal.x + midpoint.z * candidateNormal.z >= 0
+      ? 1
+      : -1;
+  const outwardNormal = {
+    x: candidateNormal.x * normalSign,
+    z: candidateNormal.z * normalSign,
+  };
+  const markerOffsetFt = markerDepthFt / 2 + surfaceOffsetFt;
+
+  return {
+    x: midpoint.x + outwardNormal.x * markerOffsetFt,
+    z: midpoint.z + outwardNormal.z * markerOffsetFt,
+    rotationY: Math.atan2(-tangent.z, tangent.x),
+    outwardNormal,
+  };
 }
 
 export function distributeRectangularRingUnits(
@@ -3885,17 +3932,7 @@ export default function Stage3D({
                   return isVentOpening ? (
                     (() => {
                       const ventMarkerDepthFt = Math.max(0.025, mortarJointFt * 0.45);
-                      const outwardNormal = getOutwardNormal(
-                        placement.x,
-                        placement.z,
-                      );
-                      const ventFaceOffsetFt =
-                        renderedWidthFt / 2 + ventMarkerDepthFt / 2 + 0.006;
-                      const ventX =
-                        placement.x + outwardNormal.x * ventFaceOffsetFt;
-                      const ventZ =
-                        placement.z + outwardNormal.z * ventFaceOffsetFt;
-                      const ventBrickBody = (() => {
+                      const ventFootprint = (() => {
                         if (
                           !isSpacer &&
                           isRadialPlanShape(output.planShape) &&
@@ -3909,7 +3946,7 @@ export default function Stage3D({
                             brickIdx / piecesPerFace,
                           );
                           const pieceIdx = brickIdx - faceIdx * piecesPerFace;
-                          const footprint = buildRegularPolygonRingPiecePoints({
+                          return buildRegularPolygonRingPiecePoints({
                             apothemFt: geometry.wallRadiusFt,
                             sideCount: wallRadialSegments,
                             ringWidthFt: renderedWidthFt,
@@ -3918,17 +3955,6 @@ export default function Stage3D({
                             piecesOnFace: piecesPerFace,
                             jointFt: mortarJointFt,
                           });
-                          return (
-                            <ExtrudedXZPolygon
-                              key={`${course.courseIndex}-${brickIdx}-vent-body`}
-                              polygonPoints={footprint}
-                              heightFt={renderedHeightFt}
-                              y={y}
-                              color={perBrickColor}
-                              wireframe={effectiveWireframe}
-                              showEdges={effectiveShowBrickOutlines}
-                            />
-                          );
                         }
 
                         if (!isSpacer && !isRadialPlanShape(output.planShape)) {
@@ -3942,7 +3968,7 @@ export default function Stage3D({
                               brickIdx,
                               sideCounts,
                             );
-                          const footprint = buildRectangularRingPiecePoints({
+                          return buildRectangularRingPiecePoints({
                             spanWidthFt: geometry.wallSpanWidthFt,
                             spanDepthFt: geometry.wallSpanDepthFt,
                             ringWidthFt: renderedWidthFt,
@@ -3951,10 +3977,36 @@ export default function Stage3D({
                             piecesOnSide,
                             jointFt: mortarJointFt,
                           });
+                        }
+
+                        return undefined;
+                      })();
+                      const footprintMarkerPlacement = ventFootprint
+                        ? buildOuterFaceMarkerPlacement(
+                            ventFootprint,
+                            ventMarkerDepthFt,
+                          )
+                        : undefined;
+                      const outwardNormal =
+                        footprintMarkerPlacement?.outwardNormal ??
+                        getOutwardNormal(placement.x, placement.z);
+                      const ventFaceOffsetFt =
+                        renderedWidthFt / 2 + ventMarkerDepthFt / 2 + 0.006;
+                      const ventX =
+                        footprintMarkerPlacement?.x ??
+                        placement.x + outwardNormal.x * ventFaceOffsetFt;
+                      const ventZ =
+                        footprintMarkerPlacement?.z ??
+                        placement.z + outwardNormal.z * ventFaceOffsetFt;
+                      const ventRotationY =
+                        footprintMarkerPlacement?.rotationY ??
+                        placement.rotationY;
+                      const ventBrickBody = (() => {
+                        if (ventFootprint) {
                           return (
                             <ExtrudedXZPolygon
                               key={`${course.courseIndex}-${brickIdx}-vent-body`}
-                              polygonPoints={footprint}
+                              polygonPoints={ventFootprint}
                               heightFt={renderedHeightFt}
                               y={y}
                               color={perBrickColor}
@@ -4022,7 +4074,7 @@ export default function Stage3D({
                       {ventBrickBody}
                       <mesh
                         position={[ventX, y, ventZ]}
-                        rotation={[0, placement.rotationY, 0]}
+                        rotation={[0, ventRotationY, 0]}
                         onPointerOver={handleBrickPointerOver(brickId)}
                         onPointerOut={handleBrickPointerOut(brickId)}
                         onClick={handleBrickSelect(brickInfo)}

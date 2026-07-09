@@ -5,6 +5,8 @@ import {
   buildSeatingReferencePlacements,
   buildCircularCapBrickQuad,
   buildCircularCapJointQuad,
+  buildOuterFaceMarkerPlacement,
+  buildRegularPolygonRingPiecePoints,
   buildRectangularRingPiecePoints,
   computeStage3DGeometry,
   distributeRectangularRingUnits,
@@ -187,6 +189,36 @@ describe('Stage3D geometry', () => {
         expect(Math.abs(point.z)).toBeLessThanOrEqual(outerHalfD);
       });
     });
+  });
+
+  it('anchors vent markers directly outside clipped polygon wall faces', () => {
+    const markerDepthFt = 0.03;
+    const footprint = buildRegularPolygonRingPiecePoints({
+      apothemFt: 3,
+      sideCount: 8,
+      ringWidthFt: 0.3,
+      faceIndex: 0,
+      pieceIndex: 1,
+      piecesOnFace: 3,
+      jointFt: 0.03,
+    });
+    const marker = buildOuterFaceMarkerPlacement(footprint, markerDepthFt);
+    const outerMidpoint = {
+      x: (footprint[2].x + footprint[3].x) / 2,
+      z: (footprint[2].z + footprint[3].z) / 2,
+    };
+    const markerOffset = Math.hypot(
+      marker.x - outerMidpoint.x,
+      marker.z - outerMidpoint.z,
+    );
+
+    expect(markerOffset).toBeCloseTo(markerDepthFt / 2 + 0.004);
+    expect(
+      marker.x * marker.outwardNormal.x + marker.z * marker.outwardNormal.z,
+    ).toBeGreaterThan(
+      outerMidpoint.x * marker.outwardNormal.x +
+        outerMidpoint.z * marker.outwardNormal.z,
+    );
   });
 
   it('detects half-round coping cap units by name', () => {

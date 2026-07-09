@@ -303,8 +303,7 @@ export default function ControlPanel({
             {[
               {
                 value: 'circular' as const,
-                label: 'Circular',
-                hint: 'Round pit',
+                label: 'Circle',
                 icon: (
                   <span className='inline-block h-3.5 w-3.5 rounded-full border-2 border-current' />
                 ),
@@ -312,15 +311,13 @@ export default function ControlPanel({
               {
                 value: 'square' as const,
                 label: 'Square',
-                hint: 'Equal sides',
                 icon: (
                   <span className='inline-block h-3.5 w-3.5 rounded-[2px] border-2 border-current' />
                 ),
               },
               {
                 value: 'rectangular' as const,
-                label: 'Rectangular',
-                hint: 'Long + short',
+                label: 'Rect',
                 icon: (
                   <span className='inline-block h-2.5 w-4.5 rounded-[2px] border-2 border-current' />
                 ),
@@ -328,7 +325,6 @@ export default function ControlPanel({
               {
                 value: 'hexagonal' as const,
                 label: 'Hex',
-                hint: '6 sides',
                 icon: (
                   <span className='inline-block h-3.5 w-3.5 rounded-[3px] border-2 border-current' />
                 ),
@@ -336,7 +332,6 @@ export default function ControlPanel({
               {
                 value: 'octagonal' as const,
                 label: 'Oct',
-                hint: '8 sides',
                 icon: (
                   <span className='inline-block h-3.5 w-3.5 rounded-[4px] border-2 border-current' />
                 ),
@@ -348,7 +343,7 @@ export default function ControlPanel({
                 <button
                   key={option.value}
                   type='button'
-                  className={`rounded-md px-2 py-2 text-left transition-colors ${
+                  className={`flex min-h-[4.25rem] flex-col items-center justify-center gap-1 rounded-md px-1.5 py-2 text-center transition-colors ${
                     selected
                       ? 'bg-amber-900 text-amber-50 shadow-sm'
                       : 'bg-white text-amber-900 hover:bg-amber-100/80'
@@ -356,16 +351,15 @@ export default function ControlPanel({
                   onClick={() => updatePlanShape(option.value)}
                   aria-pressed={selected}
                 >
-                  <span className='mb-1 inline-flex items-center gap-2 text-xs'>
+                  <span className='flex h-6 items-center justify-center'>
                     {option.icon}
-                    <span>{option.label}</span>
                   </span>
                   <span
-                    className={`block text-xs leading-tight ${
+                    className={`block text-xs font-medium leading-tight ${
                       selected ? 'text-amber-100/90' : 'text-amber-700/80'
                     }`}
                   >
-                    {option.hint}
+                    {option.label}
                   </span>
                 </button>
               );
