@@ -23,21 +23,9 @@ This project started as a personal backyard upgrade idea. I wanted to build a fi
 
 Instead of using rough napkin math, I built a tool that turns engineering formulas into a practical planning workflow. The result is a project that is both technically interesting and useful in the real world.
 
-## Screenshot
+## Screenshots
 
 ![Parametric Masonry Designer screenshot](./public/screenshot-firepit-planner.png)
-
-## Additional Screenshots (Recommended)
-
-Adding feature-focused screenshots will improve adoption and clarity. Suggested captures:
-
-- `public/screenshots/field-toolkit.png` (checklist + measurements + weather checks)
-- `public/screenshots/share-qr-handoff.png` (compact share link + QR handoff panel)
-- `public/screenshots/dark-mode-designer.png` (dark-mode contrast and readability)
-
-## Screenshot Gallery
-
-> Add these files in `public/screenshots/` to enable the gallery previews below.
 
 ### Field Toolkit
 
