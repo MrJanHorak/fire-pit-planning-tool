@@ -341,6 +341,8 @@ export interface LogisticsSpec {
   estimatedMortarVolumeCubicFeet: number;
   innerMortarVolumeCubicFeet: number;
   outerMortarVolumeCubicFeet: number;
+  shimUnitCount: number;
+  shimPurchasedUnits: number;
   thermalAssemblyWeightLb?: number;
   thermalAssemblyAdditionalUnits?: number;
   thermalCapBridgeAdditionalUnits?: number;

@@ -533,6 +533,7 @@ export class MasonryEngine {
         foundation,
         input,
         thermalAssembly,
+        strategySummary,
       ),
       warnings,
       cornerGuidance,
@@ -1866,10 +1867,22 @@ export class MasonryEngine {
     foundation: FoundationSpec,
     input: MasonryInput,
     thermalAssembly: import('../types').ThermalAssemblySpec,
+    courseStrategy: CourseStrategySummary,
   ): LogisticsSpec {
     const purchasedUnits = Math.ceil(
       totalUnits * (1 + BRICK_WASTE_FACTOR_PCT / 100),
     );
+    const shimUnitCount =
+      courseStrategy.strategy === 'shim-spacer'
+        ? courseStrategy.shimUnitCount
+        : 0;
+    const shimPurchasedUnits =
+      shimUnitCount > 0
+        ? Math.min(
+            purchasedUnits,
+            Math.ceil(shimUnitCount * (1 + BRICK_WASTE_FACTOR_PCT / 100)),
+          )
+        : 0;
     const purchasedCapUnits = Math.ceil(
       capUnits * (1 + CAP_WASTE_FACTOR_PCT / 100),
     );
@@ -1931,6 +1944,8 @@ export class MasonryEngine {
         innerMortarVolumeCubicFeet + outerMortarVolumeCubicFeet,
       innerMortarVolumeCubicFeet,
       outerMortarVolumeCubicFeet,
+      shimUnitCount,
+      shimPurchasedUnits,
       thermalAssemblyWeightLb: outerShellTotalWeightLb,
       thermalAssemblyAdditionalUnits:
         thermalAssembly.mode === 'double-wall' ? totalUnits : 0,
