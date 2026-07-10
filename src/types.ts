@@ -339,6 +339,8 @@ export interface LogisticsSpec {
   purchasedCapUnits: number;
   estimatedCapWeightLb: number;
   estimatedMortarVolumeCubicFeet: number;
+  innerMortarVolumeCubicFeet: number;
+  outerMortarVolumeCubicFeet: number;
   thermalAssemblyWeightLb?: number;
   thermalAssemblyAdditionalUnits?: number;
   thermalCapBridgeAdditionalUnits?: number;
