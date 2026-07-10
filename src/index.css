@@ -187,3 +187,20 @@ html[data-theme='dark'] .analytics-consent-secondary {
   border-color: rgba(186, 128, 78, 0.45) !important;
   color: #f3e2cb !important;
 }
+
+html[data-theme='dark'] [class*='bg-amber-50'] {
+  background-color: rgba(61, 41, 27, 0.75) !important;
+}
+
+html[data-theme='dark'] [class*='bg-amber-50'][class*='text-amber-900'] {
+  color: #f2e4cf !important;
+}
+
+/* Same issue for the red-tinted safety/validation warning boxes. */
+html[data-theme='dark'] [class*='bg-red-50'] {
+  background-color: rgba(122, 32, 24, 0.55) !important;
+}
+
+html[data-theme='dark'] [class*='bg-red-50'][class*='text-red-900'] {
+  color: #ffd9d0 !important;
+}

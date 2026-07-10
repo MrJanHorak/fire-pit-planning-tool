@@ -1910,6 +1910,15 @@ export class MasonryEngine {
         ? totalUnits * outerShellUnitWeightLb * 1.05
         : 0;
 
+    const outerPurchasedUnits =
+      thermalAssembly.mode === 'double-wall'
+        ? Math.ceil(totalUnits * (1 + BRICK_WASTE_FACTOR_PCT / 100))
+        : 0;
+
+    const innerMortarVolumeCubicFeet = purchasedUnits * MORTAR_FT3_PER_BRICK;
+    const outerMortarVolumeCubicFeet =
+      outerPurchasedUnits * MORTAR_FT3_PER_BRICK;
+
     const logistics: LogisticsSpec = {
       wasteFactorPct: BRICK_WASTE_FACTOR_PCT,
       purchasedUnits,
@@ -1918,7 +1927,10 @@ export class MasonryEngine {
       estimatedCapWeightLb:
         purchasedCapUnits * capUnitWeightLb + thermalCapBridgeWeightLb,
       estimatedStoneWeightLb: stoneWithWasteFt3 * STONE_WEIGHT_LB_PER_FT3,
-      estimatedMortarVolumeCubicFeet: purchasedUnits * MORTAR_FT3_PER_BRICK,
+      estimatedMortarVolumeCubicFeet:
+        innerMortarVolumeCubicFeet + outerMortarVolumeCubicFeet,
+      innerMortarVolumeCubicFeet,
+      outerMortarVolumeCubicFeet,
       thermalAssemblyWeightLb: outerShellTotalWeightLb,
       thermalAssemblyAdditionalUnits:
         thermalAssembly.mode === 'double-wall' ? totalUnits : 0,

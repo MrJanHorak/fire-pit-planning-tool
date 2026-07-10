@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import type { MasonryOutput, MasonryInput } from '../types';
 
-const BOM_COSTS_STORAGE_KEY =
-  'firepit-parametric-masonry-designer-bom-costs';
+const BOM_COSTS_STORAGE_KEY = 'firepit-parametric-masonry-designer-bom-costs';
 
 const MORTAR_BAG_80LB_FT3 = 0.45; // cubic feet yielded per 80-lb bag
 
@@ -10,6 +9,7 @@ interface BomCosts {
   wallUnit: string;
   capUnit: string;
   mortarBag: string;
+  outerMortarBag: string;
   gravelTon: string;
   linerUnit: string;
   stoneTon: string;
@@ -22,6 +22,7 @@ function defaultCosts(): BomCosts {
     wallUnit: '',
     capUnit: '',
     mortarBag: '',
+    outerMortarBag: '',
     gravelTon: '',
     linerUnit: '',
     stoneTon: '',
@@ -85,7 +86,9 @@ function CostInput({
   return (
     <label className='flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-900/75'>
       {label && <span>{label}</span>}
-      <span className='text-amber-700/60' aria-hidden='true'>✏</span>
+      <span className='text-amber-700/60' aria-hidden='true'>
+        ✏
+      </span>
       <input
         type='number'
         min='0'
@@ -123,9 +126,15 @@ export default function BillOfMaterials({ output, input }: Props) {
   const { logistics, resolvedUnit, resolvedCapUnit, linerSpec, foundation } =
     output;
 
-  const mortarBags = Math.ceil(
-    logistics.estimatedMortarVolumeCubicFeet / MORTAR_BAG_80LB_FT3,
+  const innerMortarBags = Math.ceil(
+    logistics.innerMortarVolumeCubicFeet / MORTAR_BAG_80LB_FT3,
   );
+  const outerMortarBags = Math.ceil(
+    logistics.outerMortarVolumeCubicFeet / MORTAR_BAG_80LB_FT3,
+  );
+  // Total bags across both wythes (equals innerMortarBags in single-wall mode,
+  // since outerMortarBags is 0 there).
+  const mortarBags = innerMortarBags + outerMortarBags;
   const gravelTons = parseFloat(
     (logistics.estimatedStoneWeightLb / 2000).toFixed(2),
   );
@@ -140,6 +149,7 @@ export default function BillOfMaterials({ output, input }: Props) {
   const wallUnitPrice = parseDollar(costs.wallUnit);
   const capUnitPrice = parseDollar(costs.capUnit);
   const mortarBagPrice = parseDollar(costs.mortarBag);
+  const outerMortarBagPrice = parseDollar(costs.outerMortarBag);
   const gravelTonPrice = parseDollar(costs.gravelTon);
   const linerUnitPrice = parseDollar(costs.linerUnit);
   const stoneTonPrice = parseDollar(costs.stoneTon);
@@ -161,7 +171,12 @@ export default function BillOfMaterials({ output, input }: Props) {
   const wallTotal = wallUnitPrice * wallUnitsForPricing;
   const capTotal = capUnitPrice * logistics.purchasedCapUnits;
   const capBridgeTotal = capUnitPrice * thermalCapBridgePurchasedUnits;
-  const mortarTotal = mortarBagPrice * mortarBags;
+  const innerMortarTotal = mortarBagPrice * innerMortarBags;
+  const outerMortarTotal =
+    output.thermalAssembly.mode === 'double-wall'
+      ? outerMortarBagPrice * outerMortarBags
+      : 0;
+  const mortarTotal = innerMortarTotal + outerMortarTotal;
   const gravelTotal = gravelTonPrice * gravelTons;
   const linerTotal = linerSpec.enabled ? linerUnitPrice : 0;
   const stoneTotal = logistics.naturalStoneEstimate
@@ -169,11 +184,16 @@ export default function BillOfMaterials({ output, input }: Props) {
     : 0;
   const cleanoutHardwarePrice = parseDollar(costs.cleanoutHardware);
   const cleanoutDefaultCost =
-    input.ashCleanoutType === 'hinged-door' ? 45 :
-    input.ashCleanoutType === 'removable-pan' ? 25 : 15;
+    input.ashCleanoutType === 'hinged-door'
+      ? 45
+      : input.ashCleanoutType === 'removable-pan'
+        ? 25
+        : 15;
   const cleanoutTotal =
     input.ashCleanoutType && input.ashCleanoutType !== 'none'
-      ? (cleanoutHardwarePrice > 0 ? cleanoutHardwarePrice : cleanoutDefaultCost)
+      ? cleanoutHardwarePrice > 0
+        ? cleanoutHardwarePrice
+        : cleanoutDefaultCost
       : 0;
   const seatingTotals = (logistics.seatingAreaMaterials?.materials ?? []).map(
     (mat) => parseDollar(costs.seatingMats[mat.name] ?? '') * mat.quantity,
@@ -193,7 +213,10 @@ export default function BillOfMaterials({ output, input }: Props) {
   const hasCostData = grandTotal > 0;
 
   // --- update helpers ---
-  const updateCost = (key: keyof Omit<BomCosts, 'seatingMats'>, value: string) => {
+  const updateCost = (
+    key: keyof Omit<BomCosts, 'seatingMats'>,
+    value: string,
+  ) => {
     const next = { ...costs, [key]: value };
     setCosts(next);
     saveCosts(next);
@@ -213,16 +236,18 @@ export default function BillOfMaterials({ output, input }: Props) {
   const innerMaterialName = output.thermalAssembly.innerMaterialName;
   const innerHeatRating = output.thermalAssembly.innerHeatRatingF;
   const outerHeatRating = output.thermalAssembly.outerHeatRatingF;
-  const innerMortarLabel = output.thermalAssembly.innerMortarType === 'refractory'
-    ? 'Refractory mortar'
-    : output.thermalAssembly.innerMortarType === 'type-s'
-      ? 'Type S mortar'
-      : output.thermalAssembly.innerMortarType ?? 'mortar';
-  const outerMortarLabel = output.thermalAssembly.outerMortarType === 'type-n'
-    ? 'Type N mortar'
-    : output.thermalAssembly.outerMortarType === 'type-s'
-      ? 'Type S mortar'
-      : output.thermalAssembly.outerMortarType ?? 'mortar';
+  const innerMortarLabel =
+    output.thermalAssembly.innerMortarType === 'refractory'
+      ? 'Refractory mortar'
+      : output.thermalAssembly.innerMortarType === 'type-s'
+        ? 'Type S mortar'
+        : (output.thermalAssembly.innerMortarType ?? 'mortar');
+  const outerMortarLabel =
+    output.thermalAssembly.outerMortarType === 'type-n'
+      ? 'Type N mortar'
+      : output.thermalAssembly.outerMortarType === 'type-s'
+        ? 'Type S mortar'
+        : (output.thermalAssembly.outerMortarType ?? 'mortar');
   const doubleWallInnerSpec = innerMaterialName
     ? `${innerMaterialName}${innerHeatRating ? ` (~${innerHeatRating.toLocaleString()}°F)` : ''} · ${innerMortarLabel}`
     : wallSpec;
@@ -247,7 +272,10 @@ export default function BillOfMaterials({ output, input }: Props) {
         output.thermalAssembly.mode === 'double-wall'
           ? `${doubleWallInnerSpec} · ${logistics.purchasedUnits} units · ${logistics.wasteFactorPct}% waste`
           : `${wallSpec} · ${logistics.wasteFactorPct}% waste included`,
-      qty: output.thermalAssembly.mode === 'double-wall' ? logistics.purchasedUnits : wallUnitsForPricing,
+      qty:
+        output.thermalAssembly.mode === 'double-wall'
+          ? logistics.purchasedUnits
+          : wallUnitsForPricing,
       unit: 'ea',
       unitPrice: costs.wallUnit,
       onUnitPriceChange: (value) => updateCost('wallUnit', value),
@@ -263,7 +291,12 @@ export default function BillOfMaterials({ output, input }: Props) {
             unit: 'ea',
             unitPrice: costs.wallUnit,
             onUnitPriceChange: (value) => updateCost('wallUnit', value),
-            lineTotal: Math.round(thermalAssemblyPurchasedUnits * parseDollar(costs.wallUnit) * 100) / 100,
+            lineTotal:
+              Math.round(
+                thermalAssemblyPurchasedUnits *
+                  parseDollar(costs.wallUnit) *
+                  100,
+              ) / 100,
           },
         ] satisfies BomTableRow[])
       : []),
@@ -291,19 +324,44 @@ export default function BillOfMaterials({ output, input }: Props) {
           },
         ] satisfies BomTableRow[])
       : []),
-    {
-      key: 'mortar',
-      item: output.thermalAssembly.mode === 'double-wall'
-        ? `Mortar (${innerMortarLabel} inner / ${outerMortarLabel} outer)`
-        : 'Type S Mortar',
-      detail: `~${MORTAR_BAG_80LB_FT3} ft³ yield per bag · round up at the yard`,
-      qty: mortarBags,
-      qtyDisplay: `${mortarBags}`,
-      unit: 'bags',
-      unitPrice: costs.mortarBag,
-      onUnitPriceChange: (value) => updateCost('mortarBag', value),
-      lineTotal: mortarTotal,
-    },
+    ...(output.thermalAssembly.mode === 'double-wall'
+      ? ([
+          {
+            key: 'mortar-inner',
+            item: `Mortar — Inner Wythe (${innerMortarLabel})`,
+            detail: `~${MORTAR_BAG_80LB_FT3} ft³ yield per bag · ${logistics.innerMortarVolumeCubicFeet.toFixed(1)} ft³ needed · round up at the yard`,
+            qty: innerMortarBags,
+            qtyDisplay: `${innerMortarBags}`,
+            unit: 'bags',
+            unitPrice: costs.mortarBag,
+            onUnitPriceChange: (value) => updateCost('mortarBag', value),
+            lineTotal: innerMortarTotal,
+          },
+          {
+            key: 'mortar-outer',
+            item: `Mortar — Outer Wythe (${outerMortarLabel})`,
+            detail: `~${MORTAR_BAG_80LB_FT3} ft³ yield per bag · ${logistics.outerMortarVolumeCubicFeet.toFixed(1)} ft³ needed · round up at the yard`,
+            qty: outerMortarBags,
+            qtyDisplay: `${outerMortarBags}`,
+            unit: 'bags',
+            unitPrice: costs.outerMortarBag,
+            onUnitPriceChange: (value) => updateCost('outerMortarBag', value),
+            lineTotal: outerMortarTotal,
+          },
+        ] satisfies BomTableRow[])
+      : ([
+          {
+            key: 'mortar',
+            item: 'Type S Mortar',
+            detail: `~${MORTAR_BAG_80LB_FT3} ft³ yield per bag · round up at the yard`,
+            qty: innerMortarBags,
+            qtyDisplay: `${innerMortarBags}`,
+            unit: 'bags',
+            unitPrice: costs.mortarBag,
+            onUnitPriceChange: (value) => updateCost('mortarBag', value),
+            lineTotal: innerMortarTotal,
+          },
+        ] satisfies BomTableRow[])),
     {
       key: 'gravel',
       item: 'Compacted Gravel',
@@ -364,15 +422,17 @@ export default function BillOfMaterials({ output, input }: Props) {
   });
 
   if (input.ashCleanoutType && input.ashCleanoutType !== 'none') {
-    const cleanoutLabel = {
-      'hinged-door': 'Ash cleanout door (cast iron hinged)',
-      'removable-pan': 'Removable ash pan (galv. steel)',
-      'drain-holes': 'Drainage mesh/screen inserts',
-    }[input.ashCleanoutType] ?? 'Ash cleanout hardware';
+    const cleanoutLabel =
+      {
+        'hinged-door': 'Ash cleanout door (cast iron hinged)',
+        'removable-pan': 'Removable ash pan (galv. steel)',
+        'drain-holes': 'Drainage mesh/screen inserts',
+      }[input.ashCleanoutType] ?? 'Ash cleanout hardware';
     bomRows.push({
       key: 'ash-cleanout',
       item: cleanoutLabel,
-      detail: 'Install per manufacturer spec; seal frame with refractory mortar',
+      detail:
+        'Install per manufacturer spec; seal frame with refractory mortar',
       qty: 1,
       unit: 'ea',
       unitPrice: costs.cleanoutHardware,
@@ -391,24 +451,50 @@ export default function BillOfMaterials({ output, input }: Props) {
             : `<tr><td>Wall Units (${wallUnitsForPricing} × ${fmtDollar(wallUnitPrice)})</td><td>${fmtDollar(wallTotal)}</td></tr>`,
         );
       if (capTotal > 0)
-        allCostRows.push(`<tr><td>Capstones (${logistics.purchasedCapUnits} × ${fmtDollar(capUnitPrice)})</td><td>${fmtDollar(capTotal)}</td></tr>`);
+        allCostRows.push(
+          `<tr><td>Capstones (${logistics.purchasedCapUnits} × ${fmtDollar(capUnitPrice)})</td><td>${fmtDollar(capTotal)}</td></tr>`,
+        );
       if (capBridgeTotal > 0)
-        allCostRows.push(`<tr><td>Cap Closure Units (Rows 2+, ${thermalCapBridgePurchasedUnits} × ${fmtDollar(capUnitPrice)})</td><td>${fmtDollar(capBridgeTotal)}</td></tr>`);
-      if (mortarTotal > 0)
-        allCostRows.push(`<tr><td>Mortar Mix (~${mortarBags} bags × ${fmtDollar(mortarBagPrice)})</td><td>${fmtDollar(mortarTotal)}</td></tr>`);
+        allCostRows.push(
+          `<tr><td>Cap Closure Units (Rows 2+, ${thermalCapBridgePurchasedUnits} × ${fmtDollar(capUnitPrice)})</td><td>${fmtDollar(capBridgeTotal)}</td></tr>`,
+        );
+      if (output.thermalAssembly.mode === 'double-wall') {
+        if (innerMortarTotal > 0)
+          allCostRows.push(
+            `<tr><td>Mortar — Inner Wythe (~${innerMortarBags} bags × ${fmtDollar(mortarBagPrice)})</td><td>${fmtDollar(innerMortarTotal)}</td></tr>`,
+          );
+        if (outerMortarTotal > 0)
+          allCostRows.push(
+            `<tr><td>Mortar — Outer Wythe (~${outerMortarBags} bags × ${fmtDollar(outerMortarBagPrice)})</td><td>${fmtDollar(outerMortarTotal)}</td></tr>`,
+          );
+      } else if (mortarTotal > 0) {
+        allCostRows.push(
+          `<tr><td>Mortar Mix (~${innerMortarBags} bags × ${fmtDollar(mortarBagPrice)})</td><td>${fmtDollar(mortarTotal)}</td></tr>`,
+        );
+      }
       if (gravelTotal > 0)
-        allCostRows.push(`<tr><td>Foundation Gravel (${gravelTons} tons × ${fmtDollar(gravelTonPrice)})</td><td>${fmtDollar(gravelTotal)}</td></tr>`);
+        allCostRows.push(
+          `<tr><td>Foundation Gravel (${gravelTons} tons × ${fmtDollar(gravelTonPrice)})</td><td>${fmtDollar(gravelTotal)}</td></tr>`,
+        );
       if (linerTotal > 0)
-        allCostRows.push(`<tr><td>Thermal Liner (1 unit)</td><td>${fmtDollar(linerTotal)}</td></tr>`);
+        allCostRows.push(
+          `<tr><td>Thermal Liner (1 unit)</td><td>${fmtDollar(linerTotal)}</td></tr>`,
+        );
       if (stoneTotal > 0)
-        allCostRows.push(`<tr><td>Natural Stone Wall (~${stoneAvgTons.toFixed(2)} tons × ${fmtDollar(stoneTonPrice)})</td><td>${fmtDollar(stoneTotal)}</td></tr>`);
+        allCostRows.push(
+          `<tr><td>Natural Stone Wall (~${stoneAvgTons.toFixed(2)} tons × ${fmtDollar(stoneTonPrice)})</td><td>${fmtDollar(stoneTotal)}</td></tr>`,
+        );
       (logistics.seatingAreaMaterials?.materials ?? []).forEach((mat, i) => {
         const t = seatingTotals[i];
         const p = parseDollar(costs.seatingMats[mat.name] ?? '');
         if (t > 0)
-          allCostRows.push(`<tr><td>${mat.name} (${mat.quantity.toFixed(1)} ${mat.unit} × ${fmtDollar(p)})</td><td>${fmtDollar(t)}</td></tr>`);
+          allCostRows.push(
+            `<tr><td>${mat.name} (${mat.quantity.toFixed(1)} ${mat.unit} × ${fmtDollar(p)})</td><td>${fmtDollar(t)}</td></tr>`,
+          );
       });
-      allCostRows.push(`<tr class="total-row"><td><strong>Estimated Total</strong></td><td><strong>${fmtDollar(grandTotal)}</strong></td></tr>`);
+      allCostRows.push(
+        `<tr class="total-row"><td><strong>Estimated Total</strong></td><td><strong>${fmtDollar(grandTotal)}</strong></td></tr>`,
+      );
     }
 
     const stoneRow = logistics.naturalStoneEstimate
@@ -416,7 +502,8 @@ export default function BillOfMaterials({ output, input }: Props) {
       : '';
     const baseCapWeightLb = Math.max(
       0,
-      logistics.estimatedCapWeightLb - (logistics.thermalCapBridgeWeightLb ?? 0),
+      logistics.estimatedCapWeightLb -
+        (logistics.thermalCapBridgeWeightLb ?? 0),
     );
     const capBridgeRow =
       thermalCapBridgePurchasedUnits > 0
@@ -426,8 +513,9 @@ export default function BillOfMaterials({ output, input }: Props) {
       ? `<tr><td><strong>Thermal Liner</strong></td><td>${linerSpec.type === 'fire-brick' ? 'Fire Brick Liner' : linerSpec.type === 'steel-ring' ? 'Steel Ring Insert' : linerSpec.type}</td><td>${linerSpec.thicknessIn}" thick</td><td>${linerSpec.description}</td><td></td></tr>`
       : '';
     const seatingRows = (logistics.seatingAreaMaterials?.materials ?? [])
-      .map((mat) =>
-        `<tr><td><strong>Seating Surface</strong></td><td>${mat.name}</td><td>${mat.quantity.toFixed(1)} ${mat.unit}</td><td>${Math.round(logistics.seatingAreaMaterials!.areaSquareFeet)} ft² area</td><td>${mat.estimatedWeightLb ? Math.round(mat.estimatedWeightLb).toLocaleString() + ' lb' : ''}</td></tr>`,
+      .map(
+        (mat) =>
+          `<tr><td><strong>Seating Surface</strong></td><td>${mat.name}</td><td>${mat.quantity.toFixed(1)} ${mat.unit}</td><td>${Math.round(logistics.seatingAreaMaterials!.areaSquareFeet)} ft² area</td><td>${mat.estimatedWeightLb ? Math.round(mat.estimatedWeightLb).toLocaleString() + ' lb' : ''}</td></tr>`,
       )
       .join('');
 
@@ -467,23 +555,35 @@ export default function BillOfMaterials({ output, input }: Props) {
       <tr><td><strong>Wall Units</strong></td><td>${wallSpec}</td><td>${logistics.purchasedUnits} units</td><td>${logistics.wasteFactorPct}% waste · ${output.totalUnits} net required</td><td>${Math.round(logistics.estimatedBrickWeightLb).toLocaleString()} lb</td></tr>
       <tr><td><strong>Capstones</strong></td><td>${capSpec}</td><td>${logistics.purchasedCapUnits} units</td><td>${logistics.wasteFactorPct}% waste included</td><td>${Math.round(baseCapWeightLb).toLocaleString()} lb</td></tr>
       ${capBridgeRow}
-      <tr><td><strong>Mortar Mix</strong></td><td>Type S / N premix (80-lb bags)</td><td>~${mortarBags} bags</td><td>${logistics.estimatedMortarVolumeCubicFeet.toFixed(1)} ft³ · ${MORTAR_BAG_80LB_FT3} ft³/bag yield</td><td>—</td></tr>
+${
+  output.thermalAssembly.mode === 'double-wall'
+    ? `<tr><td>Mortar volume (inner + outer)</td><td>${logistics.estimatedMortarVolumeCubicFeet.toFixed(1)} ft³</td><td>~${innerMortarBags} inner + ${outerMortarBags} outer bags of 80-lb premix</td></tr>`
+    : `<tr><td>Mortar volume</td><td>${logistics.estimatedMortarVolumeCubicFeet.toFixed(1)} ft³</td><td>~${innerMortarBags} bags of 80-lb premix</td></tr>`
+}
       <tr><td><strong>Foundation Gravel</strong></td><td>${foundation.stoneDepthIn}" compacted base</td><td>${foundation.stoneVolumeCubicFeet.toFixed(1)} ft³</td><td>Footprint: ${foundation.footprintAreaSquareFeet.toFixed(1)} ft² · ${foundation.stoneVolumeCubicYards.toFixed(2)} yd³</td><td>≈ ${gravelTons} tons</td></tr>
       ${stoneRow}${linerRow}${seatingRows}
     </tbody>
   </table>
 
-  ${allCostRows.length > 0 ? `
+  ${
+    allCostRows.length > 0
+      ? `
   <table class="costs-table">
     <thead><tr><th>Item</th><th style="text-align:right">Cost</th></tr></thead>
     <tbody>${allCostRows.join('')}</tbody>
-  </table>` : ''}
+  </table>`
+      : ''
+  }
 
   <table>
     <thead><tr><th colspan="3">Weight &amp; Volume Summary</th></tr></thead>
     <tbody>
       <tr><td>Total material weight</td><td>${Math.round(logistics.estimatedBrickWeightLb + logistics.estimatedCapWeightLb + logistics.estimatedStoneWeightLb).toLocaleString()} lb</td><td>Wall + cap + foundation stone</td></tr>
-      <tr><td>Mortar volume</td><td>${logistics.estimatedMortarVolumeCubicFeet.toFixed(1)} ft³</td><td>~${mortarBags} bags of 80-lb premix</td></tr>
+${
+  output.thermalAssembly.mode === 'double-wall'
+    ? `<tr><td>Mortar volume (inner + outer)</td><td>${logistics.estimatedMortarVolumeCubicFeet.toFixed(1)} ft³</td><td>~${innerMortarBags} inner + ${outerMortarBags} outer bags of 80-lb premix</td></tr>`
+    : `<tr><td>Mortar volume</td><td>${logistics.estimatedMortarVolumeCubicFeet.toFixed(1)} ft³</td><td>~${innerMortarBags} bags of 80-lb premix</td></tr>`
+}
       <tr><td>Foundation gravel</td><td>${foundation.stoneVolumeCubicYards.toFixed(2)} yd³</td><td>${foundation.stoneVolumeCubicFeet.toFixed(1)} ft³ · ${foundation.stoneDepthIn}" depth</td></tr>
     </tbody>
   </table>
@@ -501,7 +601,9 @@ export default function BillOfMaterials({ output, input }: Props) {
     win.document.write(html);
     win.document.close();
     win.focus();
-    setTimeout(() => { win.print(); }, 250);
+    setTimeout(() => {
+      win.print();
+    }, 250);
   };
 
   return (
@@ -517,11 +619,18 @@ export default function BillOfMaterials({ output, input }: Props) {
           </p>
           {output.thermalAssembly.mode === 'double-wall' && (
             <p className='mt-1 text-xs text-amber-900/80'>
-              Double-wall mode splits counts into inner and outer shells. Combined wall units to buy:{' '}
-              <strong className='text-amber-950'>{(logistics.purchasedUnits + thermalAssemblyPurchasedUnits).toLocaleString()} ea</strong>
+              Double-wall mode splits counts into inner and outer shells.
+              Combined wall units to buy:{' '}
+              <strong className='text-amber-950'>
+                {(
+                  logistics.purchasedUnits + thermalAssemblyPurchasedUnits
+                ).toLocaleString()}{' '}
+                ea
+              </strong>
               {thermalCapBridgePurchasedUnits > 0 && (
                 <>
-                  {' '}· cap closure units:{' '}
+                  {' '}
+                  · cap closure units:{' '}
                   <strong className='text-amber-950'>
                     {thermalCapBridgePurchasedUnits.toLocaleString()} ea
                   </strong>
@@ -546,14 +655,16 @@ export default function BillOfMaterials({ output, input }: Props) {
         <table className='w-full text-sm'>
           <thead>
             <tr className='border-b border-amber-900/20 bg-amber-100/70'>
-              {['Item', 'Qty', 'Unit', '$/Unit', 'Total'].map((heading, index) => (
-                <th
-                  key={heading}
-                  className={`px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-amber-950 ${index === 0 ? 'text-left' : 'text-right'}`}
-                >
-                  {heading}
-                </th>
-              ))}
+              {['Item', 'Qty', 'Unit', '$/Unit', 'Total'].map(
+                (heading, index) => (
+                  <th
+                    key={heading}
+                    className={`px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-amber-950 ${index === 0 ? 'text-left' : 'text-right'}`}
+                  >
+                    {heading}
+                  </th>
+                ),
+              )}
             </tr>
           </thead>
           <tbody>
