@@ -132,9 +132,7 @@ export default function BillOfMaterials({ output, input }: Props) {
   const outerMortarBags = Math.ceil(
     logistics.outerMortarVolumeCubicFeet / MORTAR_BAG_80LB_FT3,
   );
-  // Total bags across both wythes (equals innerMortarBags in single-wall mode,
-  // since outerMortarBags is 0 there).
-  const mortarBags = innerMortarBags + outerMortarBags;
+
   const gravelTons = parseFloat(
     (logistics.estimatedStoneWeightLb / 2000).toFixed(2),
   );
