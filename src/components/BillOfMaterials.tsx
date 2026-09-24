@@ -239,8 +239,6 @@ export default function BillOfMaterials({ output, input }: Props) {
   const wallSpec = `${resolvedUnit.name} — ${resolvedUnit.lengthIn}"L × ${resolvedUnit.widthIn}"W × ${resolvedUnit.heightIn}"H`;
   const outerMaterialName = output.thermalAssembly.outerMaterialName;
   const innerMaterialName = output.thermalAssembly.innerMaterialName;
-  const innerHeatRating = output.thermalAssembly.innerHeatRatingF;
-  const outerHeatRating = output.thermalAssembly.outerHeatRatingF;
   const innerMortarLabel = output.thermalAssembly.innerMortarType === 'refractory'
     ? 'Refractory mortar'
     : output.thermalAssembly.innerMortarType === 'type-s'
@@ -252,10 +250,10 @@ export default function BillOfMaterials({ output, input }: Props) {
       ? 'Type S mortar'
       : output.thermalAssembly.outerMortarType ?? 'mortar';
   const doubleWallInnerSpec = innerMaterialName
-    ? `${innerMaterialName}${innerHeatRating ? ` (~${innerHeatRating.toLocaleString()}°F)` : ''} · ${innerMortarLabel}`
+    ? `${innerMaterialName} · ${innerMortarLabel} · verify product heat rating`
     : wallSpec;
   const doubleWallOuterSpec = outerMaterialName
-    ? `${outerMaterialName}${outerHeatRating ? ` (~${outerHeatRating.toLocaleString()}°F)` : ''} · ${outerMortarLabel}`
+    ? `${outerMaterialName} · ${outerMortarLabel} · verify product suitability`
     : wallSpec;
   const capSpec = `${resolvedCapUnit.name} — ${resolvedCapUnit.lengthIn}"L × ${resolvedCapUnit.widthIn}"W × ${resolvedCapUnit.heightIn}"H`;
   const capBridgeRowBreakdown =

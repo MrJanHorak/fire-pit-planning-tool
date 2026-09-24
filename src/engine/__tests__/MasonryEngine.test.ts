@@ -96,7 +96,7 @@ describe('MasonryEngine', () => {
     ).toBe(true);
   });
 
-  it('warns when gas vent area is outside the recommended range', () => {
+  it('requires product-specific gas vent review even when a generic area is shown', () => {
     const engine = new MasonryEngine();
     const output = engine.calculateDesign({
       ...baseInput,
@@ -107,7 +107,7 @@ describe('MasonryEngine', () => {
     expect(output.ventSpec.totalOpenAreaSqIn).toBe(8);
     expect(
       output.warnings.some(
-        (warning) => warning.code === 'gas-vent-area-out-of-range',
+        (warning) => warning.code === 'gas-manufacturer-requirements-unverified',
       ),
     ).toBe(true);
   });
@@ -139,7 +139,7 @@ describe('MasonryEngine', () => {
     ).toBe(true);
   });
 
-  it('warns when overhead clearance is below the recommended baseline', () => {
+  it('requires overhead review without inventing a numeric baseline', () => {
     const engine = new MasonryEngine();
     const output = engine.calculateDesign({
       ...baseInput,
@@ -148,12 +148,12 @@ describe('MasonryEngine', () => {
 
     expect(
       output.warnings.some(
-        (warning) => warning.code === 'vertical-clearance-low',
+        (warning) => warning.code === 'overhead-clearance-unverified',
       ),
     ).toBe(true);
   });
 
-  it('uses a stricter overhead-clearance recommendation for wood fuel', () => {
+  it('keeps overhead review unresolved for both gas and wood', () => {
     const engine = new MasonryEngine();
     const gasOutput = engine.calculateDesign({
       ...baseInput,
@@ -168,12 +168,12 @@ describe('MasonryEngine', () => {
 
     expect(
       gasOutput.warnings.some(
-        (warning) => warning.code === 'vertical-clearance-low',
+        (warning) => warning.code === 'overhead-clearance-unverified',
       ),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       woodOutput.warnings.some(
-        (warning) => warning.code === 'vertical-clearance-low',
+        (warning) => warning.code === 'overhead-clearance-unverified',
       ),
     ).toBe(true);
   });
@@ -456,8 +456,8 @@ describe('MasonryEngine', () => {
     expect(output.ventSpec.recommendedAreaMinSqIn).toBe(36);
     expect(output.ventSpec.recommendedAreaMaxSqIn).toBe(60);
     expect(
-      output.warnings.find((warning) => warning.code === 'gas-vent-area-out-of-range')?.message,
-    ).toContain('36 sq in planning minimum');
+      output.warnings.find((warning) => warning.code === 'gas-manufacturer-requirements-unverified')?.message,
+    ).toContain('exact burner and enclosure manual');
   });
 
   it('flags combustible mulch around the fire pit', () => {
@@ -467,6 +467,37 @@ describe('MasonryEngine', () => {
     });
 
     expect(output.warnings.some((warning) => warning.code === 'seating-combustible-surface')).toBe(true);
+  });
+
+  it('does not generate fit geometry for an unverified legacy commercial insert', () => {
+    const output = new MasonryEngine().calculateDesign({
+      ...baseInput,
+      fuelType: 'wood',
+      smokelessMode: true,
+      smokelessInsertPreset: 'breeo-x19',
+    });
+
+    expect(output.smokelessSpec).toBeUndefined();
+    expect(output.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'commercial-insert-fit-unverified' }),
+      ]),
+    );
+  });
+
+  it('keeps the manufacturer clearance warning on saved TIKI profiles', () => {
+    const output = new MasonryEngine().calculateDesign({
+      ...baseInput,
+      fuelType: 'wood',
+      smokelessMode: true,
+      smokelessInsertPreset: 'tiki-patio',
+      proximityToStructuresFt: 12,
+    });
+
+    expect(output.smokelessSpec).toBeUndefined();
+    expect(
+      output.warnings.find((warning) => warning.code === 'commercial-insert-fit-unverified')?.message,
+    ).toContain('15 ft');
   });
 
   it('anchors rectangular vents at side midpoints instead of corners', () => {
@@ -604,6 +635,33 @@ describe('MasonryEngine', () => {
 
     expect(rock.logistics.estimatedBrickWeightLb).toBeGreaterThan(
       modular.logistics.estimatedBrickWeightLb,
+    );
+  });
+
+  it.each([
+    ['hexagonal', 6],
+    ['octagonal', 8],
+  ] as const)('uses the outer polygon perimeter for %s stone quantities', (planShape, sides) => {
+    const output = new MasonryEngine().calculateDesign({
+      ...baseInput,
+      planShape,
+      innerWidthIn: 48,
+      brickPresetKey: 'rockFieldstone',
+    });
+    const estimate = output.logistics.naturalStoneEstimate;
+    const expectedPerimeterFt =
+      (sides * output.outerSpanWidthIn * Math.tan(Math.PI / sides)) / 12;
+
+    expect(estimate).toBeDefined();
+    expect(estimate?.outerPerimeterFeet).toBeCloseTo(expectedPerimeterFt);
+    expect(estimate?.faceAreaSquareFeet).toBeCloseTo(
+      expectedPerimeterFt * (baseInput.wallHeightIn / 12),
+    );
+    expect(estimate?.typicalWallWeightLbMin).toBeCloseTo(
+      (estimate?.tonsAt4InDepth ?? 0) * 2000,
+    );
+    expect(estimate?.typicalWallWeightLbMax).toBeCloseTo(
+      (estimate?.tonsAt8InDepth ?? 0) * 2000,
     );
   });
 

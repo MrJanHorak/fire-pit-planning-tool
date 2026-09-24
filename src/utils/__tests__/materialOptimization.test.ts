@@ -35,13 +35,13 @@ describe('material optimization suggestions', () => {
     ).toBe(true);
   });
 
-  it('suggests liner/fuel cost alignment for gas pits with fire-brick liner', () => {
+  it('does not suggest reducing gas venting or changing protection to save cost', () => {
     const input = { ...baseInput, linerType: 'fire-brick' as const };
     const output = new MasonryEngine().calculateDesign(input);
     const suggestions = buildMaterialOptimizationSuggestions(input, output);
 
     expect(
-      suggestions.some((suggestion) => suggestion.key === 'liner-fuel-match'),
-    ).toBe(true);
+      suggestions.some((suggestion) => suggestion.key === 'liner-fuel-match' || suggestion.key === 'vent-area-right-size'),
+    ).toBe(false);
   });
 });

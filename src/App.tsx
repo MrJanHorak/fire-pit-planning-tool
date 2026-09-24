@@ -992,8 +992,6 @@ export default function App() {
     QUICK_PRESET_GROUPS[0];
 
   const nextSteps = useMemo(() => {
-    const recommendedOverheadClearanceFt =
-      input.fuelType === 'wood' ? 21 : 15;
     const steps: Array<{
       key: string;
       label: string;
@@ -1001,30 +999,23 @@ export default function App() {
     }> = [
       {
         key: 'clearance',
-        label: 'Check the U.S. Fire Administration’s general 10 ft clearance advice and verify local requirements.',
-        status: input.proximityToStructuresFt >= 10 ? 'done' : 'todo',
+        label: input.proximityToStructuresFt >= 10
+          ? 'The layout meets the U.S. Fire Administration’s general 10 ft advice; verify the exact product and local setback.'
+          : 'Increase clearance to address the U.S. Fire Administration’s general 10 ft advice, then verify product and local setbacks.',
+        status: input.proximityToStructuresFt >= 10 ? 'info' : 'todo',
       },
       {
         key: 'overhead-clearance',
-        label: `Keep overhead combustible clearance at or above ${recommendedOverheadClearanceFt} ft for ${input.fuelType === 'wood' ? 'wood' : 'gas'}.`,
-        status:
-          (input.overheadClearanceFt ?? 20) >= recommendedOverheadClearanceFt
-            ? 'done'
-            : 'todo',
+        label: 'Verify overhead combustibles and required vertical clearance against the exact product and site conditions.',
+        status: 'todo',
       },
       {
         key: 'venting',
         label:
           input.fuelType === 'wood'
-            ? 'Keep venting at 18 sq in or more total open area.'
-            : `Keep venting within ${output.ventSpec.recommendedAreaMinSqIn.toFixed(0)}-${(output.ventSpec.recommendedAreaMaxSqIn ?? output.ventSpec.recommendedAreaMinSqIn).toFixed(0)} sq in for the selected gas hardware.`,
-        status:
-          output.ventSpec.totalOpenAreaSqIn >= output.ventSpec.recommendedAreaMinSqIn &&
-          (output.ventSpec.recommendedAreaMaxSqIn === undefined ||
-            output.ventSpec.totalOpenAreaSqIn <=
-              output.ventSpec.recommendedAreaMaxSqIn)
-            ? 'done'
-            : 'todo',
+            ? 'Review the combustion-air path and support around modeled openings before construction.'
+            : 'Confirm free vent area per side and placement from the exact gas equipment manuals with a qualified installer.',
+        status: 'todo',
       },
       {
         key: 'cuts',
@@ -1046,8 +1037,8 @@ export default function App() {
     return steps;
   }, [
     input.mortarJointIn,
-    input.overheadClearanceFt,
     input.proximityToStructuresFt,
+    input.fuelType,
     output,
   ]);
 

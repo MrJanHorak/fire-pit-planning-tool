@@ -31,7 +31,7 @@ export const quickStartSteps: ContentSection[] = [
     bullets: [
       'Wood-burning pits should usually include a refractory liner or steel ring to protect the outer shell from repeated heat cycling.',
       'Propane vents belong low in the wall because LP gas settles near the base.',
-      'Natural gas vents belong high because the gas rises and needs upper relief.',
+      'Gas vent placement depends on the fuel and exact burner/enclosure instructions; do not infer required placement from the generic 3D sketch.',
       'For gas builds, set the gas-line entry angle so routing stays clear of vent openings and confirm hardware-specific vent area requirements.',
       'If you select double-wall, treat cap closure as a structural decision: verify cap-bridge rows, row-by-row unit counts, and closure units before ordering.',
     ],
@@ -264,7 +264,7 @@ export const faqItems: FaqItem[] = [
   {
     question: 'Does the thermal liner need vent holes too?',
     answer:
-      "In most builds, venting is handled by the wall vent gaps, not separate holes cut through the liner. The liner's job is thermal protection. Keep the annular space and vent path unobstructed, align vented courses with cavity airflow, and always follow burner or ring manufacturer instructions for any dedicated vent or drain requirements.",
+      "The model depicts wall gaps and an open cavity, but it cannot determine whether a selected liner or gas enclosure needs dedicated vents or drains. Keep the modeled air paths unobstructed and use the exact liner, burner, and enclosure instructions to establish the final openings.",
   },
   {
     question: 'Where should vents go for propane vs. natural gas?',
@@ -274,7 +274,7 @@ export const faqItems: FaqItem[] = [
   {
     question: 'How much total vent area does a gas fire pit need?',
     answer:
-      'The app compares your layout with the selected equipment template’s planning range. The required vent area and placement depend on the burner, enclosure, fuel, and manufacturer instructions; have a qualified installer verify them.',
+      'The app shows a geometric opening-area estimate and an illustrative category band. Neither is a product requirement. Obtain the exact burner and enclosure manuals for required free area per side and placement, then have a qualified installer verify the design.',
   },
   {
     question: 'Why are some stone types flagged high-risk?',

@@ -68,6 +68,7 @@ export type MortarType =
   | 'type-s'
   | 'construction-adhesive';
 export type SmokelessInsertPresetKey =
+  // Retained for reading older saved projects; branded fit calculations are disabled.
   | 'solo-stove-bonfire-2'
   | 'breeo-x19'
   | 'breeo-x24'
@@ -185,19 +186,21 @@ export interface SafetyWarning {
     | 'tight-radius-cut-required'
     | 'tight-radius-half-bat-recommended'
     | 'mortar-curing-required'
-    | 'gas-vent-area-out-of-range'
+    | 'gas-manufacturer-requirements-unverified'
     | 'gas-vent-layout-invalid'
     | 'gas-line-near-vent'
     | 'course-bearing-risk'
-    | 'vertical-clearance-low'
+    | 'overhead-clearance-unverified'
     | 'double-wall-cavity-tight'
     | 'double-wall-thermal-review'
-    | 'outer-wall-heat-risk'
+    | 'inner-wall-product-unverified'
     | 'mortar-zone-mismatch'
     | 'smokeless-vent-ratio-low'
     | 'smokeless-vent-ratio-high'
     | 'smokeless-flange-unsafe'
     | 'smokeless-depth-insufficient'
+    | 'smokeless-fabrication-review-required'
+    | 'commercial-insert-fit-unverified'
     | 'seating-combustible-surface';
   message: string;
   actualValue?: number;
@@ -263,10 +266,6 @@ export interface ThermalAssemblySpec {
   innerMaterialName?: string;
   /** Material name for the outer decorative shell (double-wall only). */
   outerMaterialName?: string;
-  /** Heat rating in °F for the inner shell material. */
-  innerHeatRatingF?: number;
-  /** Heat rating in °F for the outer shell material. */
-  outerHeatRatingF?: number;
   /** Mortar type recommended for the inner firebox zone. */
   innerMortarType?: MortarType;
   /** Mortar type recommended for the outer decorative shell. */
@@ -436,9 +435,9 @@ export interface SmokelessSpec {
   secondaryVentTotalAreaSqIn: number;
   /** Height of secondary jet hole centers below the top rim of the insert (in). */
   secondaryHeightFromTopIn: number;
-  /** A_intake / A_holes ratio. Optimal range: 1.2 – 1.5. */
+  /** A_intake / A_holes ratio compared with an illustrative 1.2–1.5 model band. */
   intakeOutletRatio: number;
-  /** Whether the ratio is in the optimal range, below (starved), or above (overcooled). */
+  /** Legacy status labels for position relative to the illustrative model band; they do not establish combustion behavior. */
   intakeOutletRatioStatus: 'optimal' | 'starved' | 'overcooled';
   /**
    * Approximate stack-effect draft pressure (Pa) using the ideal gas law formula:

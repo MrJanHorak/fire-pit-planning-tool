@@ -96,7 +96,7 @@ describe('ConstructionMode', () => {
     fireEvent.click(localQueries.getByRole('tab', { name: 'Cuts' }));
 
     expect(
-      localQueries.getByRole('heading', { name: 'Smokeless Insert Hole Guide' }),
+      localQueries.getByRole('heading', { name: 'Smokeless Insert Hole Layout Review' }),
     ).toBeInTheDocument();
     expect(localQueries.getByText('Primary intake holes')).toBeInTheDocument();
     expect(localQueries.getByText('Secondary jet holes')).toBeInTheDocument();

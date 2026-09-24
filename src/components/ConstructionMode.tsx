@@ -357,7 +357,7 @@ export default function ConstructionMode({
           {smokelessHoleGuideMarkup && (
             <div className='rounded-lg border border-amber-900/20 bg-white p-3'>
               <h4 className='text-sm font-semibold text-amber-950'>
-                Smokeless Insert Hole Guide
+                Smokeless Insert Hole Layout Review
               </h4>
               <div
                 className='mt-2 overflow-x-auto text-sm'

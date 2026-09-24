@@ -1270,8 +1270,8 @@ export default function ControlPanel({
                     Smokeless Insert / Liner Profile
                   </p>
                   <p className='mt-0.5 text-xs text-amber-800/70'>
-                    Select a commercial insert to auto-fill dimensions, or use
-                    Custom to enter your own steel liner specs.
+                    Enter measured dimensions for a fabricated steel liner. Commercial
+                    fire pits need their own manufacturer-approved surround design.
                   </p>
                 </div>
 
@@ -1291,24 +1291,24 @@ export default function ControlPanel({
                       }))
                     }
                   >
-                    <option value='solo-stove-bonfire-2'>
-                      Solo Stove Bonfire 2.0 — 19.5" base / 21.5" flange
-                    </option>
-                    <option value='breeo-x19'>
-                      Breeo X19 — 19.0" base / 22.0" flange
-                    </option>
-                    <option value='breeo-x24'>
-                      Breeo X24 — 24.0" base / 27.5" flange
-                    </option>
-                    <option value='breeo-x30'>
-                      Breeo X30 — 30.0" base / 34.0" flange
-                    </option>
-                    <option value='tiki-patio'>
-                      Tiki Brand Patio — 24.75" base / 26.75" flange
-                    </option>
+                    {input.smokelessInsertPreset &&
+                      input.smokelessInsertPreset !== 'custom-diy' && (
+                        <option value={input.smokelessInsertPreset}>
+                          Legacy commercial profile — unsupported fit model
+                        </option>
+                      )}
                     <option value='custom-diy'>Custom / DIY Steel Liner</option>
                   </select>
                 </label>
+
+                {input.smokelessInsertPreset &&
+                  input.smokelessInsertPreset !== 'custom-diy' && (
+                    <p className='sm:col-span-2 rounded-md border border-red-800/30 bg-red-50 p-2 text-xs text-red-900'>
+                      This saved commercial profile has no verified masonry fit data.
+                      Switch to Custom / DIY with measured liner dimensions, or use
+                      the product manufacturer’s surround instructions.
+                    </p>
+                  )}
 
                 {(input.smokelessInsertPreset ?? 'custom-diy') ===
                   'custom-diy' && (
@@ -1988,7 +1988,7 @@ export default function ControlPanel({
             <label className='flex flex-col gap-1'>
               <FieldLabel
                 label='Fuel Type'
-                tip='Fuel type drives vent placement rules. Propane vents low, natural gas vents high, and wood focuses on combustion airflow.'
+                tip='Fuel choice changes the illustrative vent sketch. Final gas vent placement and free area must follow the exact equipment and enclosure instructions.'
               />
               <select
                 className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
@@ -2011,8 +2011,8 @@ export default function ControlPanel({
             {input.fuelType !== 'wood' && (
               <label className='flex flex-col gap-1'>
                 <FieldLabel
-                  label='Gas Hardware Template'
-                  tip='Select the closest burner or pan class to tune vent-area guidance ranges. Always follow your exact hardware documentation.'
+                  label='Illustrative Vent Scenario'
+                  tip='These generic categories are unsourced size comparisons, not burner specifications. Use the exact hardware manual and a qualified installer for required free vent area and placement.'
                 />
                 <select
                   className='rounded-md border border-amber-700/30 bg-white px-3 py-2'

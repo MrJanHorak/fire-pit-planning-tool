@@ -71,7 +71,7 @@ describe('regional code review', () => {
     expect(overheadCheck?.status).toBe('review');
   });
 
-  it('applies fuel-specific overhead clearance baseline in regional review', () => {
+  it('requires exact overhead review for both fuel types', () => {
     const gasInput = { ...baseInput, fuelType: 'propane' as const, overheadClearanceFt: 18 };
     const woodInput = { ...baseInput, fuelType: 'wood' as const, overheadClearanceFt: 18 };
 
@@ -91,7 +91,8 @@ describe('regional code review', () => {
       (check) => check.key === 'vertical-clearance',
     );
 
-    expect(gasOverhead?.status).toBe('pass');
+    expect(gasOverhead?.status).toBe('review');
     expect(woodOverhead?.status).toBe('review');
+    expect(gasOverhead?.detail).toContain('No universal vertical clearance');
   });
 });

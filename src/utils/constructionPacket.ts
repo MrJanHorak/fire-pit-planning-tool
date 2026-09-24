@@ -67,15 +67,10 @@ function buildSmokelessCutGuideSvg(output: MasonryOutput): string {
   const baseRadius = Math.min(70, (spec.insertBaseOD / 2) * 2.1);
   const flangeRadius = Math.min(88, (spec.insertFlangeOD / 2) * 2.1);
 
-  const isCustom = spec.insertPreset === 'custom-diy';
-  const title = isCustom
-    ? 'Custom DIY sheet-metal insert'
-    : 'Commercial insert reference only';
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${viewBoxSize} ${viewBoxSize}" width="100%" role="img" aria-label="Smokeless insert cutting guide">
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${viewBoxSize} ${viewBoxSize}" width="100%" role="img" aria-label="Illustrative smokeless liner dimensions">
     <rect x="0" y="0" width="${viewBoxSize}" height="${viewBoxSize}" fill="#fffdf7" />
-    <text x="14" y="24" font-size="15" fill="#2f2110" font-weight="700">Smokeless Insert Guide</text>
-    <text x="14" y="42" font-size="11" fill="#4a3720">${title}</text>
+    <text x="14" y="24" font-size="15" fill="#2f2110" font-weight="700">DIY Liner Review Sketch</text>
+    <text x="14" y="42" font-size="11" fill="#4a3720">Illustrative dimensions; independent review required</text>
 
     <circle cx="${center}" cy="${center}" r="${flangeRadius}" fill="none" stroke="#8a5a13" stroke-width="3" stroke-dasharray="7 4" />
     <circle cx="${center}" cy="${center}" r="${requiredRadius}" fill="none" stroke="#2f6d3f" stroke-width="3" />
@@ -83,7 +78,7 @@ function buildSmokelessCutGuideSvg(output: MasonryOutput): string {
 
     <text x="16" y="76" font-size="11" fill="#2f2110">Base OD: ${spec.insertBaseOD.toFixed(2)} in</text>
     <text x="16" y="94" font-size="11" fill="#2f2110">Flange OD: ${spec.insertFlangeOD.toFixed(2)} in</text>
-    <text x="16" y="112" font-size="11" fill="#2f2110">Required masonry ID: ${spec.requiredMasonryID.toFixed(2)} in</text>
+    <text x="16" y="112" font-size="11" fill="#2f2110">Modeled masonry ID: ${spec.requiredMasonryID.toFixed(2)} in</text>
     <text x="16" y="130" font-size="11" fill="#2f2110">Air gap: ${spec.airGapIn.toFixed(2)} in</text>
     <text x="16" y="148" font-size="11" fill="#2f2110">Primary intake: ${spec.primaryVentCount} holes @ ${spec.primaryVentDiameterIn.toFixed(2)} in</text>
     <text x="16" y="166" font-size="11" fill="#2f2110">Secondary jets: ${spec.secondaryVentCount} holes @ ${spec.secondaryVentDiameterIn.toFixed(2)} in</text>
@@ -91,9 +86,9 @@ function buildSmokelessCutGuideSvg(output: MasonryOutput): string {
     <text x="16" y="202" font-size="11" fill="#2f2110">Flange overlap: ${spec.flangeOverlapStatus}</text>
 
     <text x="208" y="76" font-size="10" fill="#8a5a13">Flange OD</text>
-    <text x="200" y="96" font-size="10" fill="#2f6d3f">Required ID</text>
+    <text x="200" y="96" font-size="10" fill="#2f6d3f">Modeled ID</text>
     <text x="212" y="116" font-size="10" fill="#6e4728">Base OD</text>
-    <text x="208" y="232" font-size="11" fill="#4a3720">${isCustom ? 'Cut / roll the sheet metal to these diameters, then drill the hole pattern.' : 'Use manufacturer dimensions; no sheet-metal cut list needed.'}</text>
+    <text x="208" y="232" font-size="11" fill="#4a3720">Do not fabricate from this unvalidated sketch.</text>
   </svg>`;
 }
 
@@ -123,7 +118,8 @@ export function buildSmokelessHoleGuideHtml(output: MasonryOutput): string {
       ? spec.insertBaseOD * Math.sin(Math.PI / spec.secondaryVentCount)
       : 0;
 
-  return `<h3>Hole Cutting Guide</h3>
+  return `<h3>Illustrative Hole Layout For Review</h3>
+    <p>Hole counts and spacing are geometric outputs only. Airflow, strength, heat exposure, and safe fabrication have not been validated.</p>
     <table>
       <thead>
         <tr>
@@ -155,10 +151,9 @@ export function buildSmokelessHoleGuideHtml(output: MasonryOutput): string {
       </tbody>
     </table>
     <ul>
-      <li>Mark all hole centers evenly around the insert shell before drilling.</li>
-      <li>Both rows are drilled on the vertical cylinder wall - always space holes off the base OD, never the flange OD (the flange is a flat lip, not part of the wall circumference).</li>
-      <li>Arc spacing = distance measured with a flexible tape wrapped around the curve. Chord spacing = straight-line, center-to-center distance for calipers or a rigid ruler. Either works; use whichever tool you have.</li>
-      <li>For custom DIY inserts, drill pilot holes first, then open them to the final diameters listed above.</li>
+      <li>Spacing calculations use the vertical shell base OD, not the flange OD.</li>
+      <li>Arc spacing follows the circumference; chord spacing is the straight-line distance between modeled centers.</li>
+      <li>Have the complete liner, vent path, bearing, and material specification reviewed before any fabrication.</li>
     </ul>`;
 }
 
@@ -170,36 +165,30 @@ function buildSmokelessPlanningHtml(output: MasonryOutput): string {
   const spec = output.smokelessSpec;
   const rows: Array<[string, string]> = [
     ['Insert', spec.insertLabel],
-    ['Required masonry ID', `${spec.requiredMasonryID.toFixed(2)} in`],
+    ['Modeled masonry ID', `${spec.requiredMasonryID.toFixed(2)} in`],
     ['Air gap', `${spec.airGapIn.toFixed(2)} in`],
     ['Base OD', `${spec.insertBaseOD.toFixed(2)} in`],
     ['Flange OD', `${spec.insertFlangeOD.toFixed(2)} in`],
     ['Minimum depth', `${spec.insertMinDepthIn.toFixed(2)} in`],
     ['Primary intake holes', `${spec.primaryVentCount} × ${spec.primaryVentDiameterIn.toFixed(2)} in`],
     ['Secondary jet holes', `${spec.secondaryVentCount} × ${spec.secondaryVentDiameterIn.toFixed(2)} in`],
-    ['Intake / outlet ratio', `${spec.intakeOutletRatio.toFixed(2)} (${spec.intakeOutletRatioStatus})`],
+    ['Intake / outlet ratio', `${spec.intakeOutletRatio.toFixed(2)} (illustrative band only)`],
     ['Base vent omissions', `${spec.baseVentBlockOmissions} blocks`],
-    ['Flange overlap', spec.flangeOverlapStatus],
-    ['Draft pressure', `~${spec.draftPressurePa.toFixed(1)} Pa`],
+    ['Flange overlap band', `${spec.flangeOverlapStatus}; bearing not verified`],
+    ['Idealized draft estimate', `~${spec.draftPressurePa.toFixed(1)} Pa; airflow not validated`],
   ];
 
-  const guideNotes = spec.insertPreset === 'custom-diy'
-    ? [
-        `Cut / roll the sheet metal to a base OD of ${spec.insertBaseOD.toFixed(2)} in and a flange OD of ${spec.insertFlangeOD.toFixed(2)} in.`,
-        `Lay out ${spec.primaryVentCount} primary intake holes at ${spec.primaryVentDiameterIn.toFixed(2)} in diameter near the lower shell.`,
-        `Lay out ${spec.secondaryVentCount} secondary jet holes at ${spec.secondaryVentDiameterIn.toFixed(2)} in diameter near the upper rim.`,
-        `Keep at least ${Math.max(1, (spec.insertFlangeOD - spec.requiredMasonryID) / 2).toFixed(2)} in of overlap per side so the insert seats securely.`,
-      ]
-    : [
-        'No sheet-metal fabrication cut list is needed for the selected commercial insert.',
-        'Use the dimensions above to verify the manufacturer template, seating depth, and vent count.',
-      ];
+  const guideNotes = [
+    `Entered liner dimensions: ${spec.insertBaseOD.toFixed(2)} in base OD and ${spec.insertFlangeOD.toFixed(2)} in flange OD. Confirm these against a fabrication drawing.`,
+    `The model places ${spec.primaryVentCount} lower and ${spec.secondaryVentCount} upper holes. Verify the pattern with thermal and airflow review.`,
+    'Flange diameter alone does not establish bearing strength or secure support.',
+  ];
 
   return `<section class="block avoid-break">
       <h2>Smokeless Insert Planning</h2>
-      <p>${spec.insertPreset === 'custom-diy' ? 'This build uses the custom DIY insert path, so the packet includes a simple sheet-metal cutting guide and vent layout summary.' : 'This build uses a commercial smokeless insert preset; the packet records the geometry and vent requirements for layout verification.'}</p>
+      <p>Illustrative DIY liner geometry for independent review. Do not use this packet as fabrication or installation instructions.</p>
       ${buildKeyValueTable(rows, 'Smokeless Parameter', 'Value')}
-      <h3>Sheet Metal Cutting Guide</h3>
+      <h3>Fabrication Review Notes</h3>
       <ul>${guideNotes.map((note) => `<li>${note}</li>`).join('')}</ul>
       ${buildSmokelessHoleGuideHtml(output)}
       ${buildSmokelessCutGuideSvg(output)}
@@ -835,9 +824,7 @@ function buildDiyStepsHtml(input: MasonryInput, output: MasonryOutput): string {
       : null;
   const smokelessStep =
     output.smokelessSpec?.enabled && input.fuelType === 'wood'
-      ? output.smokelessSpec.insertPreset === 'custom-diy'
-        ? `Smokeless insert fabrication: cut or roll the DIY insert to ${output.smokelessSpec.insertBaseOD.toFixed(2)} in base OD with a ${output.smokelessSpec.insertFlangeOD.toFixed(2)} in flange OD, then drill ${output.smokelessSpec.primaryVentCount} primary intake holes and ${output.smokelessSpec.secondaryVentCount} secondary jet holes to the listed diameters.`
-        : `Smokeless insert fit-up: dry-fit the ${output.smokelessSpec.insertLabel} to confirm its ${output.smokelessSpec.requiredMasonryID.toFixed(2)} in masonry ID requirement, flange overlap, and ${output.smokelessSpec.insertMinDepthIn.toFixed(2)} in minimum depth before final assembly.`
+      ? `DIY smokeless liner review: the model uses ${output.smokelessSpec.insertBaseOD.toFixed(2)} in base OD and ${output.smokelessSpec.insertFlangeOD.toFixed(2)} in flange OD. Validate the complete hole pattern, support, and heat behavior before fabrication or installation.`
       : null;
   const doubleWallStep =
     output.thermalAssembly.mode === 'double-wall'
@@ -868,11 +855,11 @@ function buildDiyStepsHtml(input: MasonryInput, output: MasonryOutput): string {
         : 'Course strategy note: Uniform running bond is used on all wall courses.';
   const smokelessHoleGuide =
     output.smokelessSpec?.enabled && input.fuelType === 'wood'
-      ? `<h3>Smokeless Insert Hole Guide</h3>${buildSmokelessHoleGuideHtml(output)}`
+      ? `<h3>Smokeless Insert Hole Layout Review</h3>${buildSmokelessHoleGuideHtml(output)}`
       : '';
 
   const firePitSteps = [
-    `Call for utility locates, verify the firepit location, and confirm at least 10 ft of clearance from combustible structures.`,
+    `Call for utility locates, verify the firepit location, and check the general 10 ft combustible-clearance advice plus any stricter product or local requirements.`,
     `Mark the excavation using the foundation footprint of ${output.foundation.footprintWidthIn.toFixed(2)} in x ${output.foundation.footprintDepthIn.toFixed(2)} in. Mark the wall footprint and cap outline separately so layout stays centered.`,
     `Excavate for the base and install ${output.foundation.stoneDepthIn} in of compacted angular stone. Screed the surface level before starting the first masonry course.`,
     `Foundation review status: ${foundationAdvisory.heading.toLowerCase()}. ${foundationAdvisory.checks[0]}`,
@@ -882,7 +869,7 @@ function buildDiyStepsHtml(input: MasonryInput, output: MasonryOutput): string {
     strategyStep,
     ...(doubleWallStep ? [doubleWallStep] : []),
     ...(smokelessStep ? [smokelessStep] : []),
-    `Leave vent openings in ${ventCourses} at brick indexes ${output.ventSpec.ventBrickIndexes.join(', ')}. This provides ${output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in of vent area for the selected ${formatFuelName(input.fuelType).toLowerCase()} configuration.`,
+    `The model places vent openings in ${ventCourses} at brick indexes ${output.ventSpec.ventBrickIndexes.join(', ')}, totaling ${output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in of geometric opening. Verify free area, location, and support against the exact ${formatFuelName(input.fuelType).toLowerCase()} equipment instructions before construction.`,
     ...(polygonVentStep ? [polygonVentStep] : []),
     ...(ashCleanoutStep ? [ashCleanoutStep] : []),
     linerStep,
@@ -899,7 +886,7 @@ function buildDiyStepsHtml(input: MasonryInput, output: MasonryOutput): string {
   const seatingSteps = seating
     ? [
         `Confirm seating area layout as a ${seating.shape} zone with ${seating.shape === 'square' ? `${seating.overallWidthFt.toFixed(1)} ft x ${seating.overallDepthFt.toFixed(1)} ft` : `${seating.radiusFt.toFixed(1)} ft radius`} centered on the firepit.`,
-        `Set perimeter control and grade for the seating finish. Keep the seating surface pitched away from the firepit for drainage and preserve the minimum 10 ft clearance around combustible elements.`,
+        `Set perimeter control and grade for the seating finish. Keep the seating surface pitched away from the firepit for drainage and review combustible clearances against general advice and site-specific requirements.`,
         `Install the selected seating surface system (${seating.groundType}) and verify final quantities against the seating material list in this packet before purchase.`,
         `Complete final compaction or finish treatment for the seating surface, then verify clear circulation paths around the firepit.`,
       ]
@@ -1627,7 +1614,6 @@ export function buildSafetyClearanceSvg(
   output: MasonryOutput,
 ): string {
   const adviceClearanceIn = 120;
-  const reviewOverheadFt = input.fuelType === 'wood' ? 21 : 15;
   const actualClearanceIn = input.proximityToStructuresFt * 12;
   const actualOverheadFt = input.overheadClearanceFt ?? 20;
   const pitOuterWidthIn = output.outerSpanWidthIn;
@@ -1646,7 +1632,6 @@ export function buildSafetyClearanceSvg(
   const actualRadiusPx = Math.max(0, actualClearanceIn * ringScale);
   const structureX = centerX + pitWidthPx / 2 + actualRadiusPx;
   const meetsClearanceAdvice = input.proximityToStructuresFt >= 10;
-  const aboveOverheadMarker = actualOverheadFt >= reviewOverheadFt;
   const maxDisplayFt = maxExtentIn / 12;
   const safeZoneFill = meetsClearanceAdvice ? '#2f6d3f14' : '#a01d1d14';
   const isRadial = output.planShape === 'circular' || output.planShape === 'hexagonal' || output.planShape === 'octagonal';
@@ -1666,9 +1651,8 @@ export function buildSafetyClearanceSvg(
     : `<rect x="${centerX - pitWidthPx / 2}" y="${centerY - pitDepthPx / 2}" width="${pitWidthPx}" height="${pitDepthPx}" rx="${output.planShape === 'square' ? 4 : 2}" fill="#9d5a2b" opacity="0.85" />`;
 
   const overheadInsetBottom = 320;
-  const overheadInsetTop = 120;
+  const overheadInsetTop = 130;
   const overheadScale = (overheadInsetBottom - overheadInsetTop) / 25;
-  const requiredOverheadY = overheadInsetBottom - reviewOverheadFt * overheadScale;
   const actualOverheadY = overheadInsetBottom - actualOverheadFt * overheadScale;
   const clampedActualOverheadY = Math.max(
     overheadInsetTop,
@@ -1687,20 +1671,18 @@ export function buildSafetyClearanceSvg(
 
     <text x="18" y="364" font-size="11" fill="#6b5033">Scale shown: 0 to ${maxDisplayFt.toFixed(1)} ft radius</text>
 
-    <text x="390" y="138" font-size="12" fill="#4a3720">Dashed ${isRadial ? 'ring' : 'offset boundary'} = 10 ft advice</text>
-    <text x="390" y="160" font-size="12" fill="#4a3720">Actual distance = ${input.proximityToStructuresFt.toFixed(2)} ft</text>
-    <text x="390" y="182" font-size="12" fill="#4a3720">${footprintLabel}</text>
-    <text x="390" y="204" font-size="12" fill="#4a3720">Plan shape = ${output.planShape}</text>
-    <text x="390" y="226" font-size="12" fill="${meetsClearanceAdvice ? '#2f6d3f' : '#a01d1d'}">Horizontal screen: ${meetsClearanceAdvice ? 'meets advice' : 'below advice'}</text>
+    <text x="390" y="40" font-size="12" fill="#4a3720">Dashed ${isRadial ? 'ring' : 'offset'} = 10 ft advice</text>
+    <text x="390" y="60" font-size="12" fill="#4a3720">Actual distance = ${input.proximityToStructuresFt.toFixed(2)} ft</text>
+    <text x="390" y="80" font-size="12" fill="#4a3720">${footprintLabel}</text>
+    <text x="390" y="100" font-size="12" fill="#4a3720">Plan shape = ${output.planShape}</text>
+    <text x="390" y="120" font-size="12" fill="${meetsClearanceAdvice ? '#2f6d3f' : '#a01d1d'}">Horizontal screen: ${meetsClearanceAdvice ? 'meets advice' : 'below advice'}</text>
 
     <rect x="392" y="${overheadInsetTop}" width="226" height="${overheadInsetBottom - overheadInsetTop}" fill="#fff8ea" stroke="#c9a87a" stroke-width="1" rx="6" />
     <line x1="430" y1="${overheadInsetTop + 12}" x2="430" y2="${overheadInsetBottom}" stroke="#7a5a34" stroke-width="2" />
-    <line x1="430" y1="${requiredOverheadY}" x2="610" y2="${requiredOverheadY}" stroke="#a94d24" stroke-width="2" stroke-dasharray="6 4" />
-    <line x1="430" y1="${clampedActualOverheadY}" x2="610" y2="${clampedActualOverheadY}" stroke="${aboveOverheadMarker ? '#2f6d3f' : '#a01d1d'}" stroke-width="2.5" />
+    <line x1="430" y1="${clampedActualOverheadY}" x2="610" y2="${clampedActualOverheadY}" stroke="#1f5c81" stroke-width="2.5" />
     <text x="438" y="${overheadInsetTop + 24}" font-size="11" fill="#4a3720" font-weight="700">Overhead clearance inset</text>
-    <text x="438" y="${requiredOverheadY - 4}" font-size="10" fill="#a94d24">Model review marker: ${reviewOverheadFt.toFixed(0)} ft</text>
-    <text x="438" y="${Math.min(overheadInsetBottom - 4, clampedActualOverheadY + 14)}" font-size="10" fill="${aboveOverheadMarker ? '#2f6d3f' : '#a01d1d'}">Configured: ${actualOverheadFt.toFixed(1)} ft</text>
-    <text x="438" y="${overheadInsetBottom - 8}" font-size="10" fill="${aboveOverheadMarker ? '#2f6d3f' : '#a01d1d'}">Vertical screen: ${aboveOverheadMarker ? 'above marker' : 'review'}</text>
+    <text x="438" y="${overheadInsetBottom - 34}" font-size="10" fill="#1f5c81">Configured: ${actualOverheadFt.toFixed(1)} ft</text>
+    <text x="438" y="${overheadInsetBottom - 16}" font-size="10" fill="#4a3720">Product and site review required</text>
   </svg>`;
 }
 
@@ -1826,17 +1808,17 @@ export function buildConstructionPacketHtml(
   }
   const ventRows: Array<[string, string]> = [
     [
-      'Gas Hardware Template',
+      'Illustrative Vent Scenario',
       output.ventSpec.gasHardwareTemplateLabel ?? 'Generic firepit cavity',
     ],
     ['Vent Pattern', output.ventSpec.layout],
     ['Vent Zone', output.ventSpec.placement],
     ['Vent Count', `${output.ventSpec.ventCount}`],
     [
-      'Total Open Vent Area',
+      'Total Geometric Vent Opening',
       `${output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in`,
     ],
-    ['Modeled Gas Template Range', `${ventRange} sq in; verify equipment instructions`],
+    ['Unsourced Scenario Band', `${ventRange} sq in; not an equipment requirement`],
     ['Vent Unit Positions', output.ventSpec.ventBrickIndexes.join(', ')],
   ];
   const cornerRows: Array<[string, string]> = [
@@ -2096,7 +2078,7 @@ export function buildEngineeringReportHtml(
       'Fuel gas vent area',
       input.fuelType === 'wood'
         ? 'N/A for wood fuel mode'
-        : `${output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in (modeled template range ${ventRange} sq in; verify equipment instructions)`,
+        : `${output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in geometric opening (unsourced scenario band ${ventRange} sq in; verify free area and location against exact equipment instructions)`,
     ],
     [
       'Gas hardware template',
@@ -2208,8 +2190,8 @@ export function buildEngineeringReportHtml(
     ${
       output.smokelessSpec?.enabled
         ? `<section class="block avoid-break">
-      <h2>Smokeless Insert Hole Guide</h2>
-      <p class="small">Smokeless secondary-combustion mode is enabled. Use this drill pattern and spacing schedule when fabricating or verifying the insert.</p>
+      <h2>Smokeless Insert Hole Layout Review</h2>
+      <p class="small">The hole pattern and spacing are illustrative geometry only. Validate airflow, materials, and support before any fabrication or use.</p>
       ${buildSmokelessHoleGuideHtml(output)}
     </section>`
         : ''

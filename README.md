@@ -1,424 +1,77 @@
-# Parametric Masonry Designer & Thermodynamic Firepit Studio
+# Parametric Masonry Designer
 
-React 19 application for masonry firepit planning with geometry calculations, smokeless venting estimates, insert fit checks, safety advisories, and visual construction outputs. Calculations and guidance require project-specific verification before construction.
+React 19 app for exploring masonry fire-pit geometry, quantities, layouts, and site-review questions. **This is a planning tool.** Its outputs are not approved construction drawings, an equipment installation manual, or a code determination.
 
-## What This Site Is
+## What it does
 
-Parametric Masonry Designer is a planning tool for exploring a custom backyard firepit before buying materials or starting construction. It combines masonry geometry, rule-based venting estimates, safety prompts, and visual previews to help prepare a design for site, manufacturer, and local authority review.
+- Models circular, square, rectangular, hexagonal, and octagonal wall courses with configurable units, joints, caps, and cut strategies.
+- Estimates unit counts, selected material quantities, cost, and an illustrative stone-base volume.
+- Displays a 3D preview, course diagrams, a construction planning packet, and a printable design planning report.
+- Saves projects locally, supports snapshots and JSON import/export, and generates share links and QR codes in the browser.
+- Prompts review of combustibles, materials, foundation conditions, gas venting, and first-fire procedures.
+- Provides a DIY smokeless-liner sketch with modeled hole areas and idealized draft. It has **not** been validated for fabrication or combustion performance.
 
-You can use it to:
+## Current engineering limits
 
-- Size a firepit by inner diameter and wall height across circular, square, rectangular, hexagonal, and octagonal shapes.
-- Choose between single-wall, double-wall (thermal cavity), and smokeless secondary-combustion configurations.
-- Select distinct materials for the inner firebox wall (heat-rated firebrick, refractory castable) and the outer decorative shell (natural stone, standard brick, CMU).
-- Size and validate smokeless insert fitment for Solo Stove, Breeo, Tiki Brand, and custom DIY liners.
-- Calculate draft pressure, intake/outlet vent ratio, and secondary combustion airflow requirements.
-- See realistic material counts and waste-adjusted purchase estimates including split inner/outer wall quantities.
-- Review safety clearances and fuel-specific venting guidance including flange overlap and base vent omission counts.
-- Visualize the build in both 3D and construction-oriented views with PBR material shaders and optional cross-section cutaway.
+The [assumption and evidence register](ENGINEERING_ASSUMPTIONS.md) tracks each construction-relevant number, its source status, and the remaining review. In particular:
 
-## Why I Built It
+- The 10 ft combustible clearance is [U.S. Fire Administration general advice](https://www.usfa.fema.gov/prevention/outdoor-fires/). Product instructions and local requirements can be stricter.
+- Gas vent categories are illustrative size comparisons. The app cannot confirm required free opening per side, placement, or equipment compatibility without the exact burner and enclosure manuals. Every gas design is flagged for product-specific review.
+- Generic brick and stone names do not establish a temperature rating. Double-wall fireboxes require product datasheets and assembly review.
+- The 8 in stone base and 6 in extension per side are quantity assumptions, not a foundation or frost-footing design.
+- Manufacturer-branded smokeless fit presets from earlier versions were disabled. Legacy saved selections show a warning and produce no fit geometry. For example, [Breeo specifies a range of masonry openings for its insert ring](https://breeo.com/products/x-series-insert-ring), not the single base/flange values previously shown.
+- DIY smokeless area ratios, hole placement, and draft estimates are unvalidated model outputs. Do not fabricate or fire from the generated sketch without independent review and testing.
 
-This project started as a personal backyard upgrade idea. I wanted to build a firepit, but I also wanted to avoid guesswork around dimensions, brick counts, vent area, and base prep.
+## Calculation outline
 
-Instead of using rough napkin math, I built a tool that turns geometry and quantity formulas into a practical planning workflow. The result is a project that is both technically interesting and useful for early design review.
+The engine uses actual entered unit dimensions and joints. For a circular course, it estimates the raw count as centerline circumference divided by the unit module length:
+
+```text
+raw units = π × (inner diameter + wall thickness) / (unit length + joint)
+```
+
+For regular hexagonal and octagonal plans, perimeter uses `n × span × tan(π/n)`, where `span` is the modeled across-flats width. Square and rectangular plans use `2 × (width + depth)`. The outer perimeter also drives natural-stone face-area estimates. Course counts, cuts, and purchased quantities need confirmation with a measured dry lay and selected products.
+
+The base-stone volume uses the modeled footprint area times an 8 in depth. Soil bearing, drainage, frost, and structural support are outside that volume formula.
+
+## Run and verify
+
+Requires Node.js 20+ and npm 10+.
+
+```bash
+npm install
+npm run dev
+npm run test
+npm run build
+```
+
+The 3D preview requires WebGL. The remaining planner and exports can be used when WebGL is unavailable.
+
+## Review before construction
+
+1. Select actual wall, cap, liner, mortar, and fuel-system products; gather current manuals and datasheets.
+2. Confirm the site and applicable local requirements, including utilities, combustibles, overhead conditions, soil, drainage, and frost.
+3. Dry-lay representative courses and reconcile dimensions, cuts, joints, quantities, and support details.
+4. Have gas work, firebox materials, foundation design, and any custom smokeless fabrication reviewed by appropriately qualified people.
+5. Follow the selected products' installation, curing, and first-fire instructions.
+
+## Project structure
+
+- `src/engine/MasonryEngine.ts`: geometry and quantity model plus planning warnings.
+- `src/engine/__tests__/MasonryEngine.test.ts`: engine examples and regression tests.
+- `src/components/Stage3D.tsx`: interactive 3D preview.
+- `src/components/ConstructionMode.tsx`: course diagrams and planning packet.
+- `src/components/BillOfMaterials.tsx`: quantities and editable cost estimates.
+- `src/utils/constructionPacket.ts`: exported diagrams and planning report.
+- `ENGINEERING_ASSUMPTIONS.md`: source and validation status for construction-relevant assumptions.
+- `PROJECT_AUDIT_2026-09-24.md`: audit findings and remediation history.
 
 ## Screenshots
 
-![Parametric Masonry Designer screenshot](./public/screenshot-firepit-planner.png)
-
-### Field Toolkit
+![Parametric Masonry Designer](./public/screenshot-firepit-planner.png)
 
 ![Field Toolkit](./public/screenshots/field-toolkit.png)
 
-### Share + QR Handoff
+![Share and QR handoff](./public/screenshots/share-qr-handoff.png)
 
-![Share and QR Handoff](./public/screenshots/share-qr-handoff.png)
-
-### Dark Mode Designer
-
-![Dark Mode Designer](./public/screenshots/dark-mode-designer.png)
-
-## Current Capabilities
-
-- Parametric circular, square, rectangular, hexagonal, and octagonal firepit design.
-- Geometry-based wall and capstone quantities, with venting, liner, and foundation planning estimates.
-- **Separate inner/outer wall material selection in double-wall mode** — distinct material presets, heat ratings (°F), and mortar types (refractory / Type N / Type S) for the firebox inner shell and outer decorative shell. Split Bill of Materials.
-- **Smokeless secondary-combustion mode** — stack-effect draft pressure (ΔP formula), intake/outlet vent area ratio check (1.2–1.5 optimal range), secondary jet sizing, base-course block omission count, and flange overlap safety status.
-- **Commercial smokeless insert presets** — Solo Stove Bonfire 2.0, Breeo X19/X24/X30, Tiki Brand Patio, and Custom/DIY steel liner; auto-calculates required masonry ID and all clearances.
-- 3D preview with camera presets, cutaway mode, dimension overlays, LOD, and WebGL fallback handling.
-- Construction Mode with printable layer-by-layer SVG guidance.
-- Enhanced Bill of Materials with categorized material groups, cost estimator, and BOM-focused print layout.
-- Double-wall cavity planning with outer-shell counts, cap-bridge row schedule, closure-unit estimates, and 3D multi-row cap preview.
-- Design Planning Report generation (print-to-PDF flow).
-- Project workspace with autosave, snapshots, import/export JSON, and side-by-side variant comparison.
-- Regional advisory checks (setback, venting, frost-line/HOA context) and material/cost optimization suggestions.
-- GLB model export for downstream Blender/Fusion-style workflows.
-- Vertical + horizontal safety visualization including overhead-clearance review.
-- Gas hardware templates (generic, drop-in pan, linear, high-BTU) that tune vent-area guidance.
-- Rectangular/square corner interlock guidance and site review prompts in the construction planning packet.
-- **Capstone cut strategy selection** — full taper-cut (all joints wedge-fit), corner-only miter cut (fewest cuts), and DIY butt-joint (zero cuts for square/rectangular plans). Cut schedule, placement SVGs, and tool guidance in build packet.
-- **Plan shape selector with distinct SVG icons** — circle, square, rectangle, hexagon, and octagon buttons display accurate shape geometry for quick visual identification.
-- Field Toolkit for no-DB field workflows (progress checklist, notes/photos, measurement validation, weather checks).
-- Shareable compact URL + QR project handoff, with backward compatibility for older share links.
-- Offline-first basics via manifest + service worker app-shell caching (PWA-style behavior).
-
-## Capability Status And Active Gaps
-
-The following capabilities are identified and on the roadmap but not yet implemented:
-
-| Gap | Description |
-|---|---|
-| **Inner/outer wall materials** | ✅ **Implemented** — separate material presets, heat ratings, and mortar types per zone with split BOM. |
-| **Smokeless secondary-combustion mode** | ✅ **Implemented** — stack-effect ΔP, intake/outlet ratio, jet sizing, base-course omissions, flange overlap. |
-| **Commercial insert fitment** | ✅ **Implemented** — Solo Stove, Breeo X19/X24/X30, Tiki Brand presets with auto-calc masonry ID. |
-| **Mortar type distinction** | ✅ **Implemented** — refractory vs. Type N/S tracked and warned per wall zone. |
-| **Hex/octagonal shapes** | ✅ **Implemented** — full geometry, clipped wall footprints, vent markers anchored to polygon faces, and 3D rendering. |
-| **Capstone cut schedule and DIY mode** | ✅ **Implemented** — taper-cut, corner-only miter, and butt-joint (zero-cut) strategies with SVG diagrams and build guidance. |
-| **Keyhole firepit shape** | Cooking-focused keyhole (circle + coal channel) shape is not yet available. |
-| **In-ground / raised-pedestal build modes** | All builds are modeled as above-grade masonry walls. |
-| **Ash cleanout features** | Hinged cleanout door, removable ash pan, and drain hole options are not yet modeled. |
-| **3D materials** | Basic material-specific roughness and metalness are implemented; appearance is illustrative and has not been calibrated against real products. |
-| **Airflow particle simulation** | Animated convective airflow visualization (cold intake → heated cavity → secondary jets) is planned for smokeless mode. |
-
-## Requirements
-
-- Node.js 20+ recommended.
-- npm 10+ recommended.
-- Modern browser with WebGL support for 3D view and GLB export.
-
-## Known Limitations
-
-- Advanced heat-transfer simulation is still first-pass/rule-based (not transient CFD/FEA).
-- Manufacturer-specific gas hardware SKU compliance is still template-based, not model/SKU exact.
-- Offline support currently focuses on app-shell and cached assets; full offline map/weather/code integrations are not included.
-
-## Troubleshooting
-
-- If the 3D scene does not render, verify WebGL is enabled and use the latest Chrome, Edge, or Firefox.
-- If local autosave/snapshots appear missing, check browser storage settings and privacy extensions that block local storage.
-- If a QR code does not scan, regenerate from the Field Toolkit (new compact links scan more reliably than older long payload links).
-- If shared links do not restore state, confirm the full query string is preserved when copied/pasted.
-- If tests fail after dependency updates, remove `node_modules` and lockfile cache, reinstall, then rerun `npm run test`.
-
-## Build Workflow (Design To First Fire)
-
-1. Define geometry: plan shape (circular/square/rectangular/hexagonal/octagonal), inner size, wall height, wall/cap units, and mortar settings.
-2. Set fuel + thermal strategy: wood, propane, or natural gas with single-wall, double-wall, or smokeless secondary-combustion liner selection.
-3. If smokeless mode: choose commercial insert preset (Solo Stove, Breeo, Tiki) or enter custom DIY dimensions; tool calculates required masonry ID, air gap, flange overlap, and base-course vent omissions.
-4. Validate safety + site context: horizontal setback, vent area/placement, soil/drainage/frost advisory output, and flange overlap status.
-5. Review quantities: units, waste-adjusted purchase count, mortar by zone (refractory/standard), cap count, cap-bridge row schedule (if double-wall), and base stone volume.
-6. Review Construction Mode, permit checklist output, and course-level guidance before field layout starts.
-7. Use Field Toolkit during install for checklist progress, measured-vs-planned tolerance checks, and weather/burn gating.
-8. Build the foundation and wall system, then follow the chosen mortar products' curing and first-fire instructions.
-
-## Before You Build (Quick Checklist)
-
-- Confirm local code/permit requirements and HOA constraints.
-- Call utility locate services before excavation.
-- Verify setbacks from combustibles and overhead hazards.
-- Confirm fuel hardware requirements (burner/pan venting and cavity instructions for gas builds).
-- Gather tools/PPE for measuring, layout, cutting, compaction, and masonry work.
-- Plan weather window, drainage strategy, and curing time before first ignition.
-
-## Limits And Assumptions
-
-| Topic | Current behavior |
-|---|---|
-| Core sizing math | Geometry-based model for unit dimensions, joints, running bond, and counts; field verification is still required. |
-| Horizontal clearance | Enforced warning when below 10 ft baseline. |
-| Vertical clearance | Modeled in safety visualization inset with review warning below recommended baseline. |
-| Foundation sizing | Baseline quantity model fixed; soil/drainage/frost context is advisory. |
-| Gas venting | Rule-based guidance using fuel + hardware template ranges; confirm exact manufacturer requirements. |
-| Thermal assembly depth | Double-wall cavity depth and cap-bridge row/closure planning are modeled; thermal behavior remains rule-based. |
-| Inner/outer wall materials | **Implemented** — separate inner (firebrick/refractory) and outer (stone/brick/CMU) material presets with split BOM and mortar type per zone. |
-| Smokeless venting | **Implemented** — stack-effect ΔP formula, intake/outlet vent area ratio (1.2–1.5), secondary jet sizing, base-course omissions, and flange overlap safety check. |
-| Commercial insert fitment | **Implemented** — Solo Stove, Breeo X19/X24/X30, Tiki Brand, and Custom/DIY profiles with auto-calculated masonry ID and flange overlap status. |
-| Plan shapes | Circular, square, rectangular, hexagonal, and octagonal. Keyhole, in-ground, and raised-pedestal modes planned. |
-| Build modes | Above-grade masonry only. In-ground and raised-pedestal modes planned. |
-| 3D materials | Illustrative material shaders and quarter/half cutaway are implemented; material appearance and thermal details still require validation. |
-
-## Field Validation Steps (On Site)
-
-1. Dry-lay the first course and confirm fit before mortar or adhesive.
-2. Verify vent positions/open area and keep vent paths unobstructed.
-3. Re-check clearances in real site conditions (structures + overhead hazards).
-4. Confirm liner/ring spacing and gas-line entry routing before final assembly.
-5. Reconcile purchased materials against planned quantities before installation starts.
-6. Complete curing and pre-ignition safety checks before first full fire.
-
-## Recent UX Improvements
-
-- Optional advanced tooling is now grouped under **Optional Insights** so the default designer view stays cleaner.
-- Variant comparison is hidden by default and can be toggled on demand.
-- Knowledge Center content is easier to scan:
-  - quick topic index,
-  - collapsible guidance sections,
-  - searchable FAQ filter.
-
-## What Is Next
-
-Current roadmap priorities:
-
-### Phase 1 — Thermodynamic Engine Integration ✅ Completed
-
-1. ✅ **Separate inner/outer wall materials** — Distinct `innerWallPresetKey` and `outerWallPresetKey` in double-wall mode. Inner: firebrick, refractory castable, high-alumina. Outer: natural stone, standard brick, CMU. Separate mortar type per zone (refractory vs. Type N/S). Split BOM line items.
-2. ✅ **Smokeless secondary-combustion mode** — `smokelessMode` flag with stack-effect draft pressure calculation, intake/outlet vent area ratio enforcement, and secondary jet sizing. Works with both double-wall AND single-wall + steel ring liner.
-3. ✅ **Commercial insert preset database** — Pre-configured fitment profiles for Solo Stove Bonfire 2.0, Breeo X19/X24/X30, Tiki Brand Patio, and custom DIY. Auto-calculates required masonry ID, flange overlap status, and base-course vent omission count.
-
-### Phase 2 — Shape and Configuration Expansion
-
-4. ✅ **Hexagonal and octagonal plan shapes** — `PlanShape` variants with corner-count-based perimeter math, clipped wall footprints, vent markers anchored to polygon faces, and full 3D rendering.
-5. ✅ **Capstone cut schedules and DIY mode** — Full taper-cut, corner-only miter, and butt-joint (zero-cut) strategies for all plan shapes with SVG cut diagrams, placement guides, and material counts.
-6. **Keyhole firepit shape** — Circle + rectangular cooking channel for coal-rake cooking configurations.
-7. **In-ground and raised-pedestal build modes** — In-ground mode changes foundation from slab to excavation + drainage pocket + gravel fill calc.
-8. **Ash cleanout features** — Hinged cleanout door, removable ash pan, or drain holes; affects first-course layout and BOM.
-
-### Phase 3 — Visualizer and Rendering Upgrades
-
-9. **PBR material shaders** — MeshStandardMaterial with per-material roughness/metalness: firebrick (rough 0.9), natural stone (rough 0.85–0.95), brushed stainless (metalness 1.0, rough 0.2), Corten steel (metalness 0.2, rough 0.75 + rust tint).
-10. ✅ **Cross-sectional cutaway tool** — Quarter and half views are implemented; detailed cavity and foundation annotations remain an improvement area.
-11. **Convective airflow particle simulation** — GPU particle system for smokeless mode: blue particles entering base vents → transitioning to red as they rise through the cavity → high-velocity jets from top rim holes.
-
-### Deferred / Future Consideration
-
-- Multi-firepit site planning (place multiple pits in one layout).
-- Rocket stove and Dakota fire hole configurations.
-- AR/mobile preview phase.
-- CAD interoperability refinements.
-
-## Double-Wall Material Pairings
-
-In double-wall mode, the inner and outer shells serve fundamentally different roles and should use different materials:
-
-| Zone | Material Options | Temp Rating | Mortar Type |
-|---|---|---|---|
-| **Inner firebox wall** | Heat-rated firebrick | Verify selected product rating | Manufacturer-approved refractory mortar |
-| **Inner firebox wall** | Refractory castable concrete | 2,000–2,500°F | N/A (poured) |
-| **Inner firebox wall** | High-alumina firebrick | Up to 3,000°F | High-temp refractory mortar |
-| **Outer decorative shell** | Natural stone (granite, basalt) | Excellent radiant tolerance | Type N or Type S masonry mortar |
-| **Outer decorative shell** | Standard clay brick | Good | Type N or Type S masonry mortar |
-| **Outer decorative shell** | CMU / concrete block | Structural base only | Type S masonry mortar |
-| **Outer decorative shell** | Flagstone / pavers | Decorative facing | Type N masonry mortar |
-
-**Important:** Use a mortar specified for the selected firebox materials and expected heat exposure. General masonry mortar should not be assumed suitable for direct flame; follow the exact product’s application, curing, and first-fire instructions.
-
-**Stones to avoid near direct heat:** River rock, sandstone, limestone, and shale contain trapped moisture or chemically decompose at fire temperatures and can spall explosively.
-
-## Smokeless Firepit Science
-
-### How Secondary Combustion Works
-
-A smokeless wood-burning firepit operates as a double-wall convective heat exchanger. The physics rely on three sequential stages:
-
-1. **Primary combustion** — Wood burns in the inner chamber, releasing heat, CO, hydrogen, VOCs, and water vapor. Below ~600°F, these unburned gases escape as visible smoke.
-2. **Air pre-heating (stack effect)** — Cool ambient air enters through base-level intake vents, travels upward through the annular cavity between the inner and outer walls, and is heated to 600–900°F by conduction and radiation from the inner wall. The driving draft pressure is:
-
-$$\Delta P = P_{\text{atm}} \cdot \frac{g \cdot H}{R} \cdot \left(\frac{1}{T_0} - \frac{1}{T_i}\right)$$
-
-Where $P_{\text{atm}}$ is atmospheric pressure (Pa), $g$ = 9.81 m/s², $H$ is cavity height (m), $R$ = 287.05 J/kg·K, $T_0$ is ambient temperature (K), and $T_i$ is cavity air temperature (K).
-
-3. **Secondary combustion (re-burn)** — Superheated air is injected through a ring of small holes at the top inner rim of the firebox. The concentrated jets of hot, oxygen-rich air ignite the rising unburned gases a second time, burning off most visible smoke before it escapes.
-
-### Intake / Outlet Vent Area Ratio
-
-To prevent either air starvation (too-rich burn) or thermal choking (excessive cold air cooling the cavity), the ratio of total base intake area to total secondary jet area must satisfy:
-
-$$1.2 \leq \frac{A_{\text{intake}}}{A_{\text{holes}}} \leq 1.5$$
-
-If the ratio falls below 1.2, the system starves for oxygen and secondary combustion stalls. If it exceeds 1.5, excessive cold air enters and cools cavity temperature below the re-ignition threshold (~600°F / 315°C).
-
-### Vent Sizing Reference
-
-| Parameter | Typical Value | Notes |
-|---|---|---|
-| Bottom intake hole diameter | ¾ in (19 mm) | Primary air; 16–24 holes evenly spaced |
-| Bottom intake height from base | 1–2 in above floor | Low enough for draft; allows ash clearance |
-| Top secondary jet diameter | ½ in (12 mm) | Smaller for jet velocity; 16–24 holes |
-| Top secondary jet height | 1–2 in below inner rim | Must inject into combustion zone, not above |
-| Annular air gap width | ½–1½ in; optimal ~1 in | < ¾ in restricts flow; > 1½ in reduces preheat |
-| Minimum wall height for smokeless | 12 in | Taller = stronger stack draft |
-
-### Single-Wall Smokeless (Steel Ring Liner)
-
-A smokeless design also works with a single outer wall and a steel ring liner — the liner and wall form the annular cavity. Requirements:
-- Liner diameter 1–2 in smaller than masonry inner diameter (½–1 in gap around circumference)
-- Steel liner thickness: 1/16 in–1/8 in (1.5–3 mm)
-- Secondary holes (⅜–½ in dia.) drilled at top rim of liner
-- Elevated grate to allow underfire primary airflow
-- Base intake vents through the outer masonry wall
-
-This configuration is less efficient than a full double-wall design (shorter preheat path, less insulated cavity) but is a practical upgrade to a standard single-wall pit using an off-the-shelf steel ring.
-
-## Commercial Smokeless Insert Compatibility
-
-When using a commercial smokeless insert, the masonry inner diameter must be sized to provide the correct air gap around the insert base, and the insert flange must overlap the inner wall edge by at least 1 in:
-
-$$D_{\text{masonry}} = D_{\text{base}} + 2 \cdot G_{\text{air}}$$
-
-$$D_{\text{flange}} \geq D_{\text{masonry}} + 1.0 \text{ in}$$
-
-| Insert Model | Base OD | Flange OD | Min Pit Depth | Air Gap | Required Masonry ID |
-|---|---|---|---|---|---|
-| Solo Stove Bonfire 2.0 | 19.50 in | 21.50 in | 14.50 in | 0.75 in | 21.00 in |
-| Breeo X19 | 19.00 in | 22.00 in | 15.00 in | 1.50 in | 22.00 in |
-| Breeo X24 | 24.00 in | 27.50 in | 15.00 in | 1.50 in | 27.00 in |
-| Breeo X30 | 30.00 in | 34.00 in | 15.00 in | 2.00 in | 34.00 in |
-| Tiki Brand Patio Smokeless | 24.75 in | 26.75 in | 18.75 in | 1.00 in | 26.75 in |
-| Custom DIY Steel Liner | D_liner | D_liner + 2×lip | 12–18 in | 0.50–1.00 in | D_liner + 2×G_air |
-
-**Flange overlap safety check:** If the insert flange OD ≤ masonry inner edge + 0.25 in → `unsafe_falling_risk`. If flange OD < masonry inner edge + 1.0 in → `marginal_slip_risk`.
-
-## Firepit Type Reference
-
-| Type | Description | Key Design Feature |
-|---|---|---|
-| **Standard masonry firepit** | Above-grade mortared or dry-stack ring | Most common DIY permanent build |
-| **Double-wall smokeless** | Inner + outer masonry wall with air cavity | Secondary combustion; low smoke |
-| **Single-wall + smokeless insert** | Standard outer wall + commercial or DIY steel liner | Retrofit smokeless upgrade |
-| **Keyhole firepit** | Circle + teardrop cooking channel | Coal-rake zone for Dutch oven / skillet cooking |
-| **In-ground firepit** | Dug below grade; no visible wall | Wind-protected; drainage-critical |
-| **Raised pedestal** | Column-supported bowl | Modern/sculptural; usually gas |
-| **Fire ring (primitive)** | Metal ring only, no masonry | Portable; campsite style |
-| **Fire bowl** | Bowl-shaped vessel (steel, corten, copper) | Portable or pedestal; modern aesthetic |
-| **Fire table** | Flat surface surrounding gas burner | Patio furniture integration; usually propane |
-| **Rocket stove** | L/J-shaped combustion chamber | High efficiency; very low smoke; cook-focused |
-| **Dakota fire hole** | Two underground connected chambers | Near-smokeless; survival/field technique |
-| **Swirl / vortex pit** | Tangentially angled air inlets | Spiraling flame effect; burns hotter |
-
-## Phase 1: Geometry and Quantity Model
-
-### 1. Masonry Unit Dimensions and Jointing
-
-Default modular brick dimensions (actual):
-
-- Width: 3.625 in
-- Height: 2.25 in
-- Length: 7.625 in
-- Mortar joint (default, configurable): 0.375 in
-
-### 2. Circular Unit Count (Centerline Formula)
-
-For circular courses we use:
-
-$$
-N = \frac{\pi \cdot (D - W)}{L + J}
-$$
-
-Where:
-
-- $N$ = units per course
-- $D$ = outer diameter of wall
-- $W$ = wall thickness (unit width in stretcher orientation)
-- $L$ = unit length
-- $J$ = vertical mortar joint thickness
-
-The UI input uses inner diameter. Therefore:
-
-$$
-D = D_{inner} + 2W
-$$
-
-and:
-
-$$
-N = \frac{\pi \cdot (D_{inner} + W)}{L + J}
-$$
-
-Example with 36 in inner diameter and modular brick with 3/8 in joints:
-
-$$
-N = \frac{\pi \cdot (36 + 3.625)}{7.625 + 0.375} \approx 15.56
-$$
-
-Rounded for full-unit planning (course-by-course) uses floor:
-
-$$
-N_{rounded} = 15
-$$
-
-### 3. Running Bond
-
-Running bond is enforced as a 50% module offset every alternate course:
-
-$$
-\text{offset}_{course} =
-\begin{cases}
-0 & \text{if even course}\\
-\frac{L + J}{2} & \text{if odd course}
-\end{cases}
-$$
-
-### 4. Ventilation Logic
-
-- Propane (heavier than air): vents at base courses.
-- Natural gas (lighter than air): vents near top courses.
-- Wood: base venting for combustion support.
-- Total vent open area constrained to at least 18 sq in.
-
-### 5. Foundation/Sub-Base Calculation
-
-Foundation footprint diameter is 6 in wider on each side:
-
-$$
-D_{footprint} = D_{outer} + 12
-$$
-
-Stone depth fixed at 8 in:
-
-$$
-V = \pi \cdot \left(\frac{D_{footprint}}{2}\right)^2 \cdot 8
-$$
-
-with conversions:
-
-$$
-\text{ft}^3 = \frac{V}{1728}, \quad \text{yd}^3 = \frac{V}{46656}
-$$
-
-### 6. Safety Clearance Rule
-
-If structure proximity is below 10 ft, show warning.
-
-### 7. Logistics and Material Estimation
-
-The engine also computes practical construction estimates:
-
-- Brick purchase quantity with 15% waste factor.
-- Estimated brick dead load using 4.5 lb per modular brick.
-- Estimated stone mass using 100 lb/ft3 and 10% handling waste.
-- Mortar estimate using 0.0175 ft3 per purchased brick (midpoint rule from 15-20 ft3 per 1000 bricks).
-
-### 8. Capstone Overhang and Cap Course
-
-Capstone overhang is user-defined per side. Cap outer diameter is:
-
-$$
-D_{cap,outer} = D_{outer} + 2 \cdot O
-$$
-
-Where $O$ is cap overhang in inches on each side.
-
-Cap course units are calculated using the same centerline formula with cap diameter:
-
-$$
-N_{cap} = \frac{\pi \cdot (D_{cap,outer} - W)}{L + J}
-$$
-
-## Project Structure
-
-- `src/engine/MasonryEngine.ts`: core geometry, quantity, and planning rules.
-- `src/engine/__tests__/MasonryEngine.test.ts`: verification tests.
-- `src/components/Stage3D.tsx`: @react-three/fiber 3D stage.
-- `src/components/ConstructionMode.tsx`: SVG layer-by-layer build map.
-- `src/components/BillOfMaterials.tsx`: enhanced BOM + cost estimator + print output.
-- `src/components/ProjectComparisonPanel.tsx`: side-by-side snapshot variant analysis.
-- `src/components/RegionalCodeChecker.tsx`: regional advisory checks.
-- `src/components/MaterialOptimizationSuggestions.tsx`: optimization prompts.
-- `firepit-research.md`: planning assumptions and expanded research notes.
-
-## Run
-
-1. `npm install`
-2. `npm run dev`
-3. `npm run test`
+![Dark mode designer](./public/screenshots/dark-mode-designer.png)

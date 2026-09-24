@@ -37,32 +37,20 @@ export function buildRegionalCodeReview(
   });
 
   const overheadClearanceFt = input.overheadClearanceFt ?? 20;
-  const recommendedOverheadClearanceFt = input.fuelType === 'wood' ? 21 : 15;
   checks.push({
     key: 'vertical-clearance',
     title: 'Overhead clearance to combustibles',
-    status: overheadClearanceFt >= recommendedOverheadClearanceFt ? 'pass' : 'review',
-    detail:
-      overheadClearanceFt >= recommendedOverheadClearanceFt
-        ? `Configured at ${overheadClearanceFt.toFixed(1)} ft, above the model's ${recommendedOverheadClearanceFt} ft review marker. Verify overhead combustibles, local rules, and product instructions.`
-        : `Configured at ${overheadClearanceFt.toFixed(1)} ft, below the model's ${recommendedOverheadClearanceFt} ft review marker. Verify overhead combustibles, local rules, and product instructions.`,
+    status: 'review',
+    detail: `Configured at ${overheadClearanceFt.toFixed(1)} ft. No universal vertical clearance is established by this model. Verify branches, soffits, local rules, and the exact product instructions.`,
   });
 
   if (input.fuelType !== 'wood') {
-    const min = output.ventSpec.recommendedAreaMinSqIn;
-    const max = output.ventSpec.recommendedAreaMaxSqIn;
     const ventArea = output.ventSpec.totalOpenAreaSqIn;
     checks.push({
       key: 'gas-venting-screen',
-      title: 'Fuel-gas vent area check',
-      status:
-        ventArea < min ? 'fail' : max !== undefined && ventArea > max ? 'review' : 'pass',
-      detail:
-        ventArea < min
-          ? `Current vent area is ${ventArea.toFixed(1)} sq in, below the selected equipment template's ${min.toFixed(1)} sq in planning minimum. Verify manufacturer instructions.`
-          : max !== undefined && ventArea > max
-            ? `Current vent area is ${ventArea.toFixed(1)} sq in, above ${max.toFixed(1)} sq in. Verify local gas appliance requirements.`
-            : `Current vent area is ${ventArea.toFixed(1)} sq in and within the selected equipment template's planning range. Verify manufacturer instructions.`,
+      title: 'Fuel-gas manufacturer requirements',
+      status: 'review',
+      detail: `Modeled open area is ${ventArea.toFixed(1)} sq in total. The generic category has no verified product requirement. Check the exact burner and enclosure manual for free area per side, vent location, and service access; obtain qualified installer review.`,
     });
   }
 

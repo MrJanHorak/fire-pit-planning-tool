@@ -37,32 +37,6 @@ export function buildMaterialOptimizationSuggestions(
     });
   }
 
-  if (
-    input.fuelType !== 'wood' &&
-    input.linerType === 'fire-brick'
-  ) {
-    suggestions.push({
-      key: 'liner-fuel-match',
-      impact: 'medium',
-      title: 'Match liner type to fuel strategy',
-      detail:
-        'Fire-brick liners are durable but often costlier for gas-only pits. A steel ring may reduce cost while preserving thermal protection.',
-    });
-  }
-
-  if (
-    input.fuelType !== 'wood' &&
-    output.ventSpec.recommendedAreaMaxSqIn !== undefined &&
-    output.ventSpec.totalOpenAreaSqIn > output.ventSpec.recommendedAreaMinSqIn + 8
-  ) {
-    suggestions.push({
-      key: 'vent-area-right-size',
-      impact: 'low',
-      title: 'Right-size vent area',
-      detail: `Current vent area is ${output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in. Tightening closer to the minimum recommended range can reduce extra cutting.`,
-    });
-  }
-
   if ((input.seatingAreaRadiusFt ?? 0) > 10) {
     suggestions.push({
       key: 'seating-footprint',

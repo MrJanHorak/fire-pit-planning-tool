@@ -21,6 +21,6 @@ export const LongContent: Story = {
   args: {
     label: 'About vent strategy',
     children:
-      'Propane vents should be near the base, while natural gas vents should be near upper courses. Keep vent area within the recommended range to maintain airflow and safe fuel behavior.',
+      'The preview shows an illustrative vent layout. Confirm free opening area per side and placement with the exact gas equipment manual and a qualified installer.',
   },
 };

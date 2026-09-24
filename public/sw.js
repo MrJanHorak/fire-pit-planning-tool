@@ -1,10 +1,11 @@
-const CACHE_NAME = 'firepit-offline-v2';
+const CACHE_NAME = 'firepit-offline-v3';
 const APP_SHELL_ASSETS = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
   '/flame-favicon.svg',
-  '/firepit.png',
+  '/icon-192.png',
+  '/icon-512.png',
   '/robots.txt',
   '/sitemap.xml',
 ];
@@ -23,7 +24,7 @@ self.addEventListener('activate', (event) => {
       .then((keys) =>
         Promise.all(
           keys.map((key) => {
-            if (key !== CACHE_NAME) {
+            if (key.startsWith('firepit-offline-') && key !== CACHE_NAME) {
               return caches.delete(key);
             }
             return Promise.resolve(true);
@@ -31,7 +32,7 @@ self.addEventListener('activate', (event) => {
         ),
       ),
   );
-  self.clients.claim();
+  event.waitUntil(self.clients.claim());
 });
 
 self.addEventListener('fetch', (event) => {
@@ -56,15 +57,20 @@ self.addEventListener('fetch', (event) => {
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
-        .then((response) => {
-          const responseClone = response.clone();
-          caches
-            .open(CACHE_NAME)
-            .then((cache) => cache.put('/index.html', responseClone));
+        .then(async (response) => {
+          if (response.ok) {
+            try {
+              const cache = await caches.open(CACHE_NAME);
+              await cache.put('/index.html', response.clone());
+            } catch {
+              // A full or unavailable cache must not hide a successful page load.
+            }
+          }
           return response;
         })
         .catch(async () => {
-          const cachedShell = await caches.match('/index.html');
+          const cache = await caches.open(CACHE_NAME);
+          const cachedShell = await cache.match('/index.html');
           return cachedShell || Response.error();
         }),
     );
@@ -72,17 +78,20 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(
-    caches.match(event.request).then((cached) => {
+    caches.open(CACHE_NAME).then(async (cache) => {
+      const cached = await cache.match(event.request);
       if (cached) {
         return cached;
       }
-      return fetch(event.request).then((response) => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, clone);
-        });
-        return response;
-      });
+      const response = await fetch(event.request);
+      if (response.ok && response.type === 'basic') {
+        try {
+          await cache.put(event.request, response.clone());
+        } catch {
+          // Continue serving the network response if browser storage is unavailable.
+        }
+      }
+      return response;
     }),
   );
 });

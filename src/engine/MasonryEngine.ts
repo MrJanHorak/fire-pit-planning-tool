@@ -38,34 +38,11 @@ const ROCK_WALL_UNIT_PRESET_KEYS = new Set([
   'rockMosaic',
 ]);
 
-/**
- * Approximate heat ratings (°F) for inner-face exposure per brick preset.
- * Inner firebox materials need ≥ 1,400°F; outer decorative shells need ≥ 400°F.
- */
-const HEAT_RATINGS_F: Record<string, number> = {
-  modular: 600,
-  standard: 600,
-  queen: 600,
-  king: 600,
-  norman: 600,
-  jumboModular: 600,
-  closure: 600,
-  utility: 600,
-  paver: 500,
-  fireBrickSplits: 2000,
-  fireBrickFull: 2000,
-  radialFireBrick: 2000,
-  bullnose: 600,
-  radialFace: 600,
-  rockLedgestone: 800,
-  rockFieldstone: 800,
-  rockMosaic: 800,
-  custom: 600,
-  'custom-radial': 600,
-};
-
-/** Minimum heat rating (°F) acceptable for the inner firebox wall. */
-const INNER_WALL_MIN_HEAT_RATING_F = 1400;
+const FIREBOX_MATERIAL_PRESET_KEYS = new Set([
+  'fireBrickSplits',
+  'fireBrickFull',
+  'radialFireBrick',
+]);
 
 /**
  * Default mortar type for a given material preset.
@@ -101,6 +78,7 @@ const GAS_HARDWARE_TEMPLATES: Record<
     recommendedAreaMaxSqIn: number;
   }
 > = {
+  // Illustrative scenario bands only. No manufacturer SKU is identified by these keys.
   'generic-firepit': {
     label: 'Generic firepit cavity',
     recommendedAreaMinSqIn: 18,
@@ -130,7 +108,7 @@ const STACK_R_AIR = 287.05; // specific gas constant for air (J/kg·K)
 const STACK_T0_K = 293; // ambient temperature (K) ≈ 20°C
 const STACK_TI_K = 673; // heated cavity air temperature (K) ≈ 400°C / 750°F
 
-/** Optimal intake-to-outlet vent area ratio range for smokeless secondary combustion. */
+/** Illustrative intake-to-outlet area band; not a validated performance limit. */
 const SMOKELESS_RATIO_MIN = 1.2;
 const SMOKELESS_RATIO_MAX = 1.5;
 
@@ -142,49 +120,8 @@ interface SmokelessInsertPresetDef {
   airGap: number; // in
 }
 
-/**
- * Commercial smokeless insert dimensions.
- * Source: manufacturer specs + independent architectural analysis.
- */
-export const SMOKELESS_INSERT_PRESETS: Record<
-  import('../types').SmokelessInsertPresetKey,
-  SmokelessInsertPresetDef
-> = {
-  'solo-stove-bonfire-2': {
-    label: 'Solo Stove Bonfire 2.0',
-    baseOD: 19.5,
-    flangeOD: 21.5,
-    minDepth: 14.5,
-    airGap: 0.75,
-  },
-  'breeo-x19': {
-    label: 'Breeo X19',
-    baseOD: 19.0,
-    flangeOD: 22.0,
-    minDepth: 15.0,
-    airGap: 1.5,
-  },
-  'breeo-x24': {
-    label: 'Breeo X24',
-    baseOD: 24.0,
-    flangeOD: 27.5,
-    minDepth: 15.0,
-    airGap: 1.5,
-  },
-  'breeo-x30': {
-    label: 'Breeo X30',
-    baseOD: 30.0,
-    flangeOD: 34.0,
-    minDepth: 15.0,
-    airGap: 2.0,
-  },
-  'tiki-patio': {
-    label: 'Tiki Brand Patio Smokeless',
-    baseOD: 24.75,
-    flangeOD: 26.75,
-    minDepth: 18.75,
-    airGap: 1.0,
-  },
+/** Generic fabrication dimensions only. Commercial products need their own fit model. */
+export const SMOKELESS_INSERT_PRESETS: Record<'custom-diy', SmokelessInsertPresetDef> = {
   'custom-diy': {
     label: 'Custom / DIY Steel Liner',
     baseOD: 19.0,
@@ -588,13 +525,7 @@ export class MasonryEngine {
     input: MasonryInput,
     planMetrics: PlanMetrics,
   ): NaturalStoneEstimateMetrics {
-    const outerPerimeterIn =
-      planMetrics.planShape === 'circular'
-        ? Math.PI * planMetrics.outerWidthIn
-        : this.calculateRectangularPerimeter(
-            planMetrics.outerWidthIn,
-            planMetrics.outerDepthIn,
-          );
+    const outerPerimeterIn = this.calculateOuterPerimeterIn(planMetrics);
     const outerPerimeterFeet = outerPerimeterIn / 12;
     const faceAreaSquareFeet = outerPerimeterFeet * (input.wallHeightIn / 12);
     const tonsAt8InDepth = faceAreaSquareFeet / 20;
@@ -609,8 +540,9 @@ export class MasonryEngine {
       tonsAt8InDepthWithWaste15Pct: tonsAt8InDepth * 1.15,
       tonsAt4InDepthWithWaste10Pct: tonsAt4InDepth * 1.1,
       tonsAt4InDepthWithWaste15Pct: tonsAt4InDepth * 1.15,
-      typicalWallWeightLbMin: faceAreaSquareFeet * 35,
-      typicalWallWeightLbMax: faceAreaSquareFeet * 50,
+      // Keep the 4–8 in weight range consistent with the coverage-per-ton estimates above.
+      typicalWallWeightLbMin: tonsAt4InDepth * 2000,
+      typicalWallWeightLbMax: tonsAt8InDepth * 2000,
     };
   }
 
@@ -869,6 +801,22 @@ export class MasonryEngine {
     return this.calculateRectangularPerimeter(
       planMetrics.centerlineWidthIn,
       planMetrics.centerlineDepthIn,
+    );
+  }
+
+  private calculateOuterPerimeterIn(planMetrics: PlanMetrics): number {
+    if (planMetrics.planShape === 'circular') {
+      return Math.PI * planMetrics.outerWidthIn;
+    }
+
+    const sides = this.polygonSides(planMetrics.planShape);
+    if (sides > 0) {
+      return this.polygonPerimeter(sides, planMetrics.outerWidthIn);
+    }
+
+    return this.calculateRectangularPerimeter(
+      planMetrics.outerWidthIn,
+      planMetrics.outerDepthIn,
     );
   }
 
@@ -1233,13 +1181,7 @@ export class MasonryEngine {
         ? innerShellThicknessIn + cavityWidthIn + outerShellThicknessIn
         : innerShellThicknessIn;
 
-    const perimeterIn =
-      planMetrics.planShape === 'circular'
-        ? Math.PI * Math.max(planMetrics.outerWidthIn, planMetrics.outerDepthIn)
-        : this.calculateRectangularPerimeter(
-            planMetrics.outerWidthIn,
-            planMetrics.outerDepthIn,
-          );
+    const perimeterIn = this.calculateOuterPerimeterIn(planMetrics);
     const estimatedTieCount =
       mode === 'double-wall'
         ? Math.max(4, Math.ceil(perimeterIn / tieSpacingIn))
@@ -1268,13 +1210,8 @@ export class MasonryEngine {
       mode === 'double-wall' && input.outerWallBrickPresetKey
         ? input.outerWallBrickPresetKey
         : innerKey;
-    const innerHeatRatingF = HEAT_RATINGS_F[innerKey] ?? 600;
-    const outerHeatRatingF = HEAT_RATINGS_F[outerKey] ?? 600;
     const innerMortarType: import('../types').MortarType =
-      input.innerWallMortarType ??
-      (innerHeatRatingF >= INNER_WALL_MIN_HEAT_RATING_F
-        ? 'refractory'
-        : 'refractory');
+      input.innerWallMortarType ?? 'refractory';
     const outerMortarType: import('../types').MortarType =
       input.outerWallMortarType ?? defaultMortarForPreset(outerKey);
 
@@ -1288,8 +1225,8 @@ export class MasonryEngine {
       mode === 'double-wall'
         ? [
             `Double-wall assembly active with a ${cavityWidthIn.toFixed(2)} in cavity.`,
-            `Inner shell: ${innerMaterialName} (rated to ~${innerHeatRatingF.toLocaleString()}°F) — use ${innerMortarType === 'refractory' ? 'refractory (fireclay) mortar' : innerMortarType + ' mortar'}.`,
-            `Outer shell: ${outerMaterialName} (rated to ~${outerHeatRatingF.toLocaleString()}°F) — use ${outerMortarType === 'type-n' ? 'Type N masonry mortar' : outerMortarType === 'type-s' ? 'Type S masonry mortar' : outerMortarType + ' mortar'}.`,
+            `Inner shell: ${innerMaterialName} — verify the exact unit and ${innerMortarType} mortar are specified for firebox heat exposure.`,
+            `Outer shell: ${outerMaterialName} — verify the exact unit and ${outerMortarType} mortar for the outer-shell exposure and site conditions.`,
             cavityVentMode === 'vented'
               ? 'Vented cavity improves heat release and reduces trapped moisture.'
               : 'Sealed cavity reduces airflow and should be reviewed for moisture/expansion risk.',
@@ -1340,8 +1277,6 @@ export class MasonryEngine {
       notes,
       innerMaterialName,
       outerMaterialName,
-      innerHeatRatingF,
-      outerHeatRatingF: mode === 'double-wall' ? outerHeatRatingF : undefined,
       innerMortarType,
       outerMortarType: mode === 'double-wall' ? outerMortarType : undefined,
     };
@@ -1992,23 +1927,25 @@ export class MasonryEngine {
     // --- Resolve insert preset ---
     const presetKey: SmokelessInsertPresetKey =
       input.smokelessInsertPreset ?? 'custom-diy';
-    const presetDef = SMOKELESS_INSERT_PRESETS[presetKey];
-    const isCustom = presetKey === 'custom-diy';
+    // Older saved projects can contain branded profiles whose dimensions were not
+    // verified as masonry insert dimensions. Never turn those values into fit plans.
+    if (presetKey !== 'custom-diy') return undefined;
+    const presetDef = SMOKELESS_INSERT_PRESETS['custom-diy'];
 
     const insertBaseOD =
-      isCustom && input.smokelessInsertBaseOD != null
+      input.smokelessInsertBaseOD != null
         ? input.smokelessInsertBaseOD
         : presetDef.baseOD;
     const insertFlangeOD =
-      isCustom && input.smokelessInsertFlangeOD != null
+      input.smokelessInsertFlangeOD != null
         ? input.smokelessInsertFlangeOD
         : presetDef.flangeOD;
     const insertMinDepthIn =
-      isCustom && input.smokelessInsertMinDepthIn != null
+      input.smokelessInsertMinDepthIn != null
         ? input.smokelessInsertMinDepthIn
         : presetDef.minDepth;
 
-    // Allow air gap override for any preset.
+    // Use a measured or user-selected gap for the fabricated liner.
     const airGapIn =
       input.smokelessInsertAirGapIn != null
         ? Math.max(0.25, input.smokelessInsertAirGapIn)
@@ -2044,7 +1981,7 @@ export class MasonryEngine {
     const secondaryVentTotalAreaSqIn =
       secondaryVentCount * ventCircleAreaSqIn(secondaryVentDiameterIn);
 
-    // --- Intake/outlet ratio check (optimal: 1.2 – 1.5) ---
+    // --- Intake/outlet ratio comparison against an illustrative model band ---
     const intakeOutletRatio =
       secondaryVentTotalAreaSqIn > 0
         ? primaryVentTotalAreaSqIn / secondaryVentTotalAreaSqIn
@@ -2089,16 +2026,16 @@ export class MasonryEngine {
     // --- Notes ---
     const notes: string[] = [
       `Smokeless secondary-combustion mode active — insert: ${presetDef.label}.`,
-      `Required masonry inner diameter: ${requiredMasonryID.toFixed(2)} in (insert base ${insertBaseOD} in + 2 × ${airGapIn} in air gap).`,
-      `Flange overlap: ${flangeOverlap.toFixed(2)} in — status: ${flangeOverlapStatus}. Insert flange (${insertFlangeOD} in OD) must rest securely on capstones.`,
+      `Modeled masonry inner opening: ${requiredMasonryID.toFixed(2)} in (entered liner base ${insertBaseOD} in + 2 × ${airGapIn} in air gap). Verify fit with the fabricated liner.`,
+      `Modeled flange overlap: ${flangeOverlap.toFixed(2)} in — band: ${flangeOverlapStatus}. Verify actual bearing and support; diameter alone does not prove safe seating.`,
       `Primary intake vents: ${primaryVentCount}× ${primaryVentDiameterIn}" dia. holes = ${primaryVentTotalAreaSqIn.toFixed(2)} sq in total.`,
       `Secondary combustion jets: ${secondaryVentCount}× ${secondaryVentDiameterIn}" dia. holes = ${secondaryVentTotalAreaSqIn.toFixed(2)} sq in total.`,
-      `Intake/outlet ratio: ${intakeOutletRatio.toFixed(2)} — ${intakeOutletRatioStatus === 'optimal' ? '✓ optimal (1.2–1.5)' : intakeOutletRatioStatus === 'starved' ? '⚠ below 1.2 — add more or larger intake holes' : '⚠ above 1.5 — reduce intake area or increase jet count'}.`,
-      `Stack-effect draft pressure: ~${draftPressurePa.toFixed(1)} Pa at current wall height.`,
-      `First course: omit ${baseVentBlockOmissions} blocks evenly spaced to create primary air intake openings.`,
-      `Minimum pit depth required: ${insertMinDepthIn} in — current wall height: ${wallHeightIn} in.`,
-      `Primary intake holes: drill ${primaryHeightFromBottomIn.toFixed(1)} in up from the bottom edge of the insert.`,
-      `Secondary jet holes: drill ${secondaryHeightFromTopIn.toFixed(1)} in down from the top rim, just below the flange weld.`,
+      `Intake/outlet ratio: ${intakeOutletRatio.toFixed(2)} — ${intakeOutletRatioStatus === 'optimal' ? 'within illustrative 1.2–1.5 band' : intakeOutletRatioStatus === 'starved' ? 'below illustrative 1.2–1.5 band' : 'above illustrative 1.2–1.5 band'}. This ratio does not validate combustion or airflow.`,
+      `Idealized stack-effect draft estimate: ~${draftPressurePa.toFixed(1)} Pa using assumed cavity temperature; this is not an airflow validation.`,
+      `Model proposes ${baseVentBlockOmissions} base-course openings; verify wall support and airflow before removing units.`,
+      `Entered minimum liner depth: ${insertMinDepthIn} in — current wall height: ${wallHeightIn} in.`,
+      `Illustrative primary intake hole height: ${primaryHeightFromBottomIn.toFixed(1)} in from liner bottom; verify before drilling.`,
+      `Illustrative secondary hole height: ${secondaryHeightFromTopIn.toFixed(1)} in from liner top; verify before drilling.`,
     ];
 
     return {
@@ -2137,6 +2074,20 @@ export class MasonryEngine {
   ): SafetyWarning[] {
     const warnings: SafetyWarning[] = [];
 
+    if (
+      input.fuelType === 'wood' &&
+      input.smokelessMode &&
+      input.smokelessInsertPreset &&
+      input.smokelessInsertPreset !== 'custom-diy'
+    ) {
+      warnings.push({
+        code: 'commercial-insert-fit-unverified',
+        message: input.smokelessInsertPreset === 'tiki-patio'
+          ? 'The saved TIKI Patio profile is not a verified masonry insert. Its manufacturer specifies 15 ft from combustibles for the freestanding pit. Choose Custom / DIY for a measured liner or follow a manufacturer-approved surround design.'
+          : 'This saved commercial fire-pit profile is not a verified masonry insert. No fit, flange, or vent plan is generated. Choose Custom / DIY for a measured liner or follow the manufacturer’s surround instructions.',
+      });
+    }
+
     if (input.proximityToStructuresFt < 10) {
       warnings.push({
         code: 'clearance-too-low',
@@ -2148,15 +2099,10 @@ export class MasonryEngine {
     }
 
     const overheadClearanceFt = input.overheadClearanceFt ?? 20;
-    const recommendedOverheadClearanceFt = input.fuelType === 'wood' ? 21 : 15;
-    if (overheadClearanceFt < recommendedOverheadClearanceFt) {
-      warnings.push({
-        code: 'vertical-clearance-low',
-        message: `Overhead clearance is below the recommended ${recommendedOverheadClearanceFt} ft baseline for ${input.fuelType === 'wood' ? 'wood-burning' : 'gas'} builds near branches, soffits, and other overhead combustibles.`,
-        actualValue: overheadClearanceFt,
-        requiredValue: recommendedOverheadClearanceFt,
-      });
-    }
+    warnings.push({
+      code: 'overhead-clearance-unverified',
+      message: `Configured overhead clearance is ${overheadClearanceFt.toFixed(1)} ft. No product-specific or local requirement has been verified for branches, soffits, and other overhead combustibles; confirm the site and equipment instructions before building.`,
+    });
 
     if (input.fuelType === 'wood' && input.linerType === 'none') {
       warnings.push({
@@ -2196,16 +2142,15 @@ export class MasonryEngine {
         });
       }
 
-      // Warn if the inner wall material is not rated for firebox temperatures.
-      const innerRating = thermalAssembly.innerHeatRatingF ?? 0;
-      if (innerRating < INNER_WALL_MIN_HEAT_RATING_F) {
-        warnings.push({
-          code: 'outer-wall-heat-risk',
-          message: `Inner wall material "${thermalAssembly.innerMaterialName ?? 'selected'}" is rated to only ~${innerRating.toLocaleString()}°F. The firebox inner shell should use firebrick or refractory material rated to at least ${INNER_WALL_MIN_HEAT_RATING_F.toLocaleString()}°F.`,
-          actualValue: innerRating,
-          requiredValue: INNER_WALL_MIN_HEAT_RATING_F,
-        });
-      }
+      const innerIsFireboxCategory = FIREBOX_MATERIAL_PRESET_KEYS.has(
+        input.brickPresetKey ?? 'modular',
+      );
+      warnings.push({
+        code: 'inner-wall-product-unverified',
+        message: innerIsFireboxCategory
+          ? `Inner wall uses a firebrick category, but the exact ${thermalAssembly.innerMaterialName ?? 'unit'} and mortar heat ratings have not been supplied. Verify product data and the assembled firebox design.`
+          : `Inner wall uses ${thermalAssembly.innerMaterialName ?? 'a general masonry unit'}, which this planner cannot verify for direct firebox heat. Select documented heat-rated products and obtain an assembly review.`,
+      });
 
       // Warn if inner mortar is not refractory.
       if (
@@ -2221,17 +2166,22 @@ export class MasonryEngine {
 
     // --- Smokeless secondary-combustion checks ---
     if (smokelessSpec?.enabled) {
+      warnings.push({
+        code: 'smokeless-fabrication-review-required',
+        message:
+          'DIY smokeless liner hole sizes, spacing, flange support, and airflow have not been validated by testing. Have the exact assembly reviewed before fabrication or firing.',
+      });
       if (smokelessSpec.intakeOutletRatioStatus === 'starved') {
         warnings.push({
           code: 'smokeless-vent-ratio-low',
-          message: `Smokeless vent ratio ${smokelessSpec.intakeOutletRatio.toFixed(2)} is below the minimum 1.2. Add more or larger primary intake holes to prevent an air-starved burn that stalls secondary combustion.`,
+          message: `Smokeless intake/outlet area ratio ${smokelessSpec.intakeOutletRatio.toFixed(2)} is below the model's illustrative 1.2–1.5 band. Review the hole pattern and airflow with a qualified designer.`,
           actualValue: smokelessSpec.intakeOutletRatio,
           requiredValue: SMOKELESS_RATIO_MIN,
         });
       } else if (smokelessSpec.intakeOutletRatioStatus === 'overcooled') {
         warnings.push({
           code: 'smokeless-vent-ratio-high',
-          message: `Smokeless vent ratio ${smokelessSpec.intakeOutletRatio.toFixed(2)} exceeds the maximum 1.5. Reduce intake area or increase secondary jets — excess cold air cools the cavity below the ~600°F re-ignition threshold.`,
+          message: `Smokeless intake/outlet area ratio ${smokelessSpec.intakeOutletRatio.toFixed(2)} is above the model's illustrative 1.2–1.5 band. Review the hole pattern and airflow with a qualified designer.`,
           actualValue: smokelessSpec.intakeOutletRatio,
           requiredValue: SMOKELESS_RATIO_MAX,
         });
@@ -2328,24 +2278,10 @@ export class MasonryEngine {
     }
 
     if (input.fuelType !== 'wood') {
-      if (ventSpec.totalOpenAreaSqIn < ventSpec.recommendedAreaMinSqIn) {
-        warnings.push({
-          code: 'gas-vent-area-out-of-range',
-          message: `Gas vent area is below the selected ${ventSpec.gasHardwareTemplateLabel ?? 'gas hardware'} template's ${ventSpec.recommendedAreaMinSqIn.toFixed(0)} sq in planning minimum. Confirm the equipment manufacturer's requirements.`,
-          actualValue: ventSpec.totalOpenAreaSqIn,
-          requiredValue: ventSpec.recommendedAreaMinSqIn,
-        });
-      } else if (
-        ventSpec.recommendedAreaMaxSqIn !== undefined &&
-        ventSpec.totalOpenAreaSqIn > ventSpec.recommendedAreaMaxSqIn
-      ) {
-        warnings.push({
-          code: 'gas-vent-area-out-of-range',
-          message: `Gas vent area is above the selected ${ventSpec.gasHardwareTemplateLabel ?? 'gas hardware'} template's ${ventSpec.recommendedAreaMaxSqIn.toFixed(0)} sq in planning maximum. Confirm the equipment manufacturer's requirements.`,
-          actualValue: ventSpec.totalOpenAreaSqIn,
-          requiredValue: ventSpec.recommendedAreaMaxSqIn,
-        });
-      }
+      warnings.push({
+        code: 'gas-manufacturer-requirements-unverified',
+        message: `Gas vent area (${ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in total), placement, and free opening per side need the exact burner and enclosure manual plus qualified installer review. The selected category is illustrative and cannot establish compliance.`,
+      });
 
       if (!ventSpec.crossVentilationValid) {
         warnings.push({

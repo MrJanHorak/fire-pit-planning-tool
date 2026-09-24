@@ -9,13 +9,14 @@ describe('safety review summary', () => {
     const summary = summarizeSafetyWarnings([
       warning('smokeless-flange-unsafe'),
       warning('smokeless-depth-insufficient'),
-      warning('outer-wall-heat-risk'),
+      warning('inner-wall-product-unverified'),
       warning('seating-combustible-surface'),
+      warning('commercial-insert-fit-unverified'),
       warning('mortar-curing-required'),
     ]);
 
     expect(summary.priority).toBe('action');
-    expect(summary.action).toHaveLength(4);
+    expect(summary.action).toHaveLength(5);
     expect(summary.information).toHaveLength(1);
   });
 

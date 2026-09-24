@@ -16,7 +16,7 @@ export default function SafetyClearanceDiagram({
     <section className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/80 p-4 shadow-lg'>
       <h3 className='mb-2 text-base font-semibold'>Safety Clearance Diagram</h3>
       <p className='mb-3 text-sm text-amber-950/80'>
-        Dashed boundary represents the required 10 ft clearance radius from
+        Dashed boundary represents the general 10 ft clearance advice from
         combustible structures. The marker shows your actual structure distance.
         The lower-right inset summarizes overhead clearance to combustible
         elements so horizontal and vertical safety checks are reviewed together.

@@ -139,7 +139,7 @@ describe('construction packet export', () => {
     expect(clearHtml).toContain('At or above general advice');
   });
 
-  it('includes smokeless hole guide in engineering report when smokeless mode is enabled', () => {
+  it('labels the smokeless hole layout as illustrative in the planning report', () => {
     const smokelessInput: MasonryInput = {
       ...input,
       fuelType: 'wood',
@@ -155,8 +155,9 @@ describe('construction packet export', () => {
     const output = new MasonryEngine().calculateDesign(smokelessInput);
     const html = buildEngineeringReportHtml(smokelessInput, output);
 
-    expect(html).toContain('Smokeless Insert Hole Guide');
-    expect(html).toContain('Hole Cutting Guide');
+    expect(html).toContain('Smokeless Insert Hole Layout Review');
+    expect(html).toContain('Illustrative Hole Layout For Review');
+    expect(html).toContain('have not been validated');
     expect(html).toContain('Primary intake holes');
     expect(html).toContain('Secondary jet holes');
   });
@@ -203,7 +204,7 @@ describe('construction packet export', () => {
     expect(html).toContain('Typical Stone Wall Weight');
   });
 
-  it('adds a smokeless insert planning section with a sheet-metal cutting guide', () => {
+  it('adds a DIY liner review section without fabrication instructions', () => {
     const smokelessInput: MasonryInput = {
       ...input,
       fuelType: 'wood',
@@ -222,11 +223,11 @@ describe('construction packet export', () => {
     const html = buildConstructionPacketHtml(smokelessInput, output);
 
     expect(html).toContain('Smokeless Insert Planning');
-    expect(html).toContain('Sheet Metal Cutting Guide');
-    expect(html).toContain('Hole Cutting Guide');
+    expect(html).toContain('Fabrication Review Notes');
+    expect(html).toContain('Illustrative Hole Layout For Review');
     expect(html).toContain('Build Sequence');
-    expect(html).toContain('Smokeless Insert Hole Guide');
-    expect(html).toContain('Custom DIY sheet-metal insert');
+    expect(html).toContain('Smokeless Insert Hole Layout Review');
+    expect(html).toContain('DIY Liner Review Sketch');
     expect(html).toContain('Base OD: 28.00 in');
     expect(html).toContain('Flange OD: 32.00 in');
     expect(html).toContain('Smokeless Insert / Liner');
@@ -235,7 +236,8 @@ describe('construction packet export', () => {
     expect(html).toContain('Hole Layout Spacing');
     expect(html).toContain('Primary intake holes');
     expect(html).toContain('Secondary jet holes');
-    expect(html).toContain('Cut / roll the sheet metal');
+    expect(html).toContain('Do not use this packet as fabrication or installation instructions');
+    expect(html).not.toContain('Cut / roll the sheet metal');
   });
 
   it('uses width and depth text for rectangular plans', () => {
