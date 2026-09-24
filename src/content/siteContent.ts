@@ -79,9 +79,9 @@ export const designBestPractices: ContentSection[] = [
       'Use actual masonry dimensions, not nominal dimensions, when checking counts or ordering units.',
       'A 1 to 2 in cap overhang helps with water shedding and gives the finished pit a more intentional profile.',
       'Custom radial units are worth using when the visual goal is a tight, refined curve with fewer wedge cuts.',
-      'Natural stone selection is critical: granite, basalt, and marble are safe choices; river-rock, sandstone, limestone, and shale are high-risk because they absorb moisture and can fail catastrophically under repeated heating.',
-      'For stone, the face-foot estimate tells you how many linear feet of stone face area will be exposed in the finished wall. The tool calculates tonnage at 8 in and 4 in depths with 10–15% waste buffers so you can order the right quantity.',
-      'Dry-stack stone has a rustic aesthetic and no curing time, but relies on gravity and friction. Mortared stone offers more security and allows tighter joints, but requires 28-day curing before the first fire and is more vulnerable to joint cracking in wet or freeze-thaw climates unless drainage is detailed carefully.',
+      'Natural stone selection is critical: identify the actual stone and its moisture and heat behavior. Avoid river rock and porous stone in direct-heat zones; use a heat-rated inner liner and verify the outer stone with a qualified supplier.',
+      'For stone, face area is the square footage of exposed wall face. The tool estimates tonnage at 8 in and 4 in depths with 10–15% waste buffers; confirm coverage with the supplier before ordering.',
+      'Dry-stack stone has no mortar curing step, but relies on a suitable structural design. Mortared stone allows tighter joints; follow the selected mortar manufacturer’s cure and first-fire instructions and detail drainage for wet or freeze-thaw sites.',
     ],
   },
   {
@@ -116,10 +116,10 @@ export const designBestPractices: ContentSection[] = [
     title: 'Seating area ground preparation',
     bullets: [
       'Compacted Gravel: Most popular choice. Extend gravel zone at least 10 ft from pit outer wall, slope 2–3% outward for drainage, top-dress every 2–3 years.',
-      'Mulch: Natural look, comfortable underfoot, but decomposes in 2–3 years. Use landscape fabric underneath to prevent weeds and grass creep.',
+      'Mulch: Combustible and unsuitable as an immediate fire-pit surround. If used elsewhere in the seating area, establish a noncombustible zone around the pit and verify local requirements.',
       'Decomposed Granite: Durable packed surface, minimal maintenance. Apply stabilizer binder for a more solid finish if desired.',
       'Permeable Paver with Grass: Eco-friendly, drains well, supports turf. Requires careful sand leveling and 2–3 weeks for grass establishment.',
-      'Hardscape (Concrete/Stone): Most durable and low-maintenance option. Plan for 28-day curing and consider sealing for slip resistance and longevity.',
+      'Hardscape (Concrete/Stone): Durable and low-maintenance. Follow the chosen concrete or setting-product curing instructions before use and consider slip resistance.',
       'Pair seating ground type with foundation risk level: high-risk sites benefit from permeable or hardscape surfaces that manage water runoff effectively.',
     ],
   },
@@ -129,7 +129,7 @@ export const designBestPractices: ContentSection[] = [
       'Name your project early so exported JSON and snapshots stay easy to track during iterations.',
       'Use Save As Snapshot before large geometry or fuel changes so you can compare design branches safely.',
       'Use import and export to move the exact design state between browsers, devices, or review sessions.',
-      'Use Engineering Report PDF in Build Plan to generate a review-ready report for permitting and stakeholder handoff.',
+      'Use Design Planning Report PDF in Build Plan to share geometry, quantities, assumptions, and open safety questions with a qualified reviewer.',
     ],
   },
 ];
@@ -167,7 +167,7 @@ export const researchHighlights: ContentSection[] = [
       'Excavation depth is site-specific. Many permanent features land in the 6 to 12 in range, but softer or expansive soils usually need more conservative footing decisions.',
       'Foundation risk is not only about soil label. Drainage and freeze-thaw matter because wet, moving subgrade can damage even a neatly built wall.',
       'Wood-burning pits should protect the hottest interior with a refractory liner or steel ring. Decorative outer masonry is not a replacement for heat-rated interior protection.',
-      'Gas venting should follow fuel behavior and burner specs. A common planning range is 18 to 36 sq in of total vent area, then confirm with the exact hardware documentation.',
+      'Gas venting should follow the selected burner and enclosure instructions. The app’s modeled template range is only a planning screen; confirm vent area, placement, and gas work with the equipment documentation and qualified installer.',
       'Clearance is a 3D check. Horizontal setback is only the start; overhead branches, pergolas, soffits, and movement around the pit matter just as much.',
       'Good safety practice also includes operations: checking wind, respecting no-burn advisories, and never leaving active embers unattended.',
     ],
@@ -176,7 +176,7 @@ export const researchHighlights: ContentSection[] = [
     title:
       'How to think about the foundation without breaking the baseline rules',
     intro:
-      'The app keeps one fixed engineering baseline for quantity calculations, then layers practical site review on top of it. That keeps the math stable while still acknowledging real field conditions.',
+      'The app keeps one fixed quantity baseline, then layers site review on top of it. That keeps the estimate consistent while still acknowledging real field conditions.',
     bullets: [
       'Baseline math stays fixed at 8 in of compacted angular stone with the footprint extended 6 in beyond the wall on each side.',
       'Site review then asks three practical questions: what is the soil, how well does the area drain, and is freeze-thaw a real condition?',
@@ -193,7 +193,7 @@ export const researchHighlights: ContentSection[] = [
       'Tight-radius circles often require half-bats, tapered cuts, or radial units. Planning that early keeps joints consistent and prevents rushed saw work late in the project.',
       'Use a two-track cut workflow: manual marking uses equal per-side offsets from the inner edge, while table/miter saw workflow uses the listed angle off square and mirrored side cuts. Both methods should produce the same taper.',
       'Cap design is both visual and functional. A modest overhang and drip strategy improve water shedding and can extend wall life in freeze-thaw climates.',
-      'Before the first mortar mix, document the 28-day curing requirement, vent locations, liner spacing, gas-line entry routing, and final inspection checks. Mortared masonry must cure for a minimum of 28 days before the first fire is lit. This turns the build from improvised to repeatable.',
+      'Before the first mortar mix, document the selected products’ curing and first-fire instructions, vent locations, liner spacing, gas-line entry routing, and final inspection checks.',
     ],
   },
   {
@@ -210,13 +210,12 @@ export const researchHighlights: ContentSection[] = [
   {
     title: 'Natural stone selection and water safety',
     intro:
-      'Natural stone brings beauty and durability to a firepit, but geology matters. Some stones are inherently safe; others carry explosion risk from trapped moisture.',
+      'Natural stone can be used as an outer finish, but its heat response varies with mineral makeup, moisture, flaws, and installation details. No broad stone category is automatically safe in direct flame.',
     bullets: [
-      'Safe stone types: Granite and basalt are dense, non-porous, and absorb minimal water. Marble is also safe, though softer than granite. All three perform well under repeated heating.',
-      'High-risk stone types: River-rock is rounded and porous. Sandstone, limestone, and shale are sedimentary and absorb water readily. When pore water trapped in these stones heats, steam pressure can build until the stone explodes. This is not a rare failure mode—it is a predictable risk that design rules eliminate.',
-      'Why geology matters in fire: The danger zone is the interior surface where repeated heating occurs. Even a small amount of trapped moisture can accumulate over multiple fires. Stone selection is your primary control. A thermal liner (refractory or steel ring) provides secondary protection for the outer shell.',
-      'Mortared stone considerations: Mortar joints can also trap water. In wet climates or freeze-thaw zones, mortared natural stone needs explicit drainage detail (foundation perimeter drain, sloped ground surface, or base moisture barrier) to stay healthy for 20+ years.',
-      'Dry-stacking is an alternative: Gravity and friction alone hold dry-stacked stone. There is no mortar to trap water, and the assembly is inherently more forgiving of minor settling. The trade-off is that tight, symmetrical courses are harder to achieve without cutting, and the walls require more careful initial layout.',
+      'River rock and other water-exposed or unidentified stone need special caution. Sandstone, limestone, shale, granite, basalt, and marble can also crack or spall under heat; the app does not certify any of them for direct flame.',
+      'Use a heat-rated inner assembly specified for the fuel system. Ask the stone supplier and a qualified designer to review the exact outer stone, heat exposure, drainage, and freeze-thaw conditions.',
+      'Mortared stone requires a site-specific drainage and movement detail. The app’s quantities do not establish durability or service life.',
+      'Dry-stacking changes how the wall resists movement and how water drains. Confirm stability and unit suitability for the chosen geometry and site.',
     ],
   },
 ];
@@ -270,32 +269,32 @@ export const faqItems: FaqItem[] = [
   {
     question: 'Where should vents go for propane vs. natural gas?',
     answer:
-      'Propane vents belong low in the wall because LP gas is heavier than air and settles near the base. Natural gas vents belong high because the gas rises and needs upper relief. If your gas-line entry is close to a vent axis, adjust the routing so it stays clear of vent openings, and always confirm final vent area against your burner hardware documentation.',
+      'LP gas is heavier than air and natural gas is lighter, so their enclosure ventilation needs differ. Use the exact burner and enclosure manufacturer instructions for vent location and area, and have a qualified installer verify gas-line routing and clearances.',
   },
   {
     question: 'How much total vent area does a gas fire pit need?',
     answer:
-      'A common planning range is 18 to 36 sq in of total vent area, but always confirm the exact figure against your burner hardware documentation — vent sizing depends on the specific fuel type and manufacturer specs, not a generic decorative opening.',
+      'The app compares your layout with the selected equipment template’s planning range. The required vent area and placement depend on the burner, enclosure, fuel, and manufacturer instructions; have a qualified installer verify them.',
   },
   {
     question: 'Why are some stone types flagged high-risk?',
     answer:
-      'River-rock, sandstone, limestone, and shale are porous sedimentary or rounded stones that absorb and retain water. When trapped pore water heats during firing, pressure builds until the stone fails explosively. This is a predictable, high-risk failure mode. Granite, basalt, and marble are dense and non-porous, so they do not absorb significant water and are safe for fire-pit applications.',
+      'Heat, retained moisture, mineral makeup, and existing cracks can cause stone to fracture or spall. Water-exposed river rock and unidentified stone deserve particular caution, but no stone name alone proves fire-pit suitability. Keep natural stone out of direct flame unless the exact material and assembly have been reviewed for that use.',
   },
   {
     question: 'What does face-foot mean, and why is it important for stone?',
     answer:
-      'Face-foot is the linear footage of stone face visible in the finished wall: it equals the outer perimeter times wall height, divided by 12. For stone walls, face-foot is used to estimate tonnage required because stone is sold by weight, not unit count. The tool calculates tonnage at both 8 in and 4 in depths with waste buffers so you know how much to order based on your finished wall thickness.',
+      'The tool uses exposed wall face area in square feet: outer perimeter in feet multiplied by wall height in feet. It estimates stone tonnage from that area at 8 in and 4 in wall depths. Confirm the selected stone’s coverage per ton with your supplier.',
   },
   {
     question: 'Should I use dry-stack or mortared natural stone?',
     answer:
-      'Dry-stack has no mortar joints to trap water, is faster to build, and requires no curing time. Mortared stone offers tighter joints, cleaner appearance, and more stability through seismic events. The trade-off is 28-day curing time before first fire and higher risk of joint cracking in wet or freeze-thaw climates unless drainage is detailed. Choose dry-stack for outdoor, well-drained sites with rustic aesthetic goals. Choose mortared for sites with good drainage confidence and aesthetic preference for tight joints.',
+      'Dry-stack avoids mortar curing but still needs a suitable structural design and drainage. Mortared stone offers tighter joints and a different appearance. Follow the selected mortar product’s curing and first-fire instructions, and detail the foundation and drainage for wet or freeze-thaw conditions.',
   },
   {
     question: 'How long do I need to wait before lighting my first fire?',
     answer:
-      "Mortared masonry needs a minimum of 28 days to cure before the first fire is lit. Dry-stacked stone has no mortar joints, so it doesn't carry this waiting period — one advantage of that build method if you want to use the pit sooner.",
+      "There is no single wait time for every mortar. Follow the selected manufacturer’s air-dry, curing, and staged first-fire instructions. Dry-stacked stone has no mortar curing step, but the build still needs all other safety checks before use.",
   },
   {
     question: 'Does foundation design change with size and soil?',
@@ -320,7 +319,7 @@ export const faqItems: FaqItem[] = [
   {
     question: 'What ground surface should I use around the seating area?',
     answer:
-      "Compacted gravel is the most popular choice: extend it at least 10 ft from the pit's outer wall and slope it 2-3% outward for drainage. Mulch feels natural underfoot but decomposes every 2-3 years, so use landscape fabric underneath. Decomposed granite is a durable, low-maintenance packed surface, and permeable pavers with grass are eco-friendly but need careful sand leveling. Hardscape (concrete or stone) is the most durable option, with 28-day curing and optional sealing. Pair your choice with foundation risk level — high-risk sites do better with permeable or hardscape surfaces that manage runoff.",
+      "Compacted gravel is a common choice; confirm the noncombustible area and drainage slope for the site. Mulch is combustible and should not be placed close to the fire pit. Decomposed granite, pavers, or hardscape have different drainage and installation needs. Follow the selected products’ curing instructions and local fire-safety requirements.",
   },
   {
     question: 'What operational safety practices should I follow once the pit is built?',
@@ -338,9 +337,9 @@ export const faqItems: FaqItem[] = [
       'Optional Insights is a collapsible section that keeps advanced tools out of the main flow. Use it when you want regional code/advisory checks, material optimization prompts, or variant comparison between snapshots. For routine sizing and layout, you can keep it collapsed.',
   },
   {
-    question: 'How do I generate a professional PDF report?',
+    question: 'How do I generate a design planning PDF?',
     answer:
-      'Open Build Plan and use the Engineering Report PDF button. It opens a print-ready report with executive summary, safety/compliance review, foundation notes, material quantities, and diagrams. Save it as PDF from your browser print dialog.',
+      'Open Build Plan and use the Design Planning Report PDF button. It opens a printable summary of the design, safety and site screening, foundation assumptions, material quantities, and diagrams. Save it as PDF from your browser print dialog; it does not establish code compliance or engineering approval.',
   },
 ];
 
@@ -357,6 +356,7 @@ export const privacyPolicySections: ContentSection[] = [
     title: 'What Data Is Processed',
     bullets: [
       'Design and project settings are stored in browser local storage for autosave and snapshots.',
+      'Share links include the project name and design settings. QR codes for those links are generated in your browser; sharing the link sends its contents to the recipient.',
       'When accepted, Google Analytics collects aggregate usage events and page interactions.',
       'This app does not require account registration or direct user profile creation.',
     ],

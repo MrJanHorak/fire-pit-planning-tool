@@ -33,7 +33,7 @@ export function buildFoundationAdvisory(
       risk: 'high',
       heading: 'High foundation review priority',
       checks: [
-        'Keep the engineering baseline at 8 in compacted angular stone in the app output, but treat this site as requiring a footing review before construction.',
+        'Keep the model quantity baseline at 8 in compacted angular stone in the app output, but treat this site as requiring a footing review before construction.',
         'Expansive clay, organic fill, slow drainage, or freeze-thaw exposure can move the base seasonally. Consider over-excavation, stabilization, drainage improvement, or a concrete footing detail approved for the site.',
         'Verify runoff control, finished grade, and frost exposure before finalizing the build packet or ordering full materials.',
       ],

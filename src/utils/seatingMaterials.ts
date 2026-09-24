@@ -205,7 +205,6 @@ function calculateMulchMaterials(
         name: 'Shredded Hardwood or Cedar Mulch',
         quantity: Math.ceil(mulchVolumeCubicYards * 10) / 10,
         unit: 'cubic yards',
-        estimatedWeightLb: mulchVolumeCubicFt * 500, // ~500 lbs per cubic foot (wet mulch)
       },
       {
         name: 'Landscape Fabric (Weed Suppression)',
@@ -222,7 +221,7 @@ function calculateMulchMaterials(
       buildSeatingAreaNote(shape, radiusFt, areaSquareFeet),
       'Install landscape fabric or cardboard first to suppress weeds.',
       'Extend fabric 6 inches beyond the seating zone to prevent grass creep.',
-      'Lay mulch 3–4" deep, but keep it 1–2" away from the pit wall.',
+      'Do not place combustible mulch near the fire pit. This estimate does not model a noncombustible separation zone; choose a noncombustible surround before building.',
       'Mulch decomposes and compacts over 2–3 seasons; plan for refresh cycle.',
     ],
   };
@@ -430,7 +429,7 @@ function calculateHardscapeMaterials(
       buildSeatingAreaNote(shape, radiusFt, areaSquareFeet),
       'Hardscape (concrete or flagstone) offers the most durable, low-maintenance option.',
       'Slope concrete surface at least 1/8" per foot to permit drainage.',
-      'Complete 28-day curing before heavy traffic or furniture placement.',
+      'Follow the selected concrete or setting-product cure schedule before heavy traffic or furniture placement.',
       'Consider broom finish, stain, or sealer for aesthetics and slip resistance.',
       'Seal concrete or pavers periodically to extend lifespan and ease cleaning.',
     ],

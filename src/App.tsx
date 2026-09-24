@@ -13,6 +13,7 @@ import { MasonryEngine } from './engine/MasonryEngine';
 import type { MasonryInput } from './types';
 import { DEFAULT_MASONRY_INPUT } from './utils/defaultInput';
 import { buildFoundationAdvisory } from './utils/foundationAdvisory';
+import { summarizeSafetyWarnings } from './utils/safetyReview';
 import {
   buildProjectFile,
   deleteStoredProject,
@@ -972,18 +973,16 @@ export default function App() {
     };
   }, [input, output]);
 
-  const blockingWarningCodes = new Set([
-    'clearance-too-low',
-    'natural-stone-unsafe-type',
-    'gas-vent-area-out-of-range',
-    'gas-vent-layout-invalid',
-    'gas-line-near-vent',
-    'course-bearing-risk',
-  ]);
-
-  const hasBlockingWarnings = output.warnings.some((warning) =>
-    blockingWarningCodes.has(warning.code),
+  const safetyReview = useMemo(
+    () => summarizeSafetyWarnings(output.warnings),
+    [output.warnings],
   );
+  const sortedSafetyWarnings = [
+    ...safetyReview.action,
+    ...safetyReview.review,
+    ...safetyReview.information,
+  ];
+  const visibleSafetyWarningCount = Math.max(3, safetyReview.action.length);
   const activeQuickPreset = useMemo(
     () => detectActiveQuickPreset(input),
     [input],
@@ -1002,7 +1001,7 @@ export default function App() {
     }> = [
       {
         key: 'clearance',
-        label: 'Set structure clearance to at least 10 ft.',
+        label: 'Check the U.S. Fire Administration’s general 10 ft clearance advice and verify local requirements.',
         status: input.proximityToStructuresFt >= 10 ? 'done' : 'todo',
       },
       {
@@ -1039,7 +1038,7 @@ export default function App() {
     if (input.mortarJointIn > 0) {
       steps.push({
         key: 'curing',
-        label: 'Reminder: allow 28 days of mortar curing before heavy use.',
+        label: 'Follow the selected mortar manufacturer’s cure and first-fire instructions.',
         status: 'info',
       });
     }
@@ -1482,7 +1481,7 @@ export default function App() {
 
       {siteView === 'designer' ? (
         <div className='grid gap-4 lg:grid-cols-[360px_1fr]'>
-          <div className='order-2 space-y-4 lg:order-1'>
+          <div className='order-1 space-y-4'>
             <section className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg'>
               <p className='text-xs font-semibold uppercase tracking-[0.15em] text-amber-900/75'>
                 Quick Start
@@ -1556,7 +1555,49 @@ export default function App() {
             />
           </div>
 
-          <section className='order-1 min-w-0 space-y-4 lg:order-2'>
+          <section className='order-2 min-w-0 space-y-4'>
+            <section
+              id='safety-review'
+              aria-label='Design safety review'
+              className={`card-rise rounded-2xl border p-4 shadow-lg ${
+                safetyReview.priority === 'action'
+                  ? 'border-red-800/35 bg-red-50/90'
+                  : 'border-amber-900/25 bg-amber-50/85'
+              }`}
+            >
+              <h2 className='text-sm font-bold uppercase tracking-wide text-amber-950'>
+                {safetyReview.action.length > 0
+                  ? `${safetyReview.action.length} safety item${safetyReview.action.length === 1 ? '' : 's'} to resolve`
+                  : safetyReview.review.length > 0
+                    ? `${safetyReview.review.length} design advisor${safetyReview.review.length === 1 ? 'y' : 'ies'} to review`
+                    : safetyReview.information.length > 0
+                      ? `${safetyReview.information.length} planning reminder${safetyReview.information.length === 1 ? '' : 's'}`
+                      : 'No modeled warnings'}
+              </h2>
+              <p className='mt-1 text-xs leading-5 text-amber-900/85'>
+                This is a planning screen, not a code approval or engineering sign-off.
+                Confirm local rules, manufacturer instructions, and site conditions before building.
+              </p>
+              {(safetyReview.action.length > 0 || safetyReview.review.length > 0 || safetyReview.information.length > 0) && (
+                <ul className='mt-2 list-disc space-y-1 pl-5 text-sm text-amber-950'>
+                  {sortedSafetyWarnings
+                    .slice(0, visibleSafetyWarningCount)
+                    .map((warning) => <li key={warning.code}>{warning.message}</li>)}
+                </ul>
+              )}
+              {sortedSafetyWarnings.length > visibleSafetyWarningCount && (
+                <details className='mt-2 text-sm text-amber-950'>
+                  <summary className='cursor-pointer font-semibold'>
+                    Show {sortedSafetyWarnings.length - visibleSafetyWarningCount} more items
+                  </summary>
+                  <ul className='mt-2 list-disc space-y-1 pl-5'>
+                    {sortedSafetyWarnings
+                      .slice(visibleSafetyWarningCount)
+                      .map((warning) => <li key={warning.code}>{warning.message}</li>)}
+                  </ul>
+                </details>
+              )}
+            </section>
             <div className='card-rise grid gap-2 rounded-2xl border border-amber-900/20 bg-amber-50/75 p-3 shadow-lg sm:grid-cols-3'>
               <div className='rounded-xl border border-amber-900/15 border-t-2 border-t-amber-700/70 bg-white/70 px-3 py-2'>
                 <p className='text-[11px] uppercase tracking-wide text-amber-950/90'>
@@ -1808,14 +1849,16 @@ export default function App() {
                   <div className='flex items-center gap-2'>
                     <span
                       className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
-                        hasBlockingWarnings
+                        safetyReview.priority === 'action'
                           ? 'border-red-800/25 bg-red-100 text-red-900'
-                          : 'border-emerald-800/25 bg-emerald-100 text-emerald-900'
+                          : 'border-amber-800/25 bg-amber-100 text-amber-900'
                       }`}
                     >
-                      {hasBlockingWarnings
-                        ? 'Address safety items first'
-                        : 'Ready to plan build'}
+                      {safetyReview.priority === 'action'
+                        ? 'Resolve safety items'
+                        : safetyReview.priority === 'review'
+                          ? 'Review design advisories'
+                          : 'Verify site before building'}
                     </span>
                     <span className='inline-flex items-center gap-1 rounded-full border border-amber-900/20 bg-white px-2.5 py-1 text-xs font-semibold text-amber-950'>
                       {showNextSteps ? 'Hide' : 'Show'}
@@ -1907,9 +1950,9 @@ export default function App() {
               About This Designer
             </h2>
             <p className='mt-2 text-sm leading-6 text-amber-950/85'>
-              Parametric Masonry Designer provides engineering-aware firepit
-              planning with real masonry dimensions, venting logic, safety
-              checks, and build sequencing guidance.
+              Parametric Masonry Designer provides geometry-based firepit
+              planning with real masonry dimensions, venting estimates, safety
+              prompts, and build sequencing guidance. Verify the plan before construction.
             </p>
           </section>
 

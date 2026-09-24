@@ -197,7 +197,8 @@ export interface SafetyWarning {
     | 'smokeless-vent-ratio-low'
     | 'smokeless-vent-ratio-high'
     | 'smokeless-flange-unsafe'
-    | 'smokeless-depth-insufficient';
+    | 'smokeless-depth-insufficient'
+    | 'seating-combustible-surface';
   message: string;
   actualValue?: number;
   requiredValue?: number;

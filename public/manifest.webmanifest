@@ -1,7 +1,7 @@
 {
   "name": "Parametric Masonry Designer",
   "short_name": "Firepit Planner",
-  "description": "Engineering-aware masonry firepit planning tool with build sequencing and safety checks.",
+  "description": "Masonry firepit planning tool with build sequencing and safety prompts.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f4ead7",

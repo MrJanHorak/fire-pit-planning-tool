@@ -50,14 +50,14 @@ describe('regional code review', () => {
     expect(hoaCheck?.status).toBe('review');
   });
 
-  it('flags frost-line review when local depth exceeds baseline', () => {
-    const input = { ...baseInput, frostClimate: true, frostLineDepthIn: 24 };
+  it('does not mistake a stone quantity layer for a frost footing', () => {
+    const input = { ...baseInput, frostClimate: true, frostLineDepthIn: 4 };
     const output = new MasonryEngine().calculateDesign(input);
     const review = buildRegionalCodeReview(input, output);
 
     const frostCheck = review.checks.find((check) => check.key === 'frost-line');
     expect(frostCheck?.status).toBe('review');
-    expect(frostCheck?.detail).toContain('exceeds modeled stone depth');
+    expect(frostCheck?.detail).toContain('not a frost footing depth');
   });
 
   it('adds overhead clearance review when overhead spacing is tight', () => {

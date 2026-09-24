@@ -36,5 +36,7 @@ describe('seatingMaterials', () => {
     expect(result.areaSquareFeet).toBeCloseTo(400);
     expect(result.materials[2].quantity).toBeCloseTo(80);
     expect(result.notes[0]).toContain('Square seating zone');
+    expect(result.materials[0].estimatedWeightLb).toBeUndefined();
+    expect(result.notes.join(' ')).toContain('noncombustible surround');
   });
 });

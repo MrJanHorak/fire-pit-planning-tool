@@ -27,13 +27,13 @@ export function buildRegionalCodeReview(
   const checks: RegionalCodeCheck[] = [];
 
   checks.push({
-    key: 'ibc-clearance',
-    title: 'IBC setback to combustibles',
+    key: 'general-clearance',
+    title: 'General clearance screening',
     status: input.proximityToStructuresFt >= 10 ? 'pass' : 'fail',
     detail:
       input.proximityToStructuresFt >= 10
-        ? `Configured at ${input.proximityToStructuresFt.toFixed(1)} ft (minimum target: 10 ft).`
-        : `Configured at ${input.proximityToStructuresFt.toFixed(1)} ft. Increase to at least 10 ft.`,
+        ? `Configured at ${input.proximityToStructuresFt.toFixed(1)} ft. Meets the U.S. Fire Administration's general 10 ft advice for fire pits. Local rules and product instructions may require more.`
+        : `Configured at ${input.proximityToStructuresFt.toFixed(1)} ft. Below the U.S. Fire Administration's general 10 ft advice for fire pits. Check local rules and product instructions.`,
   });
 
   const overheadClearanceFt = input.overheadClearanceFt ?? 20;
@@ -44,8 +44,8 @@ export function buildRegionalCodeReview(
     status: overheadClearanceFt >= recommendedOverheadClearanceFt ? 'pass' : 'review',
     detail:
       overheadClearanceFt >= recommendedOverheadClearanceFt
-        ? `Configured at ${overheadClearanceFt.toFixed(1)} ft (recommended baseline for ${input.fuelType === 'wood' ? 'wood' : 'gas'}: ${recommendedOverheadClearanceFt} ft).`
-        : `Configured at ${overheadClearanceFt.toFixed(1)} ft. Increase overhead clearance toward at least ${recommendedOverheadClearanceFt} ft for ${input.fuelType === 'wood' ? 'wood-burning' : 'gas'} configurations and confirm local authority requirements.`,
+        ? `Configured at ${overheadClearanceFt.toFixed(1)} ft, above the model's ${recommendedOverheadClearanceFt} ft review marker. Verify overhead combustibles, local rules, and product instructions.`
+        : `Configured at ${overheadClearanceFt.toFixed(1)} ft, below the model's ${recommendedOverheadClearanceFt} ft review marker. Verify overhead combustibles, local rules, and product instructions.`,
   });
 
   if (input.fuelType !== 'wood') {
@@ -53,16 +53,16 @@ export function buildRegionalCodeReview(
     const max = output.ventSpec.recommendedAreaMaxSqIn;
     const ventArea = output.ventSpec.totalOpenAreaSqIn;
     checks.push({
-      key: 'ibc-gas-venting',
+      key: 'gas-venting-screen',
       title: 'Fuel-gas vent area check',
       status:
         ventArea < min ? 'fail' : max !== undefined && ventArea > max ? 'review' : 'pass',
       detail:
         ventArea < min
-          ? `Current vent area is ${ventArea.toFixed(1)} sq in, below the ${min.toFixed(1)} sq in minimum.`
+          ? `Current vent area is ${ventArea.toFixed(1)} sq in, below the selected equipment template's ${min.toFixed(1)} sq in planning minimum. Verify manufacturer instructions.`
           : max !== undefined && ventArea > max
             ? `Current vent area is ${ventArea.toFixed(1)} sq in, above ${max.toFixed(1)} sq in. Verify local gas appliance requirements.`
-            : `Current vent area is ${ventArea.toFixed(1)} sq in and within recommended range.`,
+            : `Current vent area is ${ventArea.toFixed(1)} sq in and within the selected equipment template's planning range. Verify manufacturer instructions.`,
     });
   }
 
@@ -71,20 +71,12 @@ export function buildRegionalCodeReview(
   checks.push({
     key: 'frost-line',
     title: 'Frost-line compatibility',
-    status: !hasFreezeContext
-      ? 'review'
-      : frostLineDepthIn <= 0
-        ? 'review'
-        : frostLineDepthIn > output.foundation.stoneDepthIn
-          ? 'review'
-          : 'pass',
+    status: 'review',
     detail: !hasFreezeContext
-      ? 'Freeze-thaw was not enabled and local frost-line depth is not set. Add local value for a complete cold-climate review.'
+      ? 'Local frost conditions are not confirmed. Enter site information and verify whether frost-protected footing design is needed.'
       : frostLineDepthIn <= 0
-        ? 'Freeze-thaw climate is enabled but frost-line depth is missing.'
-        : frostLineDepthIn > output.foundation.stoneDepthIn
-          ? `Local frost line (${frostLineDepthIn.toFixed(0)} in) exceeds modeled stone depth (${output.foundation.stoneDepthIn.toFixed(0)} in). Local footing detailing review is recommended.`
-          : `Local frost line (${frostLineDepthIn.toFixed(0)} in) is within current baseline depth assumptions.`,
+        ? 'Freeze-thaw climate is enabled but local frost-line depth is missing. Obtain site-specific footing guidance.'
+        : `Entered frost line: ${frostLineDepthIn.toFixed(0)} in. The modeled ${output.foundation.stoneDepthIn.toFixed(0)} in stone layer is a quantity estimate, not a frost footing depth; obtain site-specific footing guidance.`,
   });
 
   const hoaLevel = input.hoaConstraintLevel ?? 'unknown';

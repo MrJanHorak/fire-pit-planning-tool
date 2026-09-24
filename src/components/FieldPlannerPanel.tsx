@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import type { MasonryInput, MasonryOutput } from '../types';
 import { DEFAULT_MASONRY_INPUT } from '../utils/defaultInput';
 import { buildCompactShareParams } from '../utils/shareLink';
@@ -144,10 +145,6 @@ export default function FieldPlannerPanel({
     return `${window.location.origin}${window.location.pathname}?${params.toString()}#designer`;
   }, [input, projectName]);
 
-  const qrImageUrl = shareUrl
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=280x280&ecc=Q&qzone=3&data=${encodeURIComponent(shareUrl)}`
-    : '';
-
   const measurementChecks = [
     {
       key: 'innerWidth',
@@ -196,8 +193,8 @@ export default function FieldPlannerPanel({
   if (state.weather.rainExpected) {
     weatherWarnings.push('Rain is expected. Protect fresh mortar and keep joints covered.');
   }
-  if (input.mortarJointIn > 0 && state.weather.daysSinceMortar < 28) {
-    weatherWarnings.push(`Mortar cure is ${state.weather.daysSinceMortar} day(s). Wait until day 28 before sustained firing.`);
+  if (input.mortarJointIn > 0) {
+    weatherWarnings.push(`Mortar age is ${state.weather.daysSinceMortar} day(s). Follow the chosen product's cure and first-fire instructions; age alone does not establish readiness.`);
   }
 
   return (
@@ -539,12 +536,16 @@ export default function FieldPlannerPanel({
             Open Shared State
           </a>
         </div>
-        {qrImageUrl && (
-          <img
-            src={qrImageUrl}
-            alt='QR code for current project share link'
-            className='mt-3 h-40 w-40 rounded border border-amber-900/20 bg-white p-2'
-          />
+        {shareUrl && (
+          <div className='mt-3 inline-flex rounded border border-amber-900/20 bg-white p-2'>
+            <QRCodeSVG
+              value={shareUrl}
+              size={144}
+              level='Q'
+              marginSize={4}
+              title='QR code for current project share link'
+            />
+          </div>
         )}
       </details>
 

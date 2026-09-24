@@ -566,13 +566,13 @@ function buildKeyValueTable(
   </table>`;
 }
 
-function buildPermitChecklistTable(
+function buildSiteReviewTable(
   rows: Array<{ item: string; status: string; detail: string }>,
 ): string {
   return `<table>
     <thead>
       <tr>
-        <th>Permit / Inspection Item</th>
+        <th>Site review item</th>
         <th>Status</th>
         <th>Detail</th>
       </tr>
@@ -890,7 +890,7 @@ function buildDiyStepsHtml(input: MasonryInput, output: MasonryOutput): string {
     ...(capBridgeStep ? [capBridgeStep] : []),
     capDirectionNote,
     input.mortarJointIn > 0
-      ? `Tool exposed joints, clean mortar smears before they harden, and protect the installation from rain and freezing while mortar cures. Allow a minimum 28-day curing period before lighting the first fire. Do not apply sustained heat until the mortar has reached full strength.`
+      ? `Tool exposed joints, clean mortar smears before they harden, and protect the installation from rain and freezing while mortar cures. Follow the selected mortar manufacturer's drying, curing, and staged first-fire instructions before applying sustained heat.`
       : `Clean any joint debris and protect the dry-stacked installation from displacement while it settles.`,
     `Before first burn, verify the vent path is unobstructed, the liner is seated correctly, the cap units are stable, and the safety clearance remains unchanged at the installed location.`,
   ];
@@ -1626,8 +1626,8 @@ export function buildSafetyClearanceSvg(
   input: MasonryInput,
   output: MasonryOutput,
 ): string {
-  const requiredClearanceIn = 120;
-  const requiredOverheadFt = 15;
+  const adviceClearanceIn = 120;
+  const reviewOverheadFt = input.fuelType === 'wood' ? 21 : 15;
   const actualClearanceIn = input.proximityToStructuresFt * 12;
   const actualOverheadFt = input.overheadClearanceFt ?? 20;
   const pitOuterWidthIn = output.outerSpanWidthIn;
@@ -1636,42 +1636,39 @@ export function buildSafetyClearanceSvg(
   const displayRadius = 168;
   const centerX = 190;
   const centerY = 190;
-  const maxExtentIn = Math.max(
-    requiredClearanceIn + pitOuterWidthIn / 2,
-    requiredClearanceIn + pitOuterDepthIn / 2,
-    actualClearanceIn,
-  );
+  const pitOuterRadiusIn = Math.max(pitOuterWidthIn, pitOuterDepthIn) / 2;
+  const maxExtentIn = pitOuterRadiusIn + Math.max(adviceClearanceIn, actualClearanceIn);
   const ringScale = displayRadius / (maxExtentIn * 1.06);
   const pitWidthPx = Math.max(18, pitOuterWidthIn * ringScale);
   const pitDepthPx = Math.max(18, pitOuterDepthIn * ringScale);
   const pitRadiusPx = Math.max(pitWidthPx, pitDepthPx) / 2;
-  const requiredOffsetPx = requiredClearanceIn * ringScale;
+  const adviceOffsetPx = adviceClearanceIn * ringScale;
   const actualRadiusPx = Math.max(0, actualClearanceIn * ringScale);
-  const structureX = centerX + actualRadiusPx;
-  const safetyPass = input.proximityToStructuresFt >= 10;
-  const overheadPass = actualOverheadFt >= requiredOverheadFt;
+  const structureX = centerX + pitWidthPx / 2 + actualRadiusPx;
+  const meetsClearanceAdvice = input.proximityToStructuresFt >= 10;
+  const aboveOverheadMarker = actualOverheadFt >= reviewOverheadFt;
   const maxDisplayFt = maxExtentIn / 12;
-  const safeZoneFill = safetyPass ? '#2f6d3f14' : '#a01d1d14';
-  const isCircular = output.planShape === 'circular';
+  const safeZoneFill = meetsClearanceAdvice ? '#2f6d3f14' : '#a01d1d14';
+  const isRadial = output.planShape === 'circular' || output.planShape === 'hexagonal' || output.planShape === 'octagonal';
   const footprintLabel =
     output.planShape === 'circular'
       ? `Outer pit diameter = ${output.effectiveOuterDiameterIn.toFixed(2)} in`
       : `Outer footprint = ${output.outerSpanWidthIn.toFixed(2)} in x ${output.outerSpanDepthIn.toFixed(2)} in`;
 
-  const requiredBoundary = isCircular
-    ? `<circle cx="${centerX}" cy="${centerY}" r="${requiredOffsetPx}" fill="${safeZoneFill}" stroke="none" />
-       <circle cx="${centerX}" cy="${centerY}" r="${requiredOffsetPx}" fill="none" stroke="#a94d24" stroke-width="2" stroke-dasharray="7 5" />`
-    : `<rect x="${centerX - (pitWidthPx + requiredOffsetPx * 2) / 2}" y="${centerY - (pitDepthPx + requiredOffsetPx * 2) / 2}" width="${pitWidthPx + requiredOffsetPx * 2}" height="${pitDepthPx + requiredOffsetPx * 2}" rx="${output.planShape === 'square' ? 6 : 3}" fill="${safeZoneFill}" stroke="none" />
-       <rect x="${centerX - (pitWidthPx + requiredOffsetPx * 2) / 2}" y="${centerY - (pitDepthPx + requiredOffsetPx * 2) / 2}" width="${pitWidthPx + requiredOffsetPx * 2}" height="${pitDepthPx + requiredOffsetPx * 2}" rx="${output.planShape === 'square' ? 6 : 3}" fill="none" stroke="#a94d24" stroke-width="2" stroke-dasharray="7 5" />`;
+  const adviceBoundary = isRadial
+    ? `<circle cx="${centerX}" cy="${centerY}" r="${pitRadiusPx + adviceOffsetPx}" fill="${safeZoneFill}" stroke="none" />
+       <circle cx="${centerX}" cy="${centerY}" r="${pitRadiusPx + adviceOffsetPx}" fill="none" stroke="#a94d24" stroke-width="2" stroke-dasharray="7 5" />`
+    : `<rect x="${centerX - (pitWidthPx + adviceOffsetPx * 2) / 2}" y="${centerY - (pitDepthPx + adviceOffsetPx * 2) / 2}" width="${pitWidthPx + adviceOffsetPx * 2}" height="${pitDepthPx + adviceOffsetPx * 2}" rx="${output.planShape === 'square' ? 6 : 3}" fill="${safeZoneFill}" stroke="none" />
+       <rect x="${centerX - (pitWidthPx + adviceOffsetPx * 2) / 2}" y="${centerY - (pitDepthPx + adviceOffsetPx * 2) / 2}" width="${pitWidthPx + adviceOffsetPx * 2}" height="${pitDepthPx + adviceOffsetPx * 2}" rx="${output.planShape === 'square' ? 6 : 3}" fill="none" stroke="#a94d24" stroke-width="2" stroke-dasharray="7 5" />`;
 
-  const pitFootprint = isCircular
+  const pitFootprint = isRadial
     ? `<circle cx="${centerX}" cy="${centerY}" r="${pitRadiusPx}" fill="#9d5a2b" opacity="0.85" />`
     : `<rect x="${centerX - pitWidthPx / 2}" y="${centerY - pitDepthPx / 2}" width="${pitWidthPx}" height="${pitDepthPx}" rx="${output.planShape === 'square' ? 4 : 2}" fill="#9d5a2b" opacity="0.85" />`;
 
   const overheadInsetBottom = 320;
   const overheadInsetTop = 120;
   const overheadScale = (overheadInsetBottom - overheadInsetTop) / 25;
-  const requiredOverheadY = overheadInsetBottom - requiredOverheadFt * overheadScale;
+  const requiredOverheadY = overheadInsetBottom - reviewOverheadFt * overheadScale;
   const actualOverheadY = overheadInsetBottom - actualOverheadFt * overheadScale;
   const clampedActualOverheadY = Math.max(
     overheadInsetTop,
@@ -1680,30 +1677,30 @@ export function buildSafetyClearanceSvg(
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" width="640" height="380">
     <rect x="0" y="0" width="640" height="380" fill="#fffdf7" />
-    <text x="18" y="28" font-size="15" fill="#2f2110" font-weight="700">10 ft Clearance ${isCircular ? 'Ring' : 'Offset'} Diagram</text>
-    <text x="18" y="48" font-size="12" fill="#4a3720">Required setback from combustible structures is 10 ft minimum. Diagram matches the selected plan shape.</text>
+    <text x="18" y="28" font-size="15" fill="#2f2110" font-weight="700">10 ft Clearance ${isRadial ? 'Ring' : 'Offset'} Diagram</text>
+    <text x="18" y="48" font-size="12" fill="#4a3720">USFA general advice: 10 ft from the outer pit edge to combustibles. Verify local rules.</text>
 
-    ${requiredBoundary}
+    ${adviceBoundary}
     ${pitFootprint}
-    <line x1="${centerX}" y1="${centerY}" x2="${structureX}" y2="${centerY}" stroke="${safetyPass ? '#2f6d3f' : '#a01d1d'}" stroke-width="3" />
-    <circle cx="${structureX}" cy="${centerY}" r="7" fill="${safetyPass ? '#2f6d3f' : '#a01d1d'}" />
+    <line x1="${centerX}" y1="${centerY}" x2="${structureX}" y2="${centerY}" stroke="${meetsClearanceAdvice ? '#2f6d3f' : '#a01d1d'}" stroke-width="3" />
+    <circle cx="${structureX}" cy="${centerY}" r="7" fill="${meetsClearanceAdvice ? '#2f6d3f' : '#a01d1d'}" />
 
     <text x="18" y="364" font-size="11" fill="#6b5033">Scale shown: 0 to ${maxDisplayFt.toFixed(1)} ft radius</text>
 
-    <text x="390" y="138" font-size="12" fill="#4a3720">Dashed ${isCircular ? 'ring' : 'offset boundary'} = 10 ft required</text>
+    <text x="390" y="138" font-size="12" fill="#4a3720">Dashed ${isRadial ? 'ring' : 'offset boundary'} = 10 ft advice</text>
     <text x="390" y="160" font-size="12" fill="#4a3720">Actual distance = ${input.proximityToStructuresFt.toFixed(2)} ft</text>
     <text x="390" y="182" font-size="12" fill="#4a3720">${footprintLabel}</text>
     <text x="390" y="204" font-size="12" fill="#4a3720">Plan shape = ${output.planShape}</text>
-    <text x="390" y="226" font-size="12" fill="${safetyPass ? '#2f6d3f' : '#a01d1d'}">Horizontal status = ${safetyPass ? 'PASS' : 'FAIL'}</text>
+    <text x="390" y="226" font-size="12" fill="${meetsClearanceAdvice ? '#2f6d3f' : '#a01d1d'}">Horizontal screen: ${meetsClearanceAdvice ? 'meets advice' : 'below advice'}</text>
 
     <rect x="392" y="${overheadInsetTop}" width="226" height="${overheadInsetBottom - overheadInsetTop}" fill="#fff8ea" stroke="#c9a87a" stroke-width="1" rx="6" />
     <line x1="430" y1="${overheadInsetTop + 12}" x2="430" y2="${overheadInsetBottom}" stroke="#7a5a34" stroke-width="2" />
     <line x1="430" y1="${requiredOverheadY}" x2="610" y2="${requiredOverheadY}" stroke="#a94d24" stroke-width="2" stroke-dasharray="6 4" />
-    <line x1="430" y1="${clampedActualOverheadY}" x2="610" y2="${clampedActualOverheadY}" stroke="${overheadPass ? '#2f6d3f' : '#a01d1d'}" stroke-width="2.5" />
+    <line x1="430" y1="${clampedActualOverheadY}" x2="610" y2="${clampedActualOverheadY}" stroke="${aboveOverheadMarker ? '#2f6d3f' : '#a01d1d'}" stroke-width="2.5" />
     <text x="438" y="${overheadInsetTop + 24}" font-size="11" fill="#4a3720" font-weight="700">Overhead clearance inset</text>
-    <text x="438" y="${requiredOverheadY - 4}" font-size="10" fill="#a94d24">Recommended minimum: ${requiredOverheadFt.toFixed(0)} ft</text>
-    <text x="438" y="${Math.min(overheadInsetBottom - 4, clampedActualOverheadY + 14)}" font-size="10" fill="${overheadPass ? '#2f6d3f' : '#a01d1d'}">Configured: ${actualOverheadFt.toFixed(1)} ft</text>
-    <text x="438" y="${overheadInsetBottom - 8}" font-size="10" fill="${overheadPass ? '#2f6d3f' : '#a01d1d'}">Vertical status: ${overheadPass ? 'PASS' : 'REVIEW'}</text>
+    <text x="438" y="${requiredOverheadY - 4}" font-size="10" fill="#a94d24">Model review marker: ${reviewOverheadFt.toFixed(0)} ft</text>
+    <text x="438" y="${Math.min(overheadInsetBottom - 4, clampedActualOverheadY + 14)}" font-size="10" fill="${aboveOverheadMarker ? '#2f6d3f' : '#a01d1d'}">Configured: ${actualOverheadFt.toFixed(1)} ft</text>
+    <text x="438" y="${overheadInsetBottom - 8}" font-size="10" fill="${aboveOverheadMarker ? '#2f6d3f' : '#a01d1d'}">Vertical screen: ${aboveOverheadMarker ? 'above marker' : 'review'}</text>
   </svg>`;
 }
 
@@ -1724,7 +1721,6 @@ export function buildConstructionPacketHtml(
     output.ventSpec.recommendedAreaMaxSqIn === undefined
       ? `${output.ventSpec.recommendedAreaMinSqIn.toFixed(1)}+`
       : `${output.ventSpec.recommendedAreaMinSqIn.toFixed(1)}-${output.ventSpec.recommendedAreaMaxSqIn.toFixed(1)}`;
-  const recommendedOverheadClearanceFt = input.fuelType === 'wood' ? 21 : 15;
   const gasLineEntry =
     output.ventSpec.gasLineEntryAngleDeg === undefined
       ? '<p>Gas Line Entry: not used for a wood-burning layout.</p>'
@@ -1840,7 +1836,7 @@ export function buildConstructionPacketHtml(
       'Total Open Vent Area',
       `${output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in`,
     ],
-    ['Typical Gas Vent Range', `${ventRange} sq in`],
+    ['Modeled Gas Template Range', `${ventRange} sq in; verify equipment instructions`],
     ['Vent Unit Positions', output.ventSpec.ventBrickIndexes.join(', ')],
   ];
   const cornerRows: Array<[string, string]> = [
@@ -1854,26 +1850,16 @@ export function buildConstructionPacketHtml(
       `${(output.cornerGuidance?.cornerCutPerSideIn ?? 0).toFixed(2)} in`,
     ],
   ];
-  const permitChecklistRows = [
-    {
-      item: 'Combustible setback (10 ft minimum)',
-      status: input.proximityToStructuresFt >= 10 ? 'PASS' : 'FAIL',
-      detail: `Configured at ${input.proximityToStructuresFt.toFixed(1)} ft.`,
-    },
-    {
-      item: `Overhead combustible clearance (${recommendedOverheadClearanceFt} ft recommended for ${input.fuelType === 'wood' ? 'wood' : 'gas'})`,
-      status:
-        (input.overheadClearanceFt ?? 20) >= recommendedOverheadClearanceFt
-          ? 'PASS'
-          : 'REVIEW',
-      detail: `Configured at ${(input.overheadClearanceFt ?? 20).toFixed(1)} ft.`,
-    },
-    ...regionalCodeReview.checks.map((check) => ({
+  const siteReviewRows = regionalCodeReview.checks.map((check) => ({
       item: check.title,
-      status: check.status.toUpperCase(),
+      status:
+        check.status === 'pass'
+          ? 'MODEL BASELINE MET'
+          : check.status === 'fail'
+            ? 'ACTION NEEDED'
+            : 'REVIEW',
       detail: check.detail,
-    })),
-  ];
+    }));
   const cuttingRows: Array<[string, string]> = [
     [
       'Layout-line spacing per unit',
@@ -1897,7 +1883,7 @@ export function buildConstructionPacketHtml(
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Fire Pit Build Packet</title>
+    <title>Fire Pit Construction Planning Packet</title>
     <style>
       body { font-family: "Segoe UI", Arial, sans-serif; margin: 24px; color: #221707; }
       h1, h2 { margin: 0 0 10px; }
@@ -1924,8 +1910,9 @@ export function buildConstructionPacketHtml(
   </head>
   <body>
     <div class="heading avoid-break">
-      <h1>Parametric Masonry Designer - Fire Pit Build Packet</h1>
+      <h1>Parametric Masonry Designer - Fire Pit Construction Planning Packet</h1>
       <p>Generated for a ${formatShapeName(input.planShape)} plan with ${output.innerSpanWidthIn.toFixed(2)} in x ${output.innerSpanDepthIn.toFixed(2)} in inner dimensions.</p>
+      <p>Planning geometry and quantities only. Verify site conditions, product instructions, structural support, and local requirements before construction.</p>
     </div>
 
     <section class="block avoid-break">
@@ -1950,17 +1937,17 @@ export function buildConstructionPacketHtml(
     </section>
 
     <section class="block avoid-break">
-      <h2>Permit + Inspection Checklist</h2>
+      <h2>Site Review Prompts</h2>
       <p>Use this table as a pre-permit and pre-ignition review record. Final acceptance still depends on local authority and fuel hardware documentation.</p>
-      ${buildPermitChecklistTable(permitChecklistRows)}
+      ${buildSiteReviewTable(siteReviewRows)}
     </section>
 
     <section class="block avoid-break">
       <h2>Cap Layout</h2>
       ${buildKeyValueTable(capRows, 'Cap Parameter', 'Value')}
-      <p>${output.planShape === 'circular' ? (capCut.requiresCutting ? `Capstone inner-edge overlap detected. Taper each cap unit by about ${capCut.recommendedCutPerSideIn.toFixed(3)} in per side at ${capCut.recommendedCutAngleDeg.toFixed(2)} deg.` : 'Capstone joints are buildable without taper cuts at this current diameter.') : 'Cap joints are shown at their resolved installed width.'}</p>
+      <p>${output.planShape === 'circular' ? (capCut.requiresCutting ? `Capstone inner-edge overlap detected. The model estimates a taper of about ${capCut.recommendedCutPerSideIn.toFixed(3)} in per side at ${capCut.recommendedCutAngleDeg.toFixed(2)} deg; dry-fit and verify cuts before fabrication.` : 'The model shows no cap taper needed at this diameter; confirm with a dry-fit layout.') : 'Cap joints are shown at their modeled installed width; confirm with a dry-fit layout.'}</p>
       ${output.planShape === 'circular' ? `<p>Approximate pit inner diameter for no cap taper cuts at this cap count: ${capCut.minimumRecommendedPitInnerDiameterIn.toFixed(2)} in.</p>` : ''}
-      ${output.thermalAssembly.mode === 'double-wall' ? `<h3>Cap Bridge Row Schedule</h3><p>Rows are listed from inside to outside. Joint and cut guidance are computed per row to avoid overlap and preserve buildable spacing.</p>${buildCapBridgeRowScheduleTable(output, capCut)}` : ''}
+      ${output.thermalAssembly.mode === 'double-wall' ? `<h3>Cap Bridge Row Schedule</h3><p>Rows are listed from inside to outside. Joint and cut guidance are estimated per row; verify support, overlap, and spacing in the field.</p>${buildCapBridgeRowScheduleTable(output, capCut)}` : ''}
       <h3>Capstone Placement Detail</h3>
       ${capstonePlacementSample}
       <h3>Capstone Cut Type Diagrams</h3>
@@ -2080,10 +2067,8 @@ export function buildEngineeringReportHtml(
     output.ventSpec.recommendedAreaMaxSqIn === undefined
       ? `${output.ventSpec.recommendedAreaMinSqIn.toFixed(1)}+`
       : `${output.ventSpec.recommendedAreaMinSqIn.toFixed(1)}-${output.ventSpec.recommendedAreaMaxSqIn.toFixed(1)}`;
-  const recommendedOverheadClearanceFt = input.fuelType === 'wood' ? 21 : 15;
-
   const summaryRows: Array<[string, string]> = [
-    ['Report type', 'Preliminary engineering planning report'],
+    ['Report type', 'Design planning report'],
     ['Generated on', generatedOn],
     ['Plan shape', formatShapeName(input.planShape)],
     ['Fuel type', formatFuelName(input.fuelType)],
@@ -2100,18 +2085,18 @@ export function buildEngineeringReportHtml(
     ['Foundation advisory', foundationAdvisory.heading],
   ];
 
-  const complianceRows: Array<[string, string]> = [
+  const screeningRows: Array<[string, string]> = [
     [
-      'Combustible setback (10 ft min)',
+      'Combustible clearance (USFA general 10 ft advice)',
       input.proximityToStructuresFt >= 10
-        ? 'PASS'
-        : `FAIL (configured ${input.proximityToStructuresFt.toFixed(2)} ft)`,
+        ? `At or above general advice (${input.proximityToStructuresFt.toFixed(2)} ft); verify local rules and product instructions`
+        : `Below general advice (${input.proximityToStructuresFt.toFixed(2)} ft); review location before building`,
     ],
     [
       'Fuel gas vent area',
       input.fuelType === 'wood'
         ? 'N/A for wood fuel mode'
-        : `${output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in (typical range ${ventRange} sq in)`,
+        : `${output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in (modeled template range ${ventRange} sq in; verify equipment instructions)`,
     ],
     [
       'Gas hardware template',
@@ -2121,7 +2106,7 @@ export function buildEngineeringReportHtml(
     ],
     [
       'Overhead clearance',
-      `${(input.overheadClearanceFt ?? 20).toFixed(1)} ft (recommended baseline for ${input.fuelType === 'wood' ? 'wood' : 'gas'}: ${recommendedOverheadClearanceFt} ft)`,
+      `${(input.overheadClearanceFt ?? 20).toFixed(1)} ft configured; verify overhead combustibles and local requirements`,
     ],
     [
       'Site/foundation context',
@@ -2138,7 +2123,7 @@ export function buildEngineeringReportHtml(
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Fire Pit Professional Engineering Report</title>
+    <title>Fire Pit Design Planning Report</title>
     <style>
       body { font-family: "Segoe UI", Arial, sans-serif; margin: 24px; color: #1f1508; }
       h1, h2, h3 { margin: 0 0 10px; }
@@ -2178,11 +2163,11 @@ export function buildEngineeringReportHtml(
   </head>
   <body>
     <section class="block avoid-break">
-      <h1>Professional Engineering Report</h1>
+      <h1>Design Planning Report</h1>
       <p class="muted">Parametric Masonry Fire Pit Design Review</p>
       <p class="small">
-        This report is an engineering-aware planning document generated from user inputs and geometric rules.
-        Final jurisdictional compliance, permit acceptance, and stamped design approval remain project-specific.
+        This is a planning document generated from user inputs and geometric rules. It does not establish
+        code compliance, permit acceptance, or engineering approval for a specific site.
       </p>
     </section>
 
@@ -2197,8 +2182,8 @@ export function buildEngineeringReportHtml(
     </section>
 
     <section class="block avoid-break">
-      <h2>2. Safety + Compliance Review</h2>
-      ${buildKeyValueTable(complianceRows, 'Check', 'Status / Notes')}
+      <h2>2. Safety And Site Screening</h2>
+      ${buildKeyValueTable(screeningRows, 'Check', 'Status / Notes')}
       <h3>Active warnings</h3>
       ${warningList}
     </section>
@@ -2242,8 +2227,8 @@ export function buildEngineeringReportHtml(
     </section>
 
     <section class="block avoid-break">
-      <h2>7. Professional Sign-Off</h2>
-      <p class="small">For licensed engineer, reviewer, or authority having jurisdiction.</p>
+      <h2>7. Reviewer Notes</h2>
+      <p class="small">Space for an independent project review; the generated report itself is not an approval.</p>
       <div class="signature-row">
         <div class="signature-box">Engineer / Reviewer Name & Signature</div>
         <div class="signature-box">License # / Company / Date</div>
@@ -2252,14 +2237,14 @@ export function buildEngineeringReportHtml(
     <section class="block avoid-break">
       <h2>8. Assumptions And Limitations</h2>
       <ul>
-        <li>This report is generated from user-provided inputs and the app's baseline engineering assumptions.</li>
+        <li>This report is generated from user-provided inputs and the app's planning assumptions.</li>
         <li>Foundation quantity math remains on the fixed baseline model and does not replace site-specific geotechnical design.</li>
         <li>Local permitting requirements, HOA rules, and jurisdiction-specific code interpretation must be verified by the project owner/reviewer.</li>
         <li>For final construction and stamp-ready deliverables, have a licensed professional review this output in project context.</li>
       </ul>
     </section>
     <div class="report-footer">
-      Parametric Masonry Designer • Professional Engineering Report • Generated ${generatedOn}
+      Parametric Masonry Designer • Design Planning Report • Generated ${generatedOn}
     </div>
   </body>
 </html>`;

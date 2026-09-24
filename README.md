@@ -1,10 +1,10 @@
 # Parametric Masonry Designer & Thermodynamic Firepit Studio
 
-React 19 application for engineering-accurate masonry firepit design with real-time calculations, thermodynamic smokeless venting, commercial insert compatibility, safety warnings, and visual construction outputs.
+React 19 application for masonry firepit planning with geometry calculations, smokeless venting estimates, insert fit checks, safety advisories, and visual construction outputs. Calculations and guidance require project-specific verification before construction.
 
 ## What This Site Is
 
-Parametric Masonry Designer is a planning tool for designing a custom backyard firepit before buying materials or starting construction. It combines practical masonry rules, thermodynamic venting science, safety checks, and visual previews so you can move from "idea" to a build-ready plan with confidence.
+Parametric Masonry Designer is a planning tool for exploring a custom backyard firepit before buying materials or starting construction. It combines masonry geometry, rule-based venting estimates, safety prompts, and visual previews to help prepare a design for site, manufacturer, and local authority review.
 
 You can use it to:
 
@@ -21,7 +21,7 @@ You can use it to:
 
 This project started as a personal backyard upgrade idea. I wanted to build a firepit, but I also wanted to avoid guesswork around dimensions, brick counts, vent area, and base prep.
 
-Instead of using rough napkin math, I built a tool that turns engineering formulas into a practical planning workflow. The result is a project that is both technically interesting and useful in the real world.
+Instead of using rough napkin math, I built a tool that turns geometry and quantity formulas into a practical planning workflow. The result is a project that is both technically interesting and useful for early design review.
 
 ## Screenshots
 
@@ -42,7 +42,7 @@ Instead of using rough napkin math, I built a tool that turns engineering formul
 ## Current Capabilities
 
 - Parametric circular, square, rectangular, hexagonal, and octagonal firepit design.
-- Engineering-aware wall, capstone, venting, liner, and foundation calculations.
+- Geometry-based wall and capstone quantities, with venting, liner, and foundation planning estimates.
 - **Separate inner/outer wall material selection in double-wall mode** — distinct material presets, heat ratings (°F), and mortar types (refractory / Type N / Type S) for the firebox inner shell and outer decorative shell. Split Bill of Materials.
 - **Smokeless secondary-combustion mode** — stack-effect draft pressure (ΔP formula), intake/outlet vent area ratio check (1.2–1.5 optimal range), secondary jet sizing, base-course block omission count, and flange overlap safety status.
 - **Commercial smokeless insert presets** — Solo Stove Bonfire 2.0, Breeo X19/X24/X30, Tiki Brand Patio, and Custom/DIY steel liner; auto-calculates required masonry ID and all clearances.
@@ -50,20 +50,20 @@ Instead of using rough napkin math, I built a tool that turns engineering formul
 - Construction Mode with printable layer-by-layer SVG guidance.
 - Enhanced Bill of Materials with categorized material groups, cost estimator, and BOM-focused print layout.
 - Double-wall cavity planning with outer-shell counts, cap-bridge row schedule, closure-unit estimates, and 3D multi-row cap preview.
-- Professional Engineering Report generation (print-to-PDF flow).
+- Design Planning Report generation (print-to-PDF flow).
 - Project workspace with autosave, snapshots, import/export JSON, and side-by-side variant comparison.
 - Regional advisory checks (setback, venting, frost-line/HOA context) and material/cost optimization suggestions.
 - GLB model export for downstream Blender/Fusion-style workflows.
 - Vertical + horizontal safety visualization including overhead-clearance review.
 - Gas hardware templates (generic, drop-in pan, linear, high-BTU) that tune vent-area guidance.
-- Rectangular/square corner interlock guidance and permit/inspection checklist output in build packet.
+- Rectangular/square corner interlock guidance and site review prompts in the construction planning packet.
 - **Capstone cut strategy selection** — full taper-cut (all joints wedge-fit), corner-only miter cut (fewest cuts), and DIY butt-joint (zero cuts for square/rectangular plans). Cut schedule, placement SVGs, and tool guidance in build packet.
 - **Plan shape selector with distinct SVG icons** — circle, square, rectangle, hexagon, and octagon buttons display accurate shape geometry for quick visual identification.
 - Field Toolkit for no-DB field workflows (progress checklist, notes/photos, measurement validation, weather checks).
 - Shareable compact URL + QR project handoff, with backward compatibility for older share links.
 - Offline-first basics via manifest + service worker app-shell caching (PWA-style behavior).
 
-## Known Limitations (Active Development Gaps)
+## Capability Status And Active Gaps
 
 The following capabilities are identified and on the roadmap but not yet implemented:
 
@@ -78,7 +78,7 @@ The following capabilities are identified and on the roadmap but not yet impleme
 | **Keyhole firepit shape** | Cooking-focused keyhole (circle + coal channel) shape is not yet available. |
 | **In-ground / raised-pedestal build modes** | All builds are modeled as above-grade masonry walls. |
 | **Ash cleanout features** | Hinged cleanout door, removable ash pan, and drain hole options are not yet modeled. |
-| **PBR 3D materials** | 3D renderer uses flat colors; PBR roughness/metalness shaders for firebrick, natural stone, stainless, and Corten steel are planned. |
+| **3D materials** | Basic material-specific roughness and metalness are implemented; appearance is illustrative and has not been calibrated against real products. |
 | **Airflow particle simulation** | Animated convective airflow visualization (cold intake → heated cavity → secondary jets) is planned for smokeless mode. |
 
 ## Requirements
@@ -110,7 +110,7 @@ The following capabilities are identified and on the roadmap but not yet impleme
 5. Review quantities: units, waste-adjusted purchase count, mortar by zone (refractory/standard), cap count, cap-bridge row schedule (if double-wall), and base stone volume.
 6. Review Construction Mode, permit checklist output, and course-level guidance before field layout starts.
 7. Use Field Toolkit during install for checklist progress, measured-vs-planned tolerance checks, and weather/burn gating.
-8. Build foundation and wall system, then follow cure and first-fire guidance (28-day cure for mortared assemblies).
+8. Build the foundation and wall system, then follow the chosen mortar products' curing and first-fire instructions.
 
 ## Before You Build (Quick Checklist)
 
@@ -125,7 +125,7 @@ The following capabilities are identified and on the roadmap but not yet impleme
 
 | Topic | Current behavior |
 |---|---|
-| Core sizing math | Engineering-based and enforced (unit geometry, joints, running bond, counts). |
+| Core sizing math | Geometry-based model for unit dimensions, joints, running bond, and counts; field verification is still required. |
 | Horizontal clearance | Enforced warning when below 10 ft baseline. |
 | Vertical clearance | Modeled in safety visualization inset with review warning below recommended baseline. |
 | Foundation sizing | Baseline quantity model fixed; soil/drainage/frost context is advisory. |
@@ -136,7 +136,7 @@ The following capabilities are identified and on the roadmap but not yet impleme
 | Commercial insert fitment | **Implemented** — Solo Stove, Breeo X19/X24/X30, Tiki Brand, and Custom/DIY profiles with auto-calculated masonry ID and flange overlap status. |
 | Plan shapes | Circular, square, rectangular, hexagonal, and octagonal. Keyhole, in-ground, and raised-pedestal modes planned. |
 | Build modes | Above-grade masonry only. In-ground and raised-pedestal modes planned. |
-| 3D materials | Flat colors only. PBR shaders and cross-section cutaway planned. |
+| 3D materials | Illustrative material shaders and quarter/half cutaway are implemented; material appearance and thermal details still require validation. |
 
 ## Field Validation Steps (On Site)
 
@@ -177,7 +177,7 @@ Current roadmap priorities:
 ### Phase 3 — Visualizer and Rendering Upgrades
 
 9. **PBR material shaders** — MeshStandardMaterial with per-material roughness/metalness: firebrick (rough 0.9), natural stone (rough 0.85–0.95), brushed stainless (metalness 1.0, rough 0.2), Corten steel (metalness 0.2, rough 0.75 + rust tint).
-10. **Cross-sectional cutaway tool** — WebGL clipping plane toggle revealing annular air gap width, insert flange resting on cap, and gravel foundation layers.
+10. ✅ **Cross-sectional cutaway tool** — Quarter and half views are implemented; detailed cavity and foundation annotations remain an improvement area.
 11. **Convective airflow particle simulation** — GPU particle system for smokeless mode: blue particles entering base vents → transitioning to red as they rise through the cavity → high-velocity jets from top rim holes.
 
 ### Deferred / Future Consideration
@@ -193,7 +193,7 @@ In double-wall mode, the inner and outer shells serve fundamentally different ro
 
 | Zone | Material Options | Temp Rating | Mortar Type |
 |---|---|---|---|
-| **Inner firebox wall** | Standard firebrick | 1,800–2,000°F | Refractory (fireclay) mortar |
+| **Inner firebox wall** | Heat-rated firebrick | Verify selected product rating | Manufacturer-approved refractory mortar |
 | **Inner firebox wall** | Refractory castable concrete | 2,000–2,500°F | N/A (poured) |
 | **Inner firebox wall** | High-alumina firebrick | Up to 3,000°F | High-temp refractory mortar |
 | **Outer decorative shell** | Natural stone (granite, basalt) | Excellent radiant tolerance | Type N or Type S masonry mortar |
@@ -201,7 +201,7 @@ In double-wall mode, the inner and outer shells serve fundamentally different ro
 | **Outer decorative shell** | CMU / concrete block | Structural base only | Type S masonry mortar |
 | **Outer decorative shell** | Flagstone / pavers | Decorative facing | Type N masonry mortar |
 
-**Important:** Never use regular Portland cement mortar in the firebox zone — it degrades above ~572°F (300°C) and will crack under thermal cycling. Refractory mortar contains alumina and silica to withstand 2,000°F+ continuously.
+**Important:** Use a mortar specified for the selected firebox materials and expected heat exposure. General masonry mortar should not be assumed suitable for direct flame; follow the exact product’s application, curing, and first-fire instructions.
 
 **Stones to avoid near direct heat:** River rock, sandstone, limestone, and shale contain trapped moisture or chemically decompose at fire temperatures and can spall explosively.
 
@@ -286,7 +286,7 @@ $$D_{\text{flange}} \geq D_{\text{masonry}} + 1.0 \text{ in}$$
 | **Dakota fire hole** | Two underground connected chambers | Near-smokeless; survival/field technique |
 | **Swirl / vortex pit** | Tangentially angled air inlets | Spiraling flame effect; burns hotter |
 
-## Phase 1: Engineering Math
+## Phase 1: Geometry and Quantity Model
 
 ### 1. Masonry Unit Dimensions and Jointing
 
@@ -407,7 +407,7 @@ $$
 
 ## Project Structure
 
-- `src/engine/MasonryEngine.ts`: core engineering formulas and rules.
+- `src/engine/MasonryEngine.ts`: core geometry, quantity, and planning rules.
 - `src/engine/__tests__/MasonryEngine.test.ts`: verification tests.
 - `src/components/Stage3D.tsx`: @react-three/fiber 3D stage.
 - `src/components/ConstructionMode.tsx`: SVG layer-by-layer build map.
@@ -415,7 +415,7 @@ $$
 - `src/components/ProjectComparisonPanel.tsx`: side-by-side snapshot variant analysis.
 - `src/components/RegionalCodeChecker.tsx`: regional advisory checks.
 - `src/components/MaterialOptimizationSuggestions.tsx`: optimization prompts.
-- `firepit-research.md`: engineering baseline and expanded research notes.
+- `firepit-research.md`: planning assumptions and expanded research notes.
 
 ## Run
 

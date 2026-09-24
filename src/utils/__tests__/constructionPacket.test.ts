@@ -61,17 +61,17 @@ describe('construction packet export', () => {
     const output = new MasonryEngine().calculateDesign(packetInput);
     const html = buildConstructionPacketHtml(packetInput, output);
 
-    expect(html).toContain('Fire Pit Build Packet');
+    expect(html).toContain('Fire Pit Construction Planning Packet');
     expect(html).toContain('Wall Units To Buy');
     expect(html).toContain('Main Wall Units');
     expect(html).toContain('Spacer Units');
     expect(html).toContain('Accent Course Units');
     expect(html).toContain('Safety Review');
-    expect(html).toContain('Minimum horizontal clearance is 10 ft');
+    expect(html).toContain('general 10 ft advice for fire pits');
     expect(html).toContain('print-break-before');
     expect(html).toContain('10 ft Clearance Ring Diagram');
-    expect(html).toContain('Horizontal status = FAIL');
-    expect(html).toContain('Permit + Inspection Checklist');
+    expect(html).toContain('Horizontal screen: below advice');
+    expect(html).toContain('Site Review Prompts');
     expect(html).toContain('Capstone Overhang');
     expect(html).toContain('Cap Units per Course');
     expect(html).toContain('Venting And Heat Protection');
@@ -115,18 +115,28 @@ describe('construction packet export', () => {
     expect(html).toContain('Seating Area Materials');
     expect(html).toContain('Call for utility locates');
     expect(html).toContain('Foundation review status');
-    expect(html).toContain('28-day curing period');
+    expect(html).toContain('selected mortar manufacturer');
   });
 
-  it('builds a professional engineering report HTML suitable for print-to-PDF', () => {
+  it('builds a planning report without implying code or engineering approval', () => {
     const output = new MasonryEngine().calculateDesign(input);
     const html = buildEngineeringReportHtml(input, output);
 
-    expect(html).toContain('Professional Engineering Report');
+    expect(html).toContain('Design Planning Report');
     expect(html).toContain('Executive Summary');
-    expect(html).toContain('Safety + Compliance Review');
+    expect(html).toContain('Safety And Site Screening');
     expect(html).toContain('Setback Diagram');
-    expect(html).toContain('Professional Sign-Off');
+    expect(html).toContain('Reviewer Notes');
+    expect(html).toContain('Below general advice');
+    expect(html).not.toContain('>PASS<');
+    expect(html).toContain('does not establish');
+
+    const clearInput = { ...input, proximityToStructuresFt: 12 };
+    const clearHtml = buildEngineeringReportHtml(
+      clearInput,
+      new MasonryEngine().calculateDesign(clearInput),
+    );
+    expect(clearHtml).toContain('At or above general advice');
   });
 
   it('includes smokeless hole guide in engineering report when smokeless mode is enabled', () => {
@@ -345,7 +355,7 @@ describe('construction packet export', () => {
     expect(svg).toContain('M not used in square/rect DIY butt-joint mode');
   });
 
-  it('builds clearance diagram with pass status when distance meets code', () => {
+  it('builds a clearance diagram without implying code approval', () => {
     const output = new MasonryEngine().calculateDesign({
       ...input,
       proximityToStructuresFt: 12,
@@ -356,7 +366,23 @@ describe('construction packet export', () => {
     );
 
     expect(svg).toContain('10 ft Clearance Ring Diagram');
-    expect(svg).toContain('Horizontal status = PASS');
+    expect(svg).toContain('Horizontal screen: meets advice');
+    expect(svg).not.toContain('Horizontal status = PASS');
+  });
+
+  it('measures the 10 ft advice ring from the outer edge of a circular pit', () => {
+    const atAdviceInput = { ...input, proximityToStructuresFt: 10 };
+    const svg = buildSafetyClearanceSvg(
+      atAdviceInput,
+      new MasonryEngine().calculateDesign(atAdviceInput),
+    );
+    const boundaryRadius = Number(
+      svg.match(/<circle cx="190" cy="190" r="([\d.]+)" fill="none" stroke="#a94d24"/)?.[1],
+    );
+    const markerX = Number(svg.match(/<circle cx="([\d.]+)" cy="190" r="7"/)?.[1]);
+
+    expect(boundaryRadius).toBeGreaterThan(0);
+    expect(markerX - 190).toBeCloseTo(boundaryRadius);
   });
 
   it('changes clearance marker position when proximity changes', () => {

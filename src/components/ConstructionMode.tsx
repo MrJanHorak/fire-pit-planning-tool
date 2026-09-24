@@ -182,7 +182,7 @@ export default function ConstructionMode({
     const link = document.createElement('a');
 
     link.href = url;
-    link.download = 'firepit-construction-packet.html';
+    link.download = 'firepit-construction-planning-packet.html';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -216,13 +216,13 @@ export default function ConstructionMode({
             onClick={printEngineeringReportPdf}
             disabled={isPreparingReport}
           >
-            {isPreparingReport ? 'Preparing PDF…' : 'Engineering Report PDF'}
+            {isPreparingReport ? 'Preparing PDF…' : 'Design Planning Report PDF'}
           </button>
           <button
             className='rounded-full bg-amber-900 px-4 py-2 text-xs font-semibold text-amber-50'
             onClick={downloadPacket}
           >
-            Download Packet
+            Download Planning Packet
           </button>
         </div>
       </div>
@@ -234,8 +234,8 @@ export default function ConstructionMode({
         dark marks ash cleanout, and C marks corner/cut units.
       </p>
       <p className='mb-3 text-xs text-amber-900/70'>
-        Engineering report PDF includes assumptions/limitations and a sign-off
-        section for reviewer handoff.
+        Design planning PDF includes assumptions, limitations, and space for
+        independent reviewer notes.
       </p>
 
       <div

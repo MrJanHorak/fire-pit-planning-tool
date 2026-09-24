@@ -78,17 +78,16 @@ function fmtDollar(value: number): string {
 
 /** Shared number input used in cost rows */
 function CostInput({
-  label,
+  item,
   value,
   onChange,
 }: {
-  label?: string;
+  item: string;
   value: string;
   onChange: (v: string) => void;
 }) {
   return (
     <label className='flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-900/75'>
-      {label && <span>{label}</span>}
       <span className='text-amber-700/60' aria-hidden='true'>✏</span>
       <input
         type='number'
@@ -98,7 +97,7 @@ function CostInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className='w-28 rounded-md border border-amber-300 bg-white px-2 py-1 text-xs font-semibold text-amber-950 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-400/50'
-        aria-label={label ? `Unit price for ${label}` : 'Unit price'}
+        aria-label={`Unit price for ${item}`}
       />
     </label>
   );
@@ -628,7 +627,32 @@ export default function BillOfMaterials({ output, input }: Props) {
         </div>
       </div>
 
-      <div className='overflow-x-auto rounded-xl border border-amber-900/15 bg-white/60'>
+      <div className='space-y-2 sm:hidden'>
+        {bomRows.map((row) => (
+          <div key={row.key} className='rounded-xl border border-amber-900/15 bg-white/70 p-3'>
+            <p className='font-semibold text-amber-950'>{row.item}</p>
+            <p className='mt-0.5 text-xs leading-5 text-amber-900/75'>{row.detail}</p>
+            <div className='mt-2 flex items-end justify-between gap-3 text-sm'>
+              <div>
+                <p className='text-[11px] uppercase text-amber-900/70'>Quantity</p>
+                <p className='font-semibold text-amber-950'>
+                  {row.qtyDisplay ?? row.qty.toLocaleString()} {row.unit}
+                </p>
+              </div>
+              <div className='text-right'>
+                <p className='text-[11px] uppercase text-amber-900/70'>Line total</p>
+                <p className='font-semibold text-amber-950'>{fmtDollar(row.lineTotal)}</p>
+              </div>
+            </div>
+            <div className='mt-2 flex items-center justify-between gap-2 border-t border-amber-900/10 pt-2'>
+              <span className='text-xs font-medium text-amber-900/80'>Price per {row.unit}</span>
+              <CostInput item={row.item} value={row.unitPrice} onChange={row.onUnitPriceChange} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className='hidden overflow-x-auto rounded-xl border border-amber-900/15 bg-white/60 sm:block'>
         <table className='w-full text-sm'>
           <thead>
             <tr className='border-b border-amber-900/20 bg-amber-100/70'>
@@ -663,7 +687,7 @@ export default function BillOfMaterials({ output, input }: Props) {
                 <td className='px-4 py-3 text-right align-top'>
                   <div className='flex justify-end'>
                     <CostInput
-                      label=''
+                      item={row.item}
                       value={row.unitPrice}
                       onChange={row.onUnitPriceChange}
                     />

@@ -29,7 +29,7 @@ export default function RegionalCodeChecker({
     <section className='card-rise rounded-2xl border border-amber-900/20 bg-amber-50/75 p-4 shadow-lg'>
       <div className='flex flex-wrap items-center justify-between gap-2'>
         <p className='text-xs font-semibold uppercase tracking-[0.15em] text-amber-900/75'>
-          Regional Code Checker
+          Preliminary Site Screening
         </p>
         <span
           className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${statusChip(report.overallStatus)}`}
@@ -38,11 +38,11 @@ export default function RegionalCodeChecker({
             ? 'Action required'
             : report.overallStatus === 'review'
               ? 'Needs local review'
-              : 'Looks good'}
+              : 'Baseline checks met'}
         </span>
       </div>
       <p className='mt-2 text-xs text-amber-900/70'>
-        Covers IBC-style setbacks, overhead clearance, venting, HOA constraints, and frost-line context.
+        General screening only. A local authority and equipment manufacturer must confirm applicable clearances, venting, permits, and construction details.
       </p>
       <div className='mt-3 space-y-2'>
         {report.checks.map((check) => (
@@ -55,7 +55,7 @@ export default function RegionalCodeChecker({
               <span
                 className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusChip(check.status)}`}
               >
-                {check.status.toUpperCase()}
+                {check.status === 'pass' ? 'BASELINE MET' : check.status.toUpperCase()}
               </span>
             </div>
             <p className='mt-1 text-xs text-amber-900/80'>{check.detail}</p>

@@ -2141,7 +2141,7 @@ export class MasonryEngine {
       warnings.push({
         code: 'clearance-too-low',
         message:
-          'Minimum horizontal clearance is 10 ft from combustible structures.',
+          'The configured clearance is below the U.S. Fire Administration’s general 10 ft advice for fire pits. Local rules and manufacturer instructions may require more.',
         actualValue: input.proximityToStructuresFt,
         requiredValue: 10,
       });
@@ -2163,6 +2163,14 @@ export class MasonryEngine {
         code: 'wood-liner-recommended',
         message:
           'Wood-burning configurations should include a refractory liner or steel fire ring.',
+      });
+    }
+
+    if (input.seatingGroundType === 'mulch') {
+      warnings.push({
+        code: 'seating-combustible-surface',
+        message:
+          'Wood mulch is combustible. This planner does not model a safe separation zone around the fire pit; choose a noncombustible surround and confirm local requirements before building.',
       });
     }
 
@@ -2206,7 +2214,7 @@ export class MasonryEngine {
       ) {
         warnings.push({
           code: 'mortar-zone-mismatch',
-          message: `Inner firebox wall uses "${thermalAssembly.innerMortarType}" mortar. Refractory (fireclay) mortar is required for the inner firebox zone — standard Portland-based mortars fail above ~572°F.`,
+          message: `Inner firebox wall uses "${thermalAssembly.innerMortarType}" mortar. Verify a heat-rated mortar specified for the firebox assembly; do not assume general masonry mortar is suitable for direct flame.`,
         });
       }
     }
@@ -2253,7 +2261,7 @@ export class MasonryEngine {
       warnings.push({
         code: 'natural-stone-geology-check-required',
         message:
-          'Natural stone selected: verify geology before build. Use dense, non-porous stones (granite, basalt, marble) and avoid river rocks or porous sedimentary stones in direct-heat zones.',
+          'Natural stone selected: verify the exact stone and heat exposure before building. No stone type is automatically safe in direct flame; use a specified heat-rated inner assembly and review the outer stone with its supplier.',
       });
 
       if (
@@ -2315,7 +2323,7 @@ export class MasonryEngine {
       warnings.push({
         code: 'mortar-curing-required',
         message:
-          'Mortared masonry requires a minimum 28-day curing period before applying sustained heat. Do not light the first fire until the mortar has reached full strength.',
+          'Before the first fire, follow the selected mortar manufacturer’s drying, curing, and heat-up instructions. Refractory and standard mortars have different schedules; elapsed days alone do not establish readiness.',
       });
     }
 
@@ -2323,7 +2331,7 @@ export class MasonryEngine {
       if (ventSpec.totalOpenAreaSqIn < ventSpec.recommendedAreaMinSqIn) {
         warnings.push({
           code: 'gas-vent-area-out-of-range',
-          message: 'Gas vent area is below the recommended 18-36 sq in range.',
+          message: `Gas vent area is below the selected ${ventSpec.gasHardwareTemplateLabel ?? 'gas hardware'} template's ${ventSpec.recommendedAreaMinSqIn.toFixed(0)} sq in planning minimum. Confirm the equipment manufacturer's requirements.`,
           actualValue: ventSpec.totalOpenAreaSqIn,
           requiredValue: ventSpec.recommendedAreaMinSqIn,
         });
@@ -2333,7 +2341,7 @@ export class MasonryEngine {
       ) {
         warnings.push({
           code: 'gas-vent-area-out-of-range',
-          message: 'Gas vent area is above the recommended 18-36 sq in range.',
+          message: `Gas vent area is above the selected ${ventSpec.gasHardwareTemplateLabel ?? 'gas hardware'} template's ${ventSpec.recommendedAreaMaxSqIn.toFixed(0)} sq in planning maximum. Confirm the equipment manufacturer's requirements.`,
           actualValue: ventSpec.totalOpenAreaSqIn,
           requiredValue: ventSpec.recommendedAreaMaxSqIn,
         });

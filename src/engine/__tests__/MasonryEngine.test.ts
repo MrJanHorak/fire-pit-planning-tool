@@ -455,6 +455,18 @@ describe('MasonryEngine', () => {
     expect(output.ventSpec.gasHardwareTemplate).toBe('high-btu-bowl');
     expect(output.ventSpec.recommendedAreaMinSqIn).toBe(36);
     expect(output.ventSpec.recommendedAreaMaxSqIn).toBe(60);
+    expect(
+      output.warnings.find((warning) => warning.code === 'gas-vent-area-out-of-range')?.message,
+    ).toContain('36 sq in planning minimum');
+  });
+
+  it('flags combustible mulch around the fire pit', () => {
+    const output = new MasonryEngine().calculateDesign({
+      ...baseInput,
+      seatingGroundType: 'mulch',
+    });
+
+    expect(output.warnings.some((warning) => warning.code === 'seating-combustible-surface')).toBe(true);
   });
 
   it('anchors rectangular vents at side midpoints instead of corners', () => {
@@ -520,7 +532,7 @@ describe('MasonryEngine', () => {
       (w) => w.code === 'mortar-curing-required',
     );
     expect(curingWarning).toBeDefined();
-    expect(curingWarning?.message).toContain('28-day');
+    expect(curingWarning?.message).toContain('manufacturer');
   });
 
   it('does not emit mortar-curing-required when mortarJointIn is zero', () => {
