@@ -48,6 +48,16 @@ npm run build
 
 The 3D preview requires WebGL. The remaining planner and exports can be used when WebGL is unavailable.
 
+### Browser release checks
+
+The browser suite checks autosave, project JSON round-trip, planning-packet export, and phone-width preview controls. Install Chrome locally, then run:
+
+```bash
+npm run test:e2e
+```
+
+The checked-in GitHub Actions quality gate runs the unit suite, production build, production-dependency audit, and browser suite on every push and pull request. CI installs its own Chromium browser. A passing local run does not verify the deployed Vercel version; review the preview deployment before promotion.
+
 ## Review before construction
 
 1. Select actual wall, cap, liner, mortar, and fuel-system products; gather current manuals and datasheets.

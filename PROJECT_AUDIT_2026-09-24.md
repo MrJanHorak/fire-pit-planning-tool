@@ -157,3 +157,10 @@ The Breeo profile also suppresses the planner's generic wood vent openings and s
 Verification on 2026-09-28: TypeScript, all 118 tests, production build, and `git diff --check` pass locally.
 
 TypeScript, all 118 tests, and the production build pass locally for this continuation.
+
+## Release gate continuation (2026-09-28)
+
+- Added a GitHub Actions quality gate for `npm ci`, a production-dependency audit, Vitest, the TypeScript and Vite production build, and Chromium browser smoke tests.
+- Added browser coverage for autosave after reload, project JSON export/import, planning-packet content, and narrow-phone preview settings including Escape and outside-click dismissal.
+- Local verification: 123 unit tests, 3 browser tests in both local Chrome and CI-mode Playwright Chromium, TypeScript, production build, and `git diff --check` pass. The production dependency audit reports zero advisories. The full npm install still reports seven advisories in the dependency tree; these need separate review.
+- The checked-in workflow has not run on the remote CI service yet. Deployment preview review and independent engineering validation remain release gates.
