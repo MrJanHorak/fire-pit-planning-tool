@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MasonryEngine } from '../../engine/MasonryEngine';
 import type { MasonryInput } from '../../types';
+import { buildBrickSelectionInfo } from '../../utils/brickInspection';
 import {
   buildSeatingReferencePlacements,
   buildCircularCapBrickQuad,
@@ -42,6 +43,31 @@ const baseInput: MasonryInput = {
 };
 
 describe('Stage3D geometry', () => {
+  it('keeps keyboard brick inspection consistent with vent and spacer geometry', () => {
+    const output = new MasonryEngine().calculateDesign(baseInput);
+    const course = output.courses[0];
+    const inspectionOutput = {
+      ...output,
+      courses: [{ ...course, unitCount: 3, specialCourse: 'shim-spacer' as const, spacerIndexes: [1] }],
+      ventSpec: {
+        ...output.ventSpec,
+        targetCourseIndexes: [course.courseIndex],
+        ventBrickIndexes: [2],
+      },
+    };
+
+    expect(buildBrickSelectionInfo(inspectionOutput, course.courseIndex, 1)).toMatchObject({
+      isSpacer: true,
+      requiresTaperCut: false,
+    });
+    expect(buildBrickSelectionInfo(inspectionOutput, course.courseIndex, 2)).toMatchObject({
+      kind: 'vent-opening',
+      isVent: true,
+      requiresTaperCut: false,
+    });
+    expect(buildBrickSelectionInfo(inspectionOutput, course.courseIndex, 3)).toBeNull();
+  });
+
   it('uses capstone centerline diameter for cap ring radius', () => {
     const engine = new MasonryEngine();
     const output = engine.calculateDesign(baseInput);

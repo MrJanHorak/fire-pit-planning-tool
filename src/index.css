@@ -61,6 +61,44 @@ summary:focus-visible {
   row-gap: 0.25rem;
 }
 
+.stage3d-controls-panel button {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  font-size: 0.875rem;
+}
+
+.stage3d-controls-panel p {
+  font-size: 0.75rem;
+}
+
+.stage3d-controls-panel {
+  overscroll-behavior: contain;
+  scrollbar-color: rgba(125, 78, 44, 0.55) transparent;
+  scrollbar-width: thin;
+}
+
+.stage3d-controls-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.stage3d-controls-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.stage3d-controls-panel::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(125, 78, 44, 0.55);
+}
+
+html[data-theme='dark'] .stage3d-controls-panel {
+  background: rgba(34, 23, 15, 0.94) !important;
+  scrollbar-color: rgba(205, 165, 124, 0.5) transparent;
+}
+
+html[data-theme='dark'] .stage3d-controls-panel::-webkit-scrollbar-thumb {
+  background: rgba(205, 165, 124, 0.5);
+}
+
 html[data-theme='dark'] body {
   color: #f2e4cf;
   background:

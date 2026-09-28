@@ -21,6 +21,7 @@ import {
 } from 'three';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import type { Group, Mesh, Scene } from 'three';
+import { buildBrickSelectionInfo, type BrickSelectionInfo } from '../utils/brickInspection';
 import type {
   MasonryOutput,
   SeatingAreaShape,
@@ -46,16 +47,6 @@ interface Stage3DProps {
     message: string;
   }) => void;
   onModelExportComplete?: (result: { ok: boolean; message: string }) => void;
-}
-
-interface BrickSelectionInfo {
-  id: string;
-  courseIndex: number;
-  brickIndex: number;
-  kind: 'wall-brick' | 'vent-opening';
-  isSpacer: boolean;
-  requiresTaperCut: boolean;
-  isVent: boolean;
 }
 
 type StageLodLevel = 'high' | 'medium' | 'low';
@@ -2089,6 +2080,12 @@ export default function Stage3D({
   const [selectedBrick, setSelectedBrick] = useState<BrickSelectionInfo | null>(
     null,
   );
+  const inspectedWallBrick = selectedBrick?.id.startsWith('outer-')
+    ? null
+    : selectedBrick;
+  const inspectedCourse = output.courses.find(
+    (course) => course.courseIndex === inspectedWallBrick?.courseIndex,
+  );
   const [showDimensions, setShowDimensions] = useState(false);
   const orbitRef = useRef<OrbitHandle>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -3076,22 +3073,30 @@ export default function Stage3D({
 
   return (
     <div className='stage3d-shell card-rise relative h-[620px] rounded-2xl border border-amber-900/20 bg-amber-100/70 p-2 shadow-lg sm:h-[680px]'>
-      <div className='absolute right-2 top-2 z-10 flex flex-col items-end gap-2 sm:right-4 sm:top-4'>
-        {/* Hoverable wrapper - always has presence for hover detection */}
-        <div
-          className='flex flex-col items-end gap-2'
-          onMouseEnter={() => setShowControls(true)}
-          onMouseLeave={() => setShowControls(false)}
-        >
-          {/* Main controls panel - expands on hover */}
-          <div
-            className='stage3d-controls-panel overflow-y-auto overflow-x-hidden transition-all duration-300 ease-out'
-            style={{
-              maxWidth: showControls ? '300px' : '0px',
-              maxHeight: showControls ? '640px' : '0px',
-              opacity: showControls ? 1 : 0,
-            }}
+      <div className='absolute bottom-2 right-2 top-2 z-10 flex flex-col items-end sm:bottom-4 sm:right-4 sm:top-4'>
+        <div className='flex max-h-full min-h-0 flex-col items-end gap-2'>
+          <button
+            type='button'
+            aria-label='3D display controls'
+            aria-expanded={showControls}
+            aria-controls='stage3d-controls-panel'
+            onClick={() => setShowControls((value) => !value)}
+            className='flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-50/95 text-amber-900 shadow hover:bg-amber-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-950'
           >
+            <svg aria-hidden='true' className='h-5 w-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' />
+              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M15 12a3 3 0 11-6 0 3 3 0 016 0z' />
+            </svg>
+          </button>
+          <div
+            id='stage3d-controls-panel'
+            hidden={!showControls}
+            className='stage3d-controls-panel min-h-0 w-[min(320px,calc(100vw-2rem))] overflow-y-auto overflow-x-hidden rounded-2xl border border-amber-900/20 bg-amber-50/95 p-2 shadow-2xl backdrop-blur'
+          >
+            <div className='mb-2 px-1 pt-1'>
+              <h2 className='text-sm font-bold text-amber-950'>View settings</h2>
+              <p className='text-xs text-amber-900/80'>Changes how the preview looks.</p>
+            </div>
             <div className='rounded-xl bg-amber-50/95 px-3 py-2 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
               <p className='mb-1 text-[10px] uppercase tracking-wide text-amber-900/70'>
                 Mortar
@@ -3100,6 +3105,8 @@ export default function Stage3D({
                 {(['solid', 'ghost', 'off'] as MortarMode[]).map((mode) => (
                   <button
                     key={mode}
+                    type='button'
+                    aria-pressed={mortarMode === mode}
                     className={`rounded-full px-2 py-1 ${mortarMode === mode ? 'bg-amber-900 text-amber-50' : 'bg-amber-200/80 text-amber-950'}`}
                     onClick={() => setMortarMode(mode)}
                     aria-label={`Set mortar mode to ${mode}`}
@@ -3120,6 +3127,8 @@ export default function Stage3D({
                 ).map((s) => (
                   <button
                     key={s}
+                    type='button'
+                    aria-pressed={materialStyle === s}
                     style={{ backgroundColor: STYLE_PALETTES[s].swatch }}
                     className={`h-6 w-6 rounded-full border-2 transition-transform ${
                       materialStyle === s
@@ -3184,88 +3193,51 @@ export default function Stage3D({
               </>
             )}
 
-            <div className='mt-2 flex items-center gap-2 rounded-full bg-amber-50/95 px-3 py-1.5 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
-              <span>Wireframe</span>
-              <button
-                className={`h-5 w-10 rounded-full transition-colors ${wireframe ? 'bg-amber-900' : 'bg-amber-300'}`}
-                onClick={() => setWireframe((value) => !value)}
-                aria-label='Toggle wireframe'
-              >
-                <span
-                  className={`block h-4 w-4 rounded-full bg-amber-50 transition-transform ${wireframe ? 'translate-x-5' : 'translate-x-0.5'}`}
-                />
-              </button>
-            </div>
-
-            <div className='mt-2 flex items-center gap-2 rounded-full bg-amber-50/95 px-3 py-1.5 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
-              <span>Outlines</span>
-              <button
-                className={`h-5 w-10 rounded-full transition-colors ${showBrickOutlines ? 'bg-amber-900' : 'bg-amber-300'}`}
-                onClick={() => setShowBrickOutlines((value) => !value)}
-                aria-label='Toggle brick outlines'
-              >
-                <span
-                  className={`block h-4 w-4 rounded-full bg-amber-50 transition-transform ${showBrickOutlines ? 'translate-x-5' : 'translate-x-0.5'}`}
-                />
-              </button>
-            </div>
-
-            <div className='mt-2 flex items-center gap-2 rounded-full bg-amber-50/95 px-3 py-1.5 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
-              <span>Flame</span>
-              <button
-                className={`h-5 w-10 rounded-full transition-colors ${showFlame ? 'bg-orange-500' : 'bg-amber-300'}`}
-                onClick={() => setShowFlame((value) => !value)}
-                aria-label='Toggle flame'
-              >
-                <span
-                  className={`block h-4 w-4 rounded-full bg-amber-50 transition-transform ${showFlame ? 'translate-x-5' : 'translate-x-0.5'}`}
-                />
-              </button>
-            </div>
-
-            <div className='mt-2 flex items-center gap-2 rounded-full bg-amber-50/95 px-3 py-1.5 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
-              <span>FX</span>
-              <button
-                className={`h-5 w-10 rounded-full transition-colors ${enableAdvancedEffects ? 'bg-blue-500' : 'bg-amber-300'}`}
-                onClick={() => setEnableAdvancedEffects((value) => !value)}
-                aria-label='Toggle advanced lighting effects'
-                title='Toggle bloom and ambient occlusion'
-              >
-                <span
-                  className={`block h-4 w-4 rounded-full bg-amber-50 transition-transform ${enableAdvancedEffects ? 'translate-x-5' : 'translate-x-0.5'}`}
-                />
-              </button>
-            </div>
-
-            <div className='mt-2 flex items-center gap-2 rounded-full bg-amber-50/95 px-3 py-1.5 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
-              <span>Dims</span>
-              <button
-                className={`h-5 w-10 rounded-full transition-colors ${showDimensions ? 'bg-blue-600' : 'bg-amber-300'}`}
-                onClick={() => setShowDimensions((v) => !v)}
-                aria-label='Toggle dimension annotations'
-                title='Toggle dimension annotations'
-              >
-                <span
-                  className={`block h-4 w-4 rounded-full bg-amber-50 transition-transform ${showDimensions ? 'translate-x-5' : 'translate-x-0.5'}`}
-                />
-              </button>
-            </div>
-
-            {seatingArea && (
-              <div className='mt-2 flex items-center gap-2 rounded-full bg-amber-50/95 px-3 py-1.5 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
-                <span>Seating</span>
-                <button
-                  className={`h-5 w-10 rounded-full transition-colors ${showSeatingGuides ? 'bg-amber-900' : 'bg-amber-300'}`}
-                  onClick={() => setShowSeatingGuides((value) => !value)}
-                  aria-label='Toggle seating reference guides'
-                >
-                  <span
-                    className={`block h-4 w-4 rounded-full bg-amber-50 transition-transform ${showSeatingGuides ? 'translate-x-5' : 'translate-x-0.5'}`}
-                  />
-                </button>
+            <section className='mt-2 rounded-xl border border-amber-900/15 bg-white/60 p-2'>
+              <h3 className='mb-2 px-1 text-xs font-bold uppercase tracking-wide text-amber-900'>
+                Display
+              </h3>
+              <div className='grid grid-cols-1 gap-2 min-[420px]:grid-cols-2'>
+                {[
+                  { label: 'Wireframe', checked: wireframe, onToggle: () => setWireframe((value) => !value) },
+                  { label: 'Outlines', checked: showBrickOutlines, onToggle: () => setShowBrickOutlines((value) => !value) },
+                  { label: 'Flame', checked: showFlame, onToggle: () => setShowFlame((value) => !value) },
+                  { label: 'Effects', checked: enableAdvancedEffects, onToggle: () => setEnableAdvancedEffects((value) => !value) },
+                  { label: 'Dimensions', checked: showDimensions, onToggle: () => setShowDimensions((value) => !value) },
+                  ...(seatingArea
+                    ? [{ label: 'Seating guides', checked: showSeatingGuides, onToggle: () => setShowSeatingGuides((value) => !value) }]
+                    : []),
+                ].map(({ label, checked, onToggle }) => (
+                  <button
+                    key={label}
+                    type='button'
+                    role='switch'
+                    aria-checked={checked}
+                    onClick={onToggle}
+                    className={`flex min-h-11 items-center justify-between gap-2 rounded-lg border px-2 py-1 text-left font-semibold transition-colors ${
+                      checked
+                        ? 'border-amber-800/40 bg-amber-900 text-amber-50'
+                        : 'border-amber-900/15 bg-white/80 text-amber-950 hover:bg-amber-100'
+                    }`}
+                  >
+                    <span>{label}</span>
+                    <span aria-hidden='true' className={`relative h-5 w-8 shrink-0 rounded-full ${
+                      checked ? 'bg-white/35' : 'bg-amber-900/25'
+                    }`}>
+                      <span className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
+                        checked ? 'translate-x-3' : ''
+                      }`} />
+                    </span>
+                  </button>
+                ))}
               </div>
-            )}
-
+            </section>
+            <details className='mt-2 rounded-xl border border-amber-900/15 bg-white/60 p-2'>
+              <summary className='flex min-h-11 cursor-pointer items-center justify-between gap-2 rounded-lg px-2 text-xs font-bold text-amber-950 hover:bg-amber-100/60'>
+                <span>More view options</span>
+                <span aria-hidden='true'>⌄</span>
+              </summary>
+              <p className='px-2 pb-1 text-xs text-amber-900/80'>Cutaway, camera, and brick inspection</p>
             <div className='mt-2 rounded-xl bg-amber-50/95 px-3 py-2 text-[11px] font-semibold text-amber-950 shadow sm:text-xs'>
               <p className='mb-1 text-[10px] uppercase tracking-wide text-amber-900/70'>
                 Cutaway
@@ -3274,6 +3246,8 @@ export default function Stage3D({
                 {(['off', 'quarter', 'half'] as CutawayMode[]).map((mode) => (
                   <button
                     key={mode}
+                    type='button'
+                    aria-pressed={cutawayMode === mode}
                     onClick={() => setCutawayMode(mode)}
                     className={`rounded-md px-2 py-1 text-[10px] font-semibold transition-colors ${
                       cutawayMode === mode
@@ -3312,6 +3286,8 @@ export default function Stage3D({
                 {Object.entries(cameraPresets).map(([key, preset]) => (
                   <button
                     key={key}
+                    type='button'
+                    aria-pressed={activeCameraPreset === key}
                     onClick={() => {
                       animateToPreset(preset);
                       setActiveCameraPreset(key);
@@ -3332,8 +3308,56 @@ export default function Stage3D({
               </p>
             </div>
 
+            {isLodHigh && (
+              <div className='mt-2 rounded-xl bg-amber-50/95 px-3 py-3 text-amber-950 shadow'>
+                <p className='mb-2 font-semibold'>Inspect wall brick</p>
+                <label className='block text-xs font-semibold'>
+                  Course
+                  <select
+                    className='mt-1 block min-h-11 w-full rounded-md border border-amber-900/25 bg-white px-2 text-sm text-amber-950'
+                    value={inspectedWallBrick?.courseIndex ?? ''}
+                    onChange={(event) =>
+                      setSelectedBrick(
+                        buildBrickSelectionInfo(output, Number(event.target.value), 0),
+                      )
+                    }
+                  >
+                    <option value='' disabled>Choose a course</option>
+                    {output.courses.map((course) => (
+                      <option key={course.courseIndex} value={course.courseIndex}>
+                        Course {course.courseIndex + 1}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {inspectedCourse && (
+                  <label className='mt-2 block text-xs font-semibold'>
+                    Brick
+                    <select
+                      className='mt-1 block min-h-11 w-full rounded-md border border-amber-900/25 bg-white px-2 text-sm text-amber-950'
+                      value={inspectedWallBrick?.brickIndex ?? 0}
+                      onChange={(event) =>
+                        setSelectedBrick(
+                          buildBrickSelectionInfo(
+                            output,
+                            inspectedCourse.courseIndex,
+                            Number(event.target.value),
+                          ),
+                        )
+                      }
+                    >
+                      {Array.from({ length: inspectedCourse.unitCount }, (_, index) => (
+                        <option key={index} value={index}>Brick {index + 1}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
+            )}
+            </details>
+
             {isLodHigh && selectedBrick && (
-              <div className='mt-2 rounded-xl border border-sky-900/25 bg-sky-50/95 px-3 py-2 text-[11px] text-sky-950 shadow sm:text-xs'>
+              <div aria-live='polite' className='mt-2 rounded-xl border border-sky-900/25 bg-sky-50/95 px-3 py-2 text-[11px] text-sky-950 shadow sm:text-xs'>
                 <p className='text-[10px] font-bold uppercase tracking-wide text-sky-900/80'>
                   Selected Brick
                 </p>
@@ -3357,30 +3381,6 @@ export default function Stage3D({
             )}
           </div>
 
-          {/* Visual queue hint when controls are hidden - gear icon */}
-          {!showControls && (
-            <div className='flex h-8 w-8 items-center justify-center rounded-full bg-amber-50/90 shadow transition-colors hover:bg-amber-100'>
-              <svg
-                className='h-5 w-5 text-amber-900'
-                fill='none'
-                stroke='currentColor'
-                viewBox='0 0 24 24'
-              >
-                <path
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                  strokeWidth={2}
-                  d='M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z'
-                />
-                <path
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                  strokeWidth={2}
-                  d='M15 12a3 3 0 11-6 0 3 3 0 016 0z'
-                />
-              </svg>
-            </div>
-          )}
         </div>
       </div>
 
@@ -4032,15 +4032,11 @@ export default function Stage3D({
                     ? Math.max(0.04, shimWidthFt - mortarJointFt * 0.35)
                     : visBrickWidthFt;
                   const brickId = `${course.courseIndex}-${brickIdx}`;
-                  const brickInfo: BrickSelectionInfo = {
-                    id: brickId,
-                    courseIndex: course.courseIndex,
-                    brickIndex: brickIdx,
-                    kind: isVentOpening ? 'vent-opening' : 'wall-brick',
-                    isSpacer,
-                    requiresTaperCut: wallRequiresTaperCut && !isSpacer,
-                    isVent: isVentOpening,
-                  };
+                  const brickInfo = buildBrickSelectionInfo(
+                    output,
+                    course.courseIndex,
+                    brickIdx,
+                  )!;
 
                   if (
                     !isVentOpening &&
