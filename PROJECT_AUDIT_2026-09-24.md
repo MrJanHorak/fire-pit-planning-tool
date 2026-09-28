@@ -171,3 +171,9 @@ TypeScript, all 118 tests, and the production build pass locally for this contin
 - Added a hosted-URL option (`E2E_BASE_URL`) to the Playwright configuration so the same smoke suite can check future preview deployments without launching a local server.
 - Added automated WCAG A/AA browser checks for designer and build-plan views in light and dark themes, plus the open phone preview settings. The first scan found insufficient contrast on four plan-shape labels. Stronger label and hint colors now pass the scan.
 - The build-plan course diagram can now receive keyboard focus for horizontal scrolling, and the card entrance animation is disabled when reduced motion is requested. Automated checks do not replace manual screen-reader, zoom, and device testing.
+
+## Keyboard and text-scale continuation (2026-09-28)
+
+- At a 768 px viewport with the root font size doubled, the main diameter input remains visible, editable, and the page avoids horizontal overflow. This is a text-scaling check, not a complete browser-zoom audit.
+- Both tab strips now use one tab stop and support Left/Right Arrow, Home, and End to move focus, with Enter/Space activation. Build-plan tabs now identify their shared tab panel.
+- The enlarged cut-detail overlay now has a named dialog, Escape and outside-click dismissal, a focus trap, a keyboard-scrollable diagram, and focus return to the Expand button. Browser tests cover these behaviors and automated WCAG A/AA scans cover the open overlay and all build-plan sections in both themes.

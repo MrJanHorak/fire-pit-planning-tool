@@ -50,7 +50,7 @@ The 3D preview requires WebGL. The remaining planner and exports can be used whe
 
 ### Browser release checks
 
-The browser suite checks autosave, project JSON round-trip, planning-packet export, phone-width preview controls, and automated WCAG A/AA checks in both themes. Install Chrome locally, then run:
+The browser suite checks autosave, project JSON round-trip, planning-packet export, phone-width preview controls, automated WCAG A/AA checks in both themes, enlarged root text, keyboard tab navigation, and enlarged-detail dialog focus. Install Chrome locally, then run:
 
 ```bash
 npm run test:e2e

@@ -16,6 +16,7 @@ import type { MasonryInput } from './types';
 import { DEFAULT_MASONRY_INPUT } from './utils/defaultInput';
 import { buildFoundationAdvisory } from './utils/foundationAdvisory';
 import { summarizeSafetyWarnings } from './utils/safetyReview';
+import { handleTabListKeyDown } from './utils/tabKeyboard';
 import {
   buildProjectFile,
   deleteStoredProject,
@@ -1618,12 +1619,13 @@ export default function App() {
             </div>
 
             <div className='flex flex-wrap gap-2'>
-              <div className='flex gap-2' role='tablist' aria-label='View mode'>
+              <div className='flex gap-2' role='tablist' aria-label='View mode' onKeyDown={handleTabListKeyDown}>
                 <button
                   id='visualization-tab-3d'
                   role='tab'
                   aria-selected={view === '3d'}
                   aria-controls='visualization-panel'
+                  tabIndex={view === '3d' ? 0 : -1}
                   className={`rounded-full px-4 py-2 text-sm font-semibold ${view === '3d' ? 'bg-amber-900 text-amber-50' : 'bg-amber-100 text-amber-900'}`}
                   onClick={() => setView('3d')}
                 >
@@ -1634,6 +1636,7 @@ export default function App() {
                   role='tab'
                   aria-selected={view === 'construction'}
                   aria-controls='visualization-panel'
+                  tabIndex={view === 'construction' ? 0 : -1}
                   className={`rounded-full px-4 py-2 text-sm font-semibold ${view === 'construction' ? 'bg-amber-900 text-amber-50' : 'bg-amber-100 text-amber-900'}`}
                   onClick={() => setView('construction')}
                 >
@@ -1673,6 +1676,7 @@ export default function App() {
             <div
               id='visualization-panel'
               role='tabpanel'
+              tabIndex={0}
               aria-labelledby={
                 view === '3d'
                   ? 'visualization-tab-3d'

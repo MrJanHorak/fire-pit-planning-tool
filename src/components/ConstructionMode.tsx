@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { MasonryOutput } from '../types';
 import type { MasonryInput } from '../types';
 import {
@@ -12,7 +12,9 @@ import {
   buildWallBrickTaperCutSvg,
 } from '../utils/constructionPacket';
 import { buildFoundationAdvisory } from '../utils/foundationAdvisory';
+import { handleTabListKeyDown } from '../utils/tabKeyboard';
 import { FoundationRiskBadge, FoundationRiskLegend } from './FoundationReview';
+import { useModalFocus } from './useModalFocus';
 
 interface ConstructionModeProps {
   input: MasonryInput;
@@ -32,6 +34,8 @@ export default function ConstructionMode({
     null,
   );
   const [isPreparingReport, setIsPreparingReport] = useState(false);
+  const detailDialogRef = useRef<HTMLDivElement>(null);
+  const detailCloseRef = useRef<HTMLButtonElement>(null);
   const [activeTab, setActiveTab] = useState<ConstructionTab>(() => {
     if (typeof window === 'undefined') return 'layout';
     const stored = window.localStorage.getItem(CONSTRUCTION_TAB_KEY);
@@ -44,6 +48,12 @@ export default function ConstructionMode({
     setActiveTab(tab);
     window.localStorage.setItem(CONSTRUCTION_TAB_KEY, tab);
   };
+  useModalFocus(
+    expandedDetail !== null,
+    detailDialogRef,
+    detailCloseRef,
+    () => setExpandedDetail(null),
+  );
   const coursePlanMarkup = buildCoursePlanSvg(output, input);
   const wallBrickCutMarkup = buildWallBrickTaperCutSvg(output);
   const capstonePlacementMarkup = buildCapstonePlacementSampleSvg(output);
@@ -242,6 +252,7 @@ export default function ConstructionMode({
         className='mb-3 grid grid-cols-3 gap-2 rounded-xl border border-amber-900/20 bg-white/70 p-1'
         role='tablist'
         aria-label='Build plan sections'
+        onKeyDown={handleTabListKeyDown}
       >
         {[
           { value: 'layout' as const, label: 'Course Layout' },
@@ -254,8 +265,11 @@ export default function ConstructionMode({
               <button
                 key={tab.value}
                 type='button'
+                id={`construction-tab-${tab.value}`}
                 role='tab'
                 aria-selected='true'
+                aria-controls='construction-tab-panel'
+                tabIndex={0}
                 className='rounded-lg bg-amber-900 px-3 py-2 text-xs font-semibold text-amber-50 transition-colors'
                 onClick={() => handleTabChange(tab.value)}
               >
@@ -268,8 +282,11 @@ export default function ConstructionMode({
             <button
               key={tab.value}
               type='button'
+              id={`construction-tab-${tab.value}`}
               role='tab'
               aria-selected='false'
+              aria-controls='construction-tab-panel'
+              tabIndex={-1}
               className='rounded-lg bg-white px-3 py-2 text-xs font-semibold text-amber-900 transition-colors hover:bg-amber-100/80'
               onClick={() => handleTabChange(tab.value)}
             >
@@ -279,6 +296,12 @@ export default function ConstructionMode({
         })}
       </div>
 
+      <div
+        id='construction-tab-panel'
+        role='tabpanel'
+        aria-labelledby={`construction-tab-${activeTab}`}
+        tabIndex={0}
+      >
       {activeTab === 'layout' && (
         <>
           <div className='mb-3 rounded-lg border border-amber-900/20 bg-white/75 px-3 py-2'>
@@ -516,17 +539,31 @@ export default function ConstructionMode({
           </div>
         </div>
       )}
+      </div>
 
       {expandedDetail && (
-        <div className='fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4'>
-          <div className='w-full max-w-5xl rounded-xl border border-amber-900/20 bg-amber-50 p-4 shadow-xl'>
+        <div
+          className='fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4'
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setExpandedDetail(null);
+          }}
+        >
+          <div
+            ref={detailDialogRef}
+            role='dialog'
+            aria-modal='true'
+            aria-labelledby='construction-detail-title'
+            tabIndex={-1}
+            className='w-full max-w-5xl rounded-xl border border-amber-900/20 bg-amber-50 p-4 shadow-xl'
+          >
             <div className='mb-3 flex items-center justify-between gap-2'>
-              <h4 className='text-base font-semibold text-amber-950'>
+              <h4 id='construction-detail-title' className='text-base font-semibold text-amber-950'>
                 {expandedDetail === 'wall'
                   ? 'Wall Brick Cut Detail'
                   : 'Capstone Placement Detail'}
               </h4>
               <button
+                ref={detailCloseRef}
                 type='button'
                 className='rounded-full bg-amber-900 px-3 py-1 text-xs font-semibold text-amber-50'
                 onClick={() => setExpandedDetail(null)}
@@ -536,6 +573,9 @@ export default function ConstructionMode({
             </div>
             <div
               className='max-h-[75vh] overflow-auto rounded-lg border border-amber-900/20 bg-white p-2'
+              role='region'
+              aria-label='Enlarged cut detail diagram'
+              tabIndex={0}
               dangerouslySetInnerHTML={{
                 __html:
                   expandedDetail === 'wall'
