@@ -83,6 +83,19 @@ summary:focus-visible {
   scrollbar-width: thin;
 }
 
+.stage3d-controls-shell {
+  pointer-events: none;
+}
+
+.stage3d-controls-trigger,
+.stage3d-controls-panel {
+  pointer-events: auto;
+}
+
+.stage3d-shell canvas {
+  touch-action: none;
+}
+
 .stage3d-controls-panel::-webkit-scrollbar {
   width: 6px;
 }

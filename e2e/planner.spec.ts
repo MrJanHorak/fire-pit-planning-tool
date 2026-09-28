@@ -67,3 +67,55 @@ test('phone view fits and preview settings dismiss by keyboard and outside click
   await page.getByRole('heading', { name: 'Design Inputs' }).click();
   await expect(panel).toBeHidden();
 });
+
+test('phone touch reaches the 3D canvas outside its controls', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 740 });
+  await declineAnalytics(page);
+
+  const canvas = page.locator('.stage3d-shell canvas');
+  await expect(canvas).toBeVisible();
+  await canvas.scrollIntoViewIfNeeded();
+  const canvasHit = await canvas.evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    return document.elementFromPoint(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2) === element;
+  });
+  expect(canvasHit).toBe(true);
+
+  const before = await canvas.screenshot();
+  const bounds = await canvas.boundingBox();
+  expect(bounds).not.toBeNull();
+  const session = await page.context().newCDPSession(page);
+  await session.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 2 });
+  const x = bounds!.x + bounds!.width / 2;
+  const y = bounds!.y + bounds!.height / 2;
+  await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+  await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + 90, y: y + 12 }] });
+  await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await expect.poll(async () => (await canvas.screenshot()).equals(before)).toBe(false);
+
+  const trigger = page.getByRole('button', { name: '3D display controls' });
+  await trigger.click();
+  await expect(page.locator('#stage3d-controls-panel')).toBeVisible();
+  await expect(page.getByRole('switch', { name: 'Effects' })).toHaveAttribute('aria-checked', 'false');
+
+  await page.getByText('What To Do Next', { exact: true }).click();
+  await expect(canvas).toBeVisible();
+  await expect(page.getByText('3D stage is temporarily unavailable.')).toBeHidden();
+});
+
+test('3D context loss offers a simpler graphics retry', async ({ page }) => {
+  await declineAnalytics(page);
+  const canvas = page.locator('.stage3d-shell canvas');
+  await expect(canvas).toBeVisible();
+  const contextLossAvailable = await canvas.evaluate((element) => {
+    const extension = (element as HTMLCanvasElement)
+      .getContext('webgl2')?.getExtension('WEBGL_lose_context');
+    extension?.loseContext();
+    return Boolean(extension);
+  });
+  expect(contextLossAvailable).toBe(true);
+  await expect(page.getByText('The browser lost the 3D graphics context.')).toBeVisible();
+  await page.getByRole('button', { name: 'Retry with simpler graphics' }).click();
+  await expect(canvas).toBeVisible();
+  await expect(page.getByText('3D stage is temporarily unavailable.')).toBeHidden();
+});

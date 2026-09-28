@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ConfirmDialog from './components/ConfirmDialog';
 import SafetyReviewDialog from './components/SafetyReviewDialog';
 import { useModalFocus } from './components/useModalFocus';
@@ -867,7 +867,7 @@ export default function App() {
     });
   };
 
-  const handleStakeholderRenderComplete = (result: {
+  const handleStakeholderRenderComplete = useCallback((result: {
     ok: boolean;
     message: string;
   }) => {
@@ -879,7 +879,7 @@ export default function App() {
         timestamp: new Date().toISOString(),
       });
     }
-  };
+  }, []);
 
   const handleStakeholderRender = () => {
     setView('3d');
@@ -887,7 +887,7 @@ export default function App() {
     setStakeholderRenderSignal((value) => (value ?? 0) + 1);
   };
 
-  const handleGlbExportComplete = (result: { ok: boolean; message: string }) => {
+  const handleGlbExportComplete = useCallback((result: { ok: boolean; message: string }) => {
     setIsExportingGlb(false);
     setProjectNotice(result.message);
     if (result.ok) {
@@ -896,7 +896,7 @@ export default function App() {
         timestamp: new Date().toISOString(),
       });
     }
-  };
+  }, []);
 
   const handleExportGlb = () => {
     setView('3d');

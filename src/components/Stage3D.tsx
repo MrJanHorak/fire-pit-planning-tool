@@ -2,6 +2,7 @@ import { Canvas, useFrame, type ThreeEvent } from '@react-three/fiber';
 import { ContactShadows, Edges, Html, Line, OrbitControls } from '@react-three/drei';
 import {
   Component,
+  memo,
   useEffect,
   useMemo,
   useRef,
@@ -501,28 +502,6 @@ interface CircularCapBrickGeometryInput {
   innerRadiusFt: number;
   outerRadiusFt: number;
   brickLengthIn: number;
-}
-
-/**
- * Probe WebGL availability without consuming a permanent context slot.
- * The test context is released immediately via WEBGL_lose_context.
- */
-function canCreateWebGLContext(): boolean {
-  if (typeof document === 'undefined') return false;
-  const attrs: WebGLContextAttributes = {
-    antialias: false,
-    powerPreference: 'low-power',
-    failIfMajorPerformanceCaveat: false,
-  };
-  const probe = document.createElement('canvas');
-  const ctx =
-    (probe.getContext('webgl2', attrs) as WebGLRenderingContext | null) ??
-    (probe.getContext('webgl', attrs) as WebGLRenderingContext | null) ??
-    (probe.getContext('experimental-webgl', attrs) as WebGLRenderingContext | null);
-  if (!ctx) return false;
-  // Release immediately — Chrome allows ~16 simultaneous contexts.
-  ctx.getExtension('WEBGL_lose_context')?.loseContext();
-  return true;
 }
 
 class Stage3DCanvasErrorBoundary extends Component<
@@ -2050,7 +2029,7 @@ function DimensionAnnotationsScene({
   );
 }
 
-export default function Stage3D({
+function Stage3D({
   output,
   seatingFurnitureCount,
   captureSignal,
@@ -2070,7 +2049,12 @@ export default function Stage3D({
   const [webglBlocked, setWebglBlocked] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
   const [showControls, setShowControls] = useState(false);
-  const [enableAdvancedEffects, setEnableAdvancedEffects] = useState(true);
+  const [useSimplerGraphics, setUseSimplerGraphics] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 639px), (pointer: coarse)').matches,
+  );
+  const [enableAdvancedEffects, setEnableAdvancedEffects] = useState(() =>
+    typeof window === 'undefined' || !window.matchMedia('(max-width: 639px), (pointer: coarse)').matches,
+  );
   const [activeCameraPreset, setActiveCameraPreset] = useState<string | null>(null);
   const [cutawayMode, setCutawayMode] = useState<CutawayMode>('off');
   const [stageLodLevel, setStageLodLevel] = useState<StageLodLevel>('high');
@@ -2091,12 +2075,27 @@ export default function Stage3D({
   const controlsPanelRef = useRef<HTMLDivElement | null>(null);
   const orbitRef = useRef<OrbitHandle>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [canvasElement, setCanvasElement] = useState<HTMLCanvasElement | null>(null);
   const sceneRef = useRef<Scene | null>(null);
   const lastCaptureSignalRef = useRef<number | null | undefined>(undefined);
   const lastGlbExportSignalRef = useRef<number | null | undefined>(undefined);
 
-  // No proactive WebGL check on mount — the Canvas onCreated/onError callbacks
-  // handle detection. Probing here would burn a WebGL context slot unnecessarily.
+  useEffect(() => {
+    if (!canvasElement) return;
+
+    const onContextLost = () => {
+      canvasRef.current = null;
+      sceneRef.current = null;
+      setCanvasElement(null);
+      setUseSimplerGraphics(true);
+      setEnableAdvancedEffects(false);
+      setWebglBlockReason('The browser lost the 3D graphics context. This can happen when graphics memory is limited. Close other tabs if needed, then retry with simpler graphics.');
+      setWebglBlocked(true);
+    };
+
+    canvasElement.addEventListener('webglcontextlost', onContextLost);
+    return () => canvasElement.removeEventListener('webglcontextlost', onContextLost);
+  }, [canvasElement]);
 
   useEffect(() => {
     if (captureSignal == null) {
@@ -2303,31 +2302,20 @@ export default function Stage3D({
     };
   }, [glbExportSignal, onModelExportComplete, webglBlocked]);
 
-  // Proactive check: detect GPU-disabled / hardware acceleration off BEFORE
-  // mounting the Canvas. The probe releases its context immediately so it
-  // doesn't consume a slot. This also catches the R3F v9 edge case where
-  // WebGLRenderer failures throw as unhandled Promise rejections that bypass
-  // React Error Boundaries.
-  useEffect(() => {
-    if (!canCreateWebGLContext()) {
-      setWebglBlocked(true);
-      setWebglBlockReason(
-        'Hardware acceleration appears to be disabled. ' +
-        'In Chrome: open chrome://settings/system and enable "Use graphics acceleration when available", then restart.',
-      );
-    }
-  }, []);
-
-  // Belt-and-suspenders: catch R3F WebGL errors that propagate as unhandled
+  // Catch R3F WebGL errors that propagate as unhandled
   // Promise rejections (they bypass React Error Boundaries in R3F v9).
   useEffect(() => {
     const handler = (evt: PromiseRejectionEvent) => {
       const msg = String(evt.reason?.message ?? evt.reason ?? '');
       if (/webgl context/i.test(msg)) {
+        canvasRef.current = null;
+        sceneRef.current = null;
+        setCanvasElement(null);
+        setUseSimplerGraphics(true);
+        setEnableAdvancedEffects(false);
         setWebglBlocked(true);
         setWebglBlockReason(
-          'WebGL failed to initialize (' + msg + '). ' +
-          'Enable hardware acceleration in your browser settings.',
+          'The browser could not start the 3D view. Retry with simpler graphics. ' + msg,
         );
       }
     };
@@ -2558,7 +2546,7 @@ export default function Stage3D({
     output.thermalAssembly?.innerMaterialName?.toLowerCase().includes('firebrick')
       ? STYLE_PALETTES['firebrick'] ?? palette
       : palette;
-  const isPhotoreal = true;
+  const isPhotoreal = !useSimplerGraphics;
   const lightingConfig = isPhotoreal ? PHOTOREAL_LIGHTING : STYLIZED_LIGHTING;
   const effectiveWireframe = wireframe;
   const effectiveShowBrickOutlines = showBrickOutlines;
@@ -2617,6 +2605,7 @@ export default function Stage3D({
     return !(x > 0 && z > 0);
   };
   const getLodLevelForDistance = (distanceFt: number): StageLodLevel => {
+    if (useSimplerGraphics && distanceFt <= stageGroundRadiusFt * 1.55) return 'medium';
     if (distanceFt <= stageGroundRadiusFt * 1.55) {
       return 'high';
     }
@@ -2628,6 +2617,9 @@ export default function Stage3D({
   const isLodHigh = stageLodLevel === 'high';
   const isLodMedium = stageLodLevel === 'medium';
   const textureMaps = useMemo(() => {
+    if (!isPhotoreal) {
+      return { brickDiffuseMap: null, brickBumpMap: null, brickRoughnessMap: null, groundDiffuseMap: null };
+    }
     const loader = new TextureLoader();
     const brickDiffuseMap = loader.load('/textures/brick_diffuse.jpg');
     const brickBumpMap = loader.load('/textures/brick_bump.jpg');
@@ -2667,9 +2659,13 @@ export default function Stage3D({
       brickRoughnessMap,
       groundDiffuseMap,
     };
-  }, []);
+  }, [isPhotoreal]);
   const { brickDiffuseMap, brickBumpMap, brickRoughnessMap, groundDiffuseMap } =
     textureMaps;
+
+  useEffect(() => () => {
+    Object.values(textureMaps).forEach((texture) => texture?.dispose());
+  }, [textureMaps]);
 
   const brickAlbedoTexture = useMemo(() => {
     const texture = createProceduralTexture((ctx, size) => {
@@ -3041,16 +3037,8 @@ export default function Stage3D({
   };
 
   const retryWebglStage = () => {
-    if (!canCreateWebGLContext()) {
-      // Still broken — give an actionable message rather than silently failing
-      setWebglBlockReason(
-        'Hardware acceleration is still unavailable. ' +
-        'In Chrome: go to chrome://settings/system → enable "Use graphics acceleration when available" → restart Chrome. ' +
-        'In Edge: edge://settings/system → same toggle.',
-      );
-      return;
-    }
-    // GPU is usable again — force a fresh Canvas mount via key change
+    setUseSimplerGraphics(true);
+    setEnableAdvancedEffects(false);
     setWebglBlockReason(null);
     setWebglBlocked(false);
     setCanvasKey((k) => k + 1);
@@ -3059,7 +3047,7 @@ export default function Stage3D({
     setStageLodLevel(getLodLevelForDistance(cameraDistanceFt));
     setHoveredBrickId(null);
     setSelectedBrick(null);
-  }, [cameraDistanceFt]);
+  }, [cameraDistanceFt, useSimplerGraphics]);
 
   useEffect(() => {
     if (!isLodHigh) {
@@ -3539,7 +3527,7 @@ export default function Stage3D({
           <div className='max-w-md space-y-3 text-center text-red-950'>
             <p className='text-sm font-semibold'>3D stage is temporarily unavailable.</p>
             <p className='text-xs leading-5'>
-              WebGL failed to initialize. You can continue planning with the rest of
+              The 3D view stopped. You can continue planning with the rest of
               the app while 3D is paused.
             </p>
             {webglBlockReason && (
@@ -3552,16 +3540,7 @@ export default function Stage3D({
                 className='rounded-full bg-red-900 px-3 py-1.5 text-xs font-semibold text-red-50'
                 onClick={retryWebglStage}
               >
-                Retry 3D
-              </button>
-              <button
-                className='rounded-full bg-red-100 px-3 py-1.5 text-xs font-semibold text-red-900'
-                onClick={() => {
-                  setEnableAdvancedEffects(false);
-                  retryWebglStage();
-                }}
-              >
-                Retry in light mode
+                Retry with simpler graphics
               </button>
             </div>
           </div>
@@ -3570,11 +3549,16 @@ export default function Stage3D({
         <Stage3DCanvasErrorBoundary
           key={canvasKey}
           onError={(reason: string) => {
+            canvasRef.current = null;
+            sceneRef.current = null;
+            setCanvasElement(null);
+            setUseSimplerGraphics(true);
+            setEnableAdvancedEffects(false);
             setWebglBlocked(true);
             setWebglBlockReason(
               reason
                 ? `Render error: ${reason}`
-                : 'WebGL context creation failed. Try enabling hardware acceleration in your browser settings.',
+                : 'The browser could not start the 3D view.',
             );
           }}
         >
@@ -3588,7 +3572,7 @@ export default function Stage3D({
               ],
               fov: 48,
             }}
-            dpr={[1, 1.5]}
+            dpr={useSimplerGraphics ? 1 : [1, 1.5]}
             frameloop='demand'
             gl={{
               antialias: false,
@@ -3598,6 +3582,7 @@ export default function Stage3D({
             }}
             onCreated={({ gl, scene }) => {
               canvasRef.current = gl.domElement;
+              setCanvasElement(gl.domElement);
               sceneRef.current = scene;
               setWebglBlockReason(null);
             }}
@@ -6276,16 +6261,18 @@ export default function Stage3D({
                 spanDepthFt={geometry.wallSpanDepthFt}
               />
             )}
-            <ContactShadows
+            {!useSimplerGraphics && <ContactShadows
               position={[0, -0.019, 0]}
               opacity={isPhotoreal ? 0.7 : 0.5}
               scale={Math.max(7, stageGroundRadiusFt * 2)}
               blur={isPhotoreal ? 1.6 : 2.8}
               far={Math.max(2.5, stageGroundRadiusFt * 0.85)}
-            />
+            />}
           </Canvas>
         </Stage3DCanvasErrorBoundary>
       )}
     </div>
   );
 }
+
+export default memo(Stage3D);
