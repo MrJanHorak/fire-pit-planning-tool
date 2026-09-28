@@ -1,5 +1,7 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import ConfirmDialog from './components/ConfirmDialog';
+import SafetyReviewDialog from './components/SafetyReviewDialog';
+import { useModalFocus } from './components/useModalFocus';
 import ControlPanel from './components/ControlPanel';
 import { FoundationRiskBadge } from './components/FoundationReview';
 import SafetyClearanceDiagram from './components/SafetyClearanceDiagram';
@@ -341,9 +343,11 @@ export default function App() {
     useState<PendingSnapshotAction>(null);
   const [showClearBrowserDataConfirm, setShowClearBrowserDataConfirm] =
     useState(false);
+  const [safetyDialogOpen, setSafetyDialogOpen] = useState(false);
   const [showWorkspaceTools, setShowWorkspaceTools] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cookieBannerPrimaryActionRef = useRef<HTMLButtonElement | null>(null);
+  const cookieDialogRef = useRef<HTMLElement | null>(null);
   const hasInitializedAutosave = useRef(false);
   const hasConfiguredAnalytics = useRef(false);
   const [referencesOpen, setReferencesOpen] = useState<boolean>(() => {
@@ -419,6 +423,12 @@ export default function App() {
     }
     return storedValue !== 'granted' && storedValue !== 'denied';
   });
+  useModalFocus(
+    showCookieBanner,
+    cookieDialogRef,
+    cookieBannerPrimaryActionRef,
+    analyticsConsent === 'unknown' ? undefined : () => setShowCookieBanner(false),
+  );
 
   const ensureAnalyticsScriptLoaded = () => {
     if (typeof document === 'undefined') {
@@ -549,31 +559,6 @@ export default function App() {
   useEffect(() => {
     updateAnalyticsConsent(analyticsConsent);
   }, [analyticsConsent]);
-
-  useEffect(() => {
-    if (!showCookieBanner) {
-      return;
-    }
-
-    cookieBannerPrimaryActionRef.current?.focus();
-  }, [showCookieBanner]);
-
-  useEffect(() => {
-    if (!showCookieBanner) {
-      return;
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && analyticsConsent !== 'unknown') {
-        setShowCookieBanner(false);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [analyticsConsent, showCookieBanner]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -977,12 +962,6 @@ export default function App() {
     () => summarizeSafetyWarnings(output.warnings),
     [output.warnings],
   );
-  const sortedSafetyWarnings = [
-    ...safetyReview.action,
-    ...safetyReview.review,
-    ...safetyReview.information,
-  ];
-  const visibleSafetyWarningCount = Math.max(3, safetyReview.action.length);
   const activeQuickPreset = useMemo(
     () => detectActiveQuickPreset(input),
     [input],
@@ -1178,6 +1157,13 @@ export default function App() {
 
   return (
     <main className='mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:py-10'>
+      <SafetyReviewDialog
+        open={safetyDialogOpen}
+        action={safetyReview.action}
+        review={safetyReview.review}
+        information={safetyReview.information}
+        onClose={() => setSafetyDialogOpen(false)}
+      />
       <ConfirmDialog
         open={pendingSnapshotAction !== null}
         title={
@@ -1550,44 +1536,32 @@ export default function App() {
             <section
               id='safety-review'
               aria-label='Design safety review'
-              className={`card-rise rounded-2xl border p-4 shadow-lg ${
+              className={`card-rise rounded-2xl border p-3 shadow-lg ${
                 safetyReview.priority === 'action'
                   ? 'border-red-800/35 bg-red-50/90'
                   : 'border-amber-900/25 bg-amber-50/85'
               }`}
             >
-              <h2 className='text-sm font-bold uppercase tracking-wide text-amber-950'>
-                {safetyReview.action.length > 0
-                  ? `${safetyReview.action.length} safety item${safetyReview.action.length === 1 ? '' : 's'} to resolve`
-                  : safetyReview.review.length > 0
-                    ? `${safetyReview.review.length} design advisor${safetyReview.review.length === 1 ? 'y' : 'ies'} to review`
-                    : safetyReview.information.length > 0
-                      ? `${safetyReview.information.length} planning reminder${safetyReview.information.length === 1 ? '' : 's'}`
-                      : 'No modeled warnings'}
-              </h2>
-              <p className='mt-1 text-xs leading-5 text-amber-900/85'>
-                This is a planning screen, not a code approval or engineering sign-off.
-                Confirm local rules, manufacturer instructions, and site conditions before building.
-              </p>
-              {(safetyReview.action.length > 0 || safetyReview.review.length > 0 || safetyReview.information.length > 0) && (
-                <ul className='mt-2 list-disc space-y-1 pl-5 text-sm text-amber-950'>
-                  {sortedSafetyWarnings
-                    .slice(0, visibleSafetyWarningCount)
-                    .map((warning) => <li key={warning.code}>{warning.message}</li>)}
-                </ul>
-              )}
-              {sortedSafetyWarnings.length > visibleSafetyWarningCount && (
-                <details className='mt-2 text-sm text-amber-950'>
-                  <summary className='cursor-pointer font-semibold'>
-                    Show {sortedSafetyWarnings.length - visibleSafetyWarningCount} more items
-                  </summary>
-                  <ul className='mt-2 list-disc space-y-1 pl-5'>
-                    {sortedSafetyWarnings
-                      .slice(visibleSafetyWarningCount)
-                      .map((warning) => <li key={warning.code}>{warning.message}</li>)}
-                  </ul>
-                </details>
-              )}
+              <button
+                type='button'
+                aria-haspopup='dialog'
+                className='flex w-full items-center justify-between gap-3 rounded-xl px-2 py-1 text-left text-sm font-semibold text-amber-950 hover:bg-white/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-950'
+                onClick={() => setSafetyDialogOpen(true)}
+              >
+                <span>
+                  {safetyReview.action.length > 0
+                    ? `${safetyReview.action.length} safety item${safetyReview.action.length === 1 ? '' : 's'} to resolve`
+                    : safetyReview.review.length > 0
+                      ? `${safetyReview.review.length} design advisor${safetyReview.review.length === 1 ? 'y' : 'ies'} to review`
+                      : safetyReview.information.length > 0
+                        ? `${safetyReview.information.length} planning reminder${safetyReview.information.length === 1 ? '' : 's'}`
+                        : 'No modeled warnings'}
+                  {(safetyReview.action.length + safetyReview.review.length + safetyReview.information.length >
+                    (safetyReview.action.length || safetyReview.review.length || safetyReview.information.length)) &&
+                    ` · ${safetyReview.action.length + safetyReview.review.length + safetyReview.information.length} total`}
+                </span>
+                <span className='shrink-0 underline underline-offset-2'>View review</span>
+              </button>
             </section>
             <div className='card-rise grid gap-2 rounded-2xl border border-amber-900/20 bg-amber-50/75 p-3 shadow-lg sm:grid-cols-3'>
               <div className='rounded-xl border border-amber-900/15 border-t-2 border-t-amber-700/70 bg-white/70 px-3 py-2'>
@@ -2068,6 +2042,7 @@ export default function App() {
           }}
         >
           <section
+            ref={cookieDialogRef}
             role='dialog'
             aria-modal='true'
             aria-labelledby='analytics-consent-title'

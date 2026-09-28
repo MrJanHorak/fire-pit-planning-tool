@@ -75,6 +75,9 @@ describe('construction packet export', () => {
     expect(html).toContain('Capstone Overhang');
     expect(html).toContain('Cap Units per Course');
     expect(html).toContain('Venting And Heat Protection');
+    expect(html).toContain('Total Geometric Vent Opening');
+    expect(html).toContain('Equipment requirement');
+    expect(html).not.toContain('Unsourced Scenario Band');
     expect(html).toContain('Liner venting note');
     expect(html).toContain('Gas Line Entry');
     expect(html).toContain('Heat Protection');
@@ -130,6 +133,8 @@ describe('construction packet export', () => {
     expect(html).toContain('Below general advice');
     expect(html).not.toContain('>PASS<');
     expect(html).toContain('does not establish');
+    expect(html).toContain('sq in geometric opening; verify free area per side');
+    expect(html).not.toContain('unsourced scenario band');
 
     const clearInput = { ...input, proximityToStructuresFt: 12 };
     const clearHtml = buildEngineeringReportHtml(

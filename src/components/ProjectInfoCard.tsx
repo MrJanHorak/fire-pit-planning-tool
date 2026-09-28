@@ -110,10 +110,12 @@ export default function ProjectInfoCard({
 
         <div className='rounded-xl bg-white/90 p-3 text-center shadow-sm border border-amber-900/10'>
           <p className='text-xs uppercase tracking-wide text-amber-950/75'>
-            Vent Area
+            {output.ventSpec.ventCount === 0 ? 'Insert Ring Airflow' : 'Vent Area'}
           </p>
-          <p className='text-2xl font-bold'>
-            {output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in
+          <p className={output.ventSpec.ventCount === 0 ? 'text-sm font-semibold' : 'text-2xl font-bold'}>
+            {output.ventSpec.ventCount === 0
+              ? 'Follow manufacturer instructions'
+              : `${output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in`}
           </p>
         </div>
 
@@ -146,24 +148,13 @@ export default function ProjectInfoCard({
             <div className='flex justify-between'>
               <dt className='text-xs text-amber-950/75'>Venting</dt>
               <dd className='font-semibold'>
-                {output.ventSpec.placement === 'base'
-                  ? 'Base Venting'
-                  : 'Upper Venting'}{' '}
-                ({output.ventSpec.layout})
+                {output.ventSpec.ventCount === 0
+                  ? 'Breeo insert-ring airflow; no masonry vents modeled'
+                  : `${output.ventSpec.placement === 'base' ? 'Base Venting' : 'Upper Venting'} (${output.ventSpec.layout})`}
               </dd>
             </div>
 
-            {input.fuelType !== 'wood' && (
-              <div className='flex justify-between'>
-                <dt className='text-xs text-amber-950/75'>Gas template</dt>
-                <dd className='font-semibold'>
-                  {output.ventSpec.gasHardwareTemplateLabel ??
-                    'Generic firepit cavity'}
-                </dd>
-              </div>
-            )}
-
-            <div className='flex justify-between items-center'>
+            {output.ventSpec.ventCount > 0 && <div className='flex justify-between items-center'>
               <dt className='text-xs text-amber-950/75'>Vent locations</dt>
               <dd className='flex items-center gap-2 font-semibold'>
                 <span>
@@ -182,11 +173,11 @@ export default function ProjectInfoCard({
                   Copy
                 </button>
               </dd>
-            </div>
+            </div>}
 
             <div className='flex justify-between'>
               <dt className='text-xs text-amber-950/75'>Liner system</dt>
-              <dd className='font-semibold'>{output.linerSpec.description}</dd>
+              <dd className='font-semibold'>{output.ventSpec.ventCount === 0 ? 'Manufacturer fire pit + insert ring; verify exact system' : output.linerSpec.description}</dd>
             </div>
 
             <div className='flex justify-between'>
@@ -387,8 +378,8 @@ export default function ProjectInfoCard({
               <span className='font-medium'>Air gap</span>
               <span>{output.smokelessSpec.airGapIn} in</span>
               <span className='font-medium'>Modeled flange overlap</span>
-              <span className={output.smokelessSpec.flangeOverlapStatus === 'unsafe' ? 'text-red-700 font-semibold' : 'text-amber-700 font-semibold'}>
-                {output.smokelessSpec.flangeOverlapStatus === 'secure' ? '1 in or more (verify support)' : output.smokelessSpec.flangeOverlapStatus === 'marginal' ? 'under 1 in (review)' : 'insufficient (review)'}
+              <span className={output.smokelessSpec.flangeOverlapStatus === 'nonpositive' ? 'text-red-700 font-semibold' : 'text-amber-700 font-semibold'}>
+                {((output.smokelessSpec.insertFlangeOD - output.smokelessSpec.requiredMasonryID) / 2).toFixed(2)} in per side; support unverified
               </span>
               <span className='font-medium'>Primary intake area</span>
               <span>{output.smokelessSpec.primaryVentCount}× {output.smokelessSpec.primaryVentDiameterIn}" = {output.smokelessSpec.primaryVentTotalAreaSqIn.toFixed(2)} sq in</span>

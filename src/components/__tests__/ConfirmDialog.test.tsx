@@ -76,4 +76,23 @@ describe('ConfirmDialog', () => {
 
     expect(container).toBeEmptyDOMElement();
   });
+
+  it('can open after being closed and returns focus when dismissed', () => {
+    const onCancel = vi.fn();
+    const trigger = document.createElement('button');
+    document.body.appendChild(trigger);
+    trigger.focus();
+    const props = {
+      title: 'Delete Snapshot',
+      message: 'Delete this snapshot?',
+      onConfirm: vi.fn(),
+      onCancel,
+    };
+    const { rerender } = render(<ConfirmDialog open={false} {...props} />);
+    rerender(<ConfirmDialog open {...props} />);
+    expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    rerender(<ConfirmDialog open={false} {...props} />);
+    expect(trigger).toHaveFocus();
+    trigger.remove();
+  });
 });

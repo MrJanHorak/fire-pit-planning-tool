@@ -140,3 +140,20 @@ The next local pass created [ENGINEERING_ASSUMPTIONS.md](ENGINEERING_ASSUMPTIONS
 - Added square 192 px and 512 px PWA icons. Updated the service worker to cache these assets, keep unrelated caches, reject failed responses, and serve successful network responses even when cache storage fails.
 
 These changes reduce false precision; they do not constitute engineering sign-off. TypeScript, all 113 tests, and the production build pass locally. Product SKU integration, measured validation examples, site-specific design review, mobile performance, and installed-app/offline update checks remain release gates.
+
+## Additional accuracy pass
+
+- Removed the DIY flange's “secure” classification. The app now reports geometric overlap per side, flags a flange that does not reach the modeled bearing edge, and leaves support capacity for independent review.
+- Relabeled the DIY liner depth as an entered target rather than a verified product minimum.
+- Replaced generic gravel distance, grading, and top-dressing prescriptions with site and supplier review notes.
+- Removed the unsourced generic gas vent bands and the now meaningless category selector. Legacy saved category values are ignored; the app presents geometric openings and requires equipment-manual review.
+
+## Manufacturer profile option
+
+Added optional source-linked profiles while retaining generic mode. Breeo X19, X24, and X30 with the X Series Insert Ring use the manufacturer's published circular opening ranges; the app does not create fabricated liner dimensions or claim surround-depth approval. The American Fire Glass Match Light Kit profile records its manual revision, two opposing 18 in² vents, and overhang prohibition. The app can flag an impossible total geometric vent area but still requires free area and installation review. Sources and review dates appear in exported planning reports.
+
+The Breeo profile also suppresses the planner's generic wood vent openings and separate liner quantities because the manufacturer's insert ring provides the airflow path. Selected manufacturer equipment is listed as an unpriced item in the printable materials list. Product and site verification remain release gates.
+
+Verification on 2026-09-28: TypeScript, all 118 tests, production build, and `git diff --check` pass locally.
+
+TypeScript, all 118 tests, and the production build pass locally for this continuation.

@@ -442,19 +442,19 @@ describe('MasonryEngine', () => {
     expect(output.cornerGuidance?.notes.length).toBeGreaterThan(0);
   });
 
-  it('applies gas hardware template vent ranges', () => {
+  it('ignores a saved generic gas category when calculating vent geometry', () => {
     const engine = new MasonryEngine();
-    const output = engine.calculateDesign({
+    const input = {
       ...baseInput,
-      fuelType: 'natural-gas',
-      gasHardwareTemplate: 'high-btu-bowl',
+      fuelType: 'natural-gas' as const,
       ventCount: 4,
       ventOpeningAreaSqIn: 8,
-    });
+    };
+    const output = engine.calculateDesign({ ...input, gasHardwareTemplate: 'high-btu-bowl' });
+    const baseline = engine.calculateDesign({ ...input, gasHardwareTemplate: 'generic-firepit' });
 
-    expect(output.ventSpec.gasHardwareTemplate).toBe('high-btu-bowl');
-    expect(output.ventSpec.recommendedAreaMinSqIn).toBe(36);
-    expect(output.ventSpec.recommendedAreaMaxSqIn).toBe(60);
+    expect(output.ventSpec).toEqual(baseline.ventSpec);
+    expect(output.ventSpec.totalOpenAreaSqIn).toBe(32);
     expect(
       output.warnings.find((warning) => warning.code === 'gas-manufacturer-requirements-unverified')?.message,
     ).toContain('exact burner and enclosure manual');
@@ -469,20 +469,22 @@ describe('MasonryEngine', () => {
     expect(output.warnings.some((warning) => warning.code === 'seating-combustible-surface')).toBe(true);
   });
 
-  it('does not generate fit geometry for an unverified legacy commercial insert', () => {
+  it('uses Breeo published opening ranges without inventing liner geometry', () => {
     const output = new MasonryEngine().calculateDesign({
       ...baseInput,
       fuelType: 'wood',
       smokelessMode: true,
       smokelessInsertPreset: 'breeo-x19',
+      innerDiameterIn: 24,
     });
 
     expect(output.smokelessSpec).toBeUndefined();
     expect(output.warnings).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ code: 'commercial-insert-fit-unverified' }),
+        expect.objectContaining({ code: 'manufacturer-product-review-required' }),
       ]),
     );
+    expect(output.warnings.some((warning) => warning.code === 'manufacturer-surround-opening-out-of-range')).toBe(false);
   });
 
   it('keeps the manufacturer clearance warning on saved TIKI profiles', () => {
@@ -498,6 +500,26 @@ describe('MasonryEngine', () => {
     expect(
       output.warnings.find((warning) => warning.code === 'commercial-insert-fit-unverified')?.message,
     ).toContain('15 ft');
+  });
+
+  it('reports DIY flange overlap as geometry without certifying support', () => {
+    const engine = new MasonryEngine();
+    const input = {
+      ...baseInput,
+      fuelType: 'wood' as const,
+      smokelessMode: true,
+      smokelessInsertPreset: 'custom-diy' as const,
+      smokelessInsertBaseOD: 19,
+      smokelessInsertAirGapIn: 1,
+    };
+    const nonpositive = engine.calculateDesign({ ...input, smokelessInsertFlangeOD: 20 });
+    const positive = engine.calculateDesign({ ...input, smokelessInsertFlangeOD: 24 });
+
+    expect(nonpositive.smokelessSpec?.flangeOverlapStatus).toBe('nonpositive');
+    expect(nonpositive.warnings.some((warning) => warning.code === 'smokeless-flange-unsafe')).toBe(true);
+    expect(positive.smokelessSpec?.flangeOverlapStatus).toBe('at-least-one-inch');
+    expect(positive.warnings.some((warning) => warning.code === 'smokeless-flange-unsafe')).toBe(false);
+    expect(positive.smokelessSpec?.notes.join(' ')).toContain('does not verify bearing');
   });
 
   it('anchors rectangular vents at side midpoints instead of corners', () => {

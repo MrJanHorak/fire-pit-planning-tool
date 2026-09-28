@@ -16,10 +16,11 @@ React 19 app for exploring masonry fire-pit geometry, quantities, layouts, and s
 The [assumption and evidence register](ENGINEERING_ASSUMPTIONS.md) tracks each construction-relevant number, its source status, and the remaining review. In particular:
 
 - The 10 ft combustible clearance is [U.S. Fire Administration general advice](https://www.usfa.fema.gov/prevention/outdoor-fires/). Product instructions and local requirements can be stricter.
-- Gas vent categories are illustrative size comparisons. The app cannot confirm required free opening per side, placement, or equipment compatibility without the exact burner and enclosure manuals. Every gas design is flagged for product-specific review.
+- The app estimates gas vent geometry but cannot confirm required free opening per side, placement, or equipment compatibility without the exact burner and enclosure manuals. Every gas design is flagged for product-specific review; old generic category selections are ignored.
+- Generic planning remains available. Source-linked starter profiles cover [Breeo X19/X24/X30 with its X Series Insert Ring](https://breeo.com/products/x-series-insert-ring) and the [American Fire Glass Match Light Kit manual](https://americanfireglass.com/media/manual/Match%20Light%20Kits.pdf). These profiles check only entered geometry that the app can know. They do not verify the installed product, free vent area, surround depth, or site approval.
 - Generic brick and stone names do not establish a temperature rating. Double-wall fireboxes require product datasheets and assembly review.
 - The 8 in stone base and 6 in extension per side are quantity assumptions, not a foundation or frost-footing design.
-- Manufacturer-branded smokeless fit presets from earlier versions were disabled. Legacy saved selections show a warning and produce no fit geometry. For example, [Breeo specifies a range of masonry openings for its insert ring](https://breeo.com/products/x-series-insert-ring), not the single base/flange values previously shown.
+- Earlier fabricated flange dimensions for branded smokeless pits were removed. Breeo X Series selections now show only documented surround opening ranges and require a separate depth and installation review. Legacy Solo Stove and TIKI selections remain unsupported and produce no fit geometry.
 - DIY smokeless area ratios, hole placement, and draft estimates are unvalidated model outputs. Do not fabricate or fire from the generated sketch without independent review and testing.
 
 ## Calculation outline

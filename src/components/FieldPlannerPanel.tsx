@@ -233,6 +233,7 @@ export default function FieldPlannerPanel({
                 {item.label}
               </label>
               <textarea
+                aria-label={`Field notes for ${item.label}`}
                 className='mt-2 w-full rounded-md border border-amber-900/20 bg-white px-2 py-1 text-xs'
                 placeholder='Field notes...'
                 value={item.notes}
@@ -250,6 +251,7 @@ export default function FieldPlannerPanel({
               <div className='mt-2 flex flex-wrap items-center gap-2'>
                 <input
                   type='file'
+                  aria-label={`Attach photo for ${item.label}`}
                   accept='image/*'
                   onChange={async (event) => {
                     const file = event.target.files?.[0];
@@ -290,10 +292,11 @@ export default function FieldPlannerPanel({
                 />
                 {item.photos.map((photo, photoIndex) => (
                   <div key={`${item.id}-${photoIndex}`} className='relative'>
-                    <img src={photo} alt='Field note' className='h-12 w-12 rounded border border-amber-900/20 object-cover' />
+                    <img src={photo} alt={`Photo ${photoIndex + 1} for ${item.label}`} className='h-12 w-12 rounded border border-amber-900/20 object-cover' />
                     <button
                       type='button'
-                      className='absolute -right-1 -top-1 rounded-full bg-red-700 px-1 text-[10px] text-white'
+                      aria-label={`Remove photo ${photoIndex + 1} from ${item.label}`}
+                      className='absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-red-700 text-sm text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-900'
                       onClick={() =>
                         setState((prev) => ({
                           ...prev,

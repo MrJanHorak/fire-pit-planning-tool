@@ -167,10 +167,10 @@ function calculateGravelMaterials(
     ],
     notes: [
       buildSeatingAreaNote(shape, radiusFt, areaSquareFeet),
-      'Extend gravel zone at least 10 feet from pit outer wall for safe sight lines and ember fall.',
-      'Slope gravel surface 2–3% outward to prevent water pooling.',
-      'Keep gravel 1–2" away from pit wall for fire safety.',
-      'Plan for annual top-dressing: add 1–2 inches of fresh gravel every 2–3 years.',
+      'Review combustible clearances against the selected appliance and local requirements; gravel dimensions alone do not establish a safe zone.',
+      'Set surface drainage based on the site grading and selected finish system.',
+      'Detail the gravel edge and wall drainage for the actual masonry assembly.',
+      'Confirm any top-dressing schedule with the selected aggregate supplier and observed wear.',
     ],
   };
 }

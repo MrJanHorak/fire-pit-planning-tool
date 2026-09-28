@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { MasonryOutput, MasonryInput } from '../types';
+import { buildManufacturerReview } from '../utils/manufacturerProfiles';
 
 const BOM_COSTS_STORAGE_KEY =
   'firepit-parametric-masonry-designer-bom-costs';
@@ -122,6 +123,7 @@ interface Props {
 
 export default function BillOfMaterials({ output, input }: Props) {
   const [costs, setCosts] = useState<BomCosts>(loadCosts);
+  const manufacturerReview = buildManufacturerReview(input, output.ventSpec);
 
   const { logistics, resolvedUnit, resolvedCapUnit, linerSpec, foundation } =
     output;
@@ -550,7 +552,7 @@ export default function BillOfMaterials({ output, input }: Props) {
       <tr><td><strong>Mortar — Outer Wythe</strong></td><td>${outerMortarLabel}</td><td>~${outerMortarBags} bags</td><td>${logistics.outerMortarVolumeCubicFeet.toFixed(1)} ft³ · ${MORTAR_BAG_80LB_FT3} ft³/bag yield</td><td>—</td></tr>`
         : `<tr><td><strong>Mortar Mix</strong></td><td>Type S / N premix (80-lb bags)</td><td>~${innerMortarBags} bags</td><td>${logistics.innerMortarVolumeCubicFeet.toFixed(1)} ft³ · ${MORTAR_BAG_80LB_FT3} ft³/bag yield</td><td>—</td></tr>`}
       <tr><td><strong>Foundation Gravel</strong></td><td>${foundation.stoneDepthIn}" compacted base</td><td>${foundation.stoneVolumeCubicFeet.toFixed(1)} ft³</td><td>Footprint: ${foundation.footprintAreaSquareFeet.toFixed(1)} ft² · ${foundation.stoneVolumeCubicYards.toFixed(2)} yd³</td><td>≈ ${gravelTons} tons</td></tr>
-      ${stoneRow}${linerRow}${seatingRows}
+      ${stoneRow}${linerRow}${manufacturerReview ? `<tr><td><strong>Selected Equipment</strong></td><td>${manufacturerReview.label}</td><td>1 system (verify exact kit)</td><td>Not priced in this estimate; follow <a href="${manufacturerReview.sourceUrl}">manufacturer instructions</a></td><td>—</td></tr>` : ''}${seatingRows}
     </tbody>
   </table>
 
@@ -598,6 +600,11 @@ export default function BillOfMaterials({ output, input }: Props) {
           <p className='text-sm text-amber-900/70'>
             All quantities include {logistics.wasteFactorPct}% waste factor
           </p>
+          {manufacturerReview && (
+            <p className='mt-1 text-xs text-amber-900/80'>
+              Selected equipment: <strong>{manufacturerReview.label}</strong>. Confirm the exact kit and add its price separately; it is not included in this cost estimate.
+            </p>
+          )}
           {output.thermalAssembly.mode === 'double-wall' && (
             <p className='mt-1 text-xs text-amber-900/80'>
               Double-wall mode splits counts into inner and outer shells. Combined wall units to buy:{' '}

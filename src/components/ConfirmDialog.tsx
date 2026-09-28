@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
+import { useModalFocus } from './useModalFocus';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -21,27 +22,13 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+  useModalFocus(open, dialogRef, cancelButtonRef, onCancel);
+
   if (!open) {
     return null;
   }
-
-  const cancelButtonRef = useRef<HTMLButtonElement | null>(null);
-
-  useEffect(() => {
-    cancelButtonRef.current?.focus();
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onCancel();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [onCancel]);
 
   const confirmButtonClass =
     tone === 'danger'
@@ -58,9 +45,11 @@ export default function ConfirmDialog({
       }}
     >
       <div
+        ref={dialogRef}
         role='dialog'
         aria-modal='true'
         aria-labelledby='confirm-dialog-title'
+        tabIndex={-1}
         className='w-full max-w-md rounded-2xl border border-amber-900/20 bg-amber-50 p-5 shadow-2xl'
       >
         <h2

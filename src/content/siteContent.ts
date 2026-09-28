@@ -167,7 +167,7 @@ export const researchHighlights: ContentSection[] = [
       'Excavation depth is site-specific. Many permanent features land in the 6 to 12 in range, but softer or expansive soils usually need more conservative footing decisions.',
       'Foundation risk is not only about soil label. Drainage and freeze-thaw matter because wet, moving subgrade can damage even a neatly built wall.',
       'Wood-burning pits should protect the hottest interior with a refractory liner or steel ring. Decorative outer masonry is not a replacement for heat-rated interior protection.',
-      'Gas venting should follow the selected burner and enclosure instructions. The app’s modeled template range is only a planning screen; confirm vent area, placement, and gas work with the equipment documentation and qualified installer.',
+      'Gas venting should follow the selected burner and enclosure instructions. The app estimates geometric opening area only; confirm free area per side, placement, and gas work with the equipment documentation and qualified installer.',
       'Clearance is a 3D check. Horizontal setback is only the start; overhead branches, pergolas, soffits, and movement around the pit matter just as much.',
       'Good safety practice also includes operations: checking wind, respecting no-burn advisories, and never leaving active embers unattended.',
     ],
@@ -274,7 +274,7 @@ export const faqItems: FaqItem[] = [
   {
     question: 'How much total vent area does a gas fire pit need?',
     answer:
-      'The app shows a geometric opening-area estimate and an illustrative category band. Neither is a product requirement. Obtain the exact burner and enclosure manuals for required free area per side and placement, then have a qualified installer verify the design.',
+      'The app shows a geometric opening-area estimate, not a product requirement. Obtain the exact burner and enclosure manuals for required free area per side and placement, then have a qualified installer verify the design.',
   },
   {
     question: 'Why are some stone types flagged high-risk?',

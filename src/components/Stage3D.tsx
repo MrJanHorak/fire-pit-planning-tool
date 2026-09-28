@@ -3384,14 +3384,20 @@ export default function Stage3D({
         </div>
       </div>
 
-      {/* Hoverable legend trigger and panel */}
+      {/* Clickable legend trigger and panel */}
       <div
         className='absolute left-2 top-2 z-10 sm:left-4 sm:top-4'
-        onMouseEnter={() => setShowLegend(true)}
-        onMouseLeave={() => setShowLegend(false)}
       >
-        <div className='flex h-8 w-8 items-center justify-center rounded-full bg-amber-50/90 shadow transition-colors hover:bg-amber-100'>
+        <button
+          type='button'
+          aria-label='3D legend'
+          aria-expanded={showLegend}
+          aria-controls='stage3d-legend-panel'
+          onClick={() => setShowLegend((value) => !value)}
+          className='flex h-11 w-11 items-center justify-center rounded-full bg-amber-50/90 shadow transition-colors hover:bg-amber-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-950'
+        >
           <svg
+            aria-hidden='true'
             className='h-5 w-5 text-amber-900'
             fill='none'
             stroke='currentColor'
@@ -3404,9 +3410,11 @@ export default function Stage3D({
               d='M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
             />
           </svg>
-        </div>
+        </button>
 
         <div
+          id='stage3d-legend-panel'
+          aria-hidden={!showLegend}
           className='mt-2 overflow-hidden transition-all duration-300 ease-out'
           style={{
             maxWidth: showLegend ? '360px' : '0px',

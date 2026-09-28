@@ -159,6 +159,7 @@ export function buildCompactShareParams(
   }
 
   SHARE_FIELD_MAP.forEach(([field, shortKey]) => {
+    if (field === 'gasHardwareTemplate' && input.gasHardwareTemplate !== 'afg-match-light') return;
     const value = input[field];
     const defaultValue = defaults[field];
 

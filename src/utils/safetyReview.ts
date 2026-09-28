@@ -28,6 +28,9 @@ const WARNING_PRIORITY: Record<SafetyWarning['code'], SafetyPriority> = {
   'smokeless-depth-insufficient': 'action',
   'smokeless-fabrication-review-required': 'action',
   'commercial-insert-fit-unverified': 'action',
+  'manufacturer-product-review-required': 'action',
+  'manufacturer-surround-opening-out-of-range': 'action',
+  'manufacturer-vent-geometric-deficit': 'action',
   'seating-combustible-surface': 'action',
 };
 

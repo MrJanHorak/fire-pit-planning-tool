@@ -1,6 +1,22 @@
 import type { MasonryInput, MasonryOutput } from '../types';
 import { buildFoundationAdvisory } from './foundationAdvisory';
 import { buildRegionalCodeReview } from './regionalCodeReview';
+import { buildManufacturerReview } from './manufacturerProfiles';
+
+function buildManufacturerReviewHtml(input: MasonryInput, output: MasonryOutput): string {
+  const review = buildManufacturerReview(input, output.ventSpec);
+  if (!review) {
+    return '<p>No manufacturer product profile selected. Geometric estimates require the exact equipment instructions before construction.</p>';
+  }
+  return `<div class="block avoid-break">
+    <h3>Manufacturer profile: ${review.label}</h3>
+    <p>Source: <a href="${review.sourceUrl}">${review.sourceRevision}</a> (reviewed ${review.reviewedOn}). Check for a newer manual before construction.</p>
+    <p>Published requirements recorded in this profile:</p>
+    <ul>${review.requirements.map((item) => `<li>${item}</li>`).join('')}</ul>
+    <p>Current model findings:</p>
+    <ul>${review.findings.map((item) => `<li>${item}</li>`).join('')}</ul>
+  </div>`;
+}
 
 function formatFuelName(fuelType: MasonryInput['fuelType']): string {
   if (fuelType === 'natural-gas') {
@@ -83,7 +99,7 @@ function buildSmokelessCutGuideSvg(output: MasonryOutput): string {
     <text x="16" y="148" font-size="11" fill="#2f2110">Primary intake: ${spec.primaryVentCount} holes @ ${spec.primaryVentDiameterIn.toFixed(2)} in</text>
     <text x="16" y="166" font-size="11" fill="#2f2110">Secondary jets: ${spec.secondaryVentCount} holes @ ${spec.secondaryVentDiameterIn.toFixed(2)} in</text>
     <text x="16" y="184" font-size="11" fill="#2f2110">Base vent omissions: ${spec.baseVentBlockOmissions} blocks</text>
-    <text x="16" y="202" font-size="11" fill="#2f2110">Flange overlap: ${spec.flangeOverlapStatus}</text>
+    <text x="16" y="202" font-size="11" fill="#2f2110">Overlap per side: ${((spec.insertFlangeOD - spec.requiredMasonryID) / 2).toFixed(2)} in</text>
 
     <text x="208" y="76" font-size="10" fill="#8a5a13">Flange OD</text>
     <text x="200" y="96" font-size="10" fill="#2f6d3f">Modeled ID</text>
@@ -169,12 +185,12 @@ function buildSmokelessPlanningHtml(output: MasonryOutput): string {
     ['Air gap', `${spec.airGapIn.toFixed(2)} in`],
     ['Base OD', `${spec.insertBaseOD.toFixed(2)} in`],
     ['Flange OD', `${spec.insertFlangeOD.toFixed(2)} in`],
-    ['Minimum depth', `${spec.insertMinDepthIn.toFixed(2)} in`],
+    ['Entered liner depth target', `${spec.insertMinDepthIn.toFixed(2)} in`],
     ['Primary intake holes', `${spec.primaryVentCount} × ${spec.primaryVentDiameterIn.toFixed(2)} in`],
     ['Secondary jet holes', `${spec.secondaryVentCount} × ${spec.secondaryVentDiameterIn.toFixed(2)} in`],
     ['Intake / outlet ratio', `${spec.intakeOutletRatio.toFixed(2)} (illustrative band only)`],
     ['Base vent omissions', `${spec.baseVentBlockOmissions} blocks`],
-    ['Flange overlap band', `${spec.flangeOverlapStatus}; bearing not verified`],
+    ['Flange overlap per side', `${((spec.insertFlangeOD - spec.requiredMasonryID) / 2).toFixed(2)} in; bearing not verified`],
     ['Idealized draft estimate', `~${spec.draftPressurePa.toFixed(1)} Pa; airflow not validated`],
   ];
 
@@ -806,7 +822,12 @@ function buildDiyStepsHtml(input: MasonryInput, output: MasonryOutput): string {
   const ventCourses = output.ventSpec.targetCourseIndexes
     .map((courseIndex) => `C${courseIndex + 1}`)
     .join(', ');
-  const linerStep = output.linerSpec.enabled
+  const breeoReview = input.fuelType === 'wood' && output.ventSpec.ventCount === 0
+    ? buildManufacturerReview(input, output.ventSpec)
+    : null;
+  const linerStep = breeoReview
+    ? `Review installation of the ${breeoReview.label} against the current manufacturer instructions. This packet does not specify a separate fabricated liner or masonry vent openings for that system.`
+    : output.linerSpec.enabled
     ? `Install the ${formatLinerName(output.linerSpec.type).toLowerCase()} liner after the wall is stable. Maintain the specified ${output.linerSpec.expansionGapIn.toFixed(3)} in expansion gap around the liner.`
     : input.fuelType === 'wood'
       ? 'Add a refractory liner or steel fire ring before first use. Wood-burning pits should not be operated without a thermal liner.'
@@ -869,8 +890,10 @@ function buildDiyStepsHtml(input: MasonryInput, output: MasonryOutput): string {
     strategyStep,
     ...(doubleWallStep ? [doubleWallStep] : []),
     ...(smokelessStep ? [smokelessStep] : []),
-    `The model places vent openings in ${ventCourses} at brick indexes ${output.ventSpec.ventBrickIndexes.join(', ')}, totaling ${output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in of geometric opening. Verify free area, location, and support against the exact ${formatFuelName(input.fuelType).toLowerCase()} equipment instructions before construction.`,
-    ...(polygonVentStep ? [polygonVentStep] : []),
+    ...(breeoReview
+      ? ['No masonry vent openings are modeled for the selected Breeo insert-ring system; verify its integrated airflow against the current instructions.']
+      : [`The model places vent openings in ${ventCourses} at brick indexes ${output.ventSpec.ventBrickIndexes.join(', ')}, totaling ${output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in of geometric opening. Verify free area, location, and support against the exact ${formatFuelName(input.fuelType).toLowerCase()} equipment instructions before construction.`]),
+    ...(polygonVentStep && !breeoReview ? [polygonVentStep] : []),
     ...(ashCleanoutStep ? [ashCleanoutStep] : []),
     linerStep,
     `Set the primary cap ring with ${output.capstone.capUnitsPerCourseRounded} units on the cap centerline. Maintain a centerline cap joint of ${output.capstone.joint.actualJointIn.toFixed(3)} in.`,
@@ -1699,10 +1722,6 @@ export function buildConstructionPacketHtml(
     output.warnings.length > 0
       ? `<ul>${output.warnings.map((warning) => `<li>${warning.message}${warning.actualValue !== undefined ? ` Entered: ${warning.actualValue.toFixed(1)}${warning.code === 'clearance-too-low' ? ' ft' : warning.code === 'gas-line-near-vent' ? ' deg' : ''}.` : ''}</li>`).join('')}</ul>`
       : '<p>No active safety alerts for the current layout.</p>';
-  const ventRange =
-    output.ventSpec.recommendedAreaMaxSqIn === undefined
-      ? `${output.ventSpec.recommendedAreaMinSqIn.toFixed(1)}+`
-      : `${output.ventSpec.recommendedAreaMinSqIn.toFixed(1)}-${output.ventSpec.recommendedAreaMaxSqIn.toFixed(1)}`;
   const gasLineEntry =
     output.ventSpec.gasLineEntryAngleDeg === undefined
       ? '<p>Gas Line Entry: not used for a wood-burning layout.</p>'
@@ -1806,11 +1825,10 @@ export function buildConstructionPacketHtml(
       ['Cap Bridge Row Detail', capBridgeRowDetail],
     );
   }
-  const ventRows: Array<[string, string]> = [
-    [
-      'Illustrative Vent Scenario',
-      output.ventSpec.gasHardwareTemplateLabel ?? 'Generic firepit cavity',
-    ],
+  const ventRows: Array<[string, string]> = output.ventSpec.ventCount === 0 ? [
+    ['Masonry vent layout', 'Not modeled for selected manufacturer insert-ring system'],
+    ['Airflow review', 'Use the current insert-ring and fire-pit instructions'],
+  ] : [
     ['Vent Pattern', output.ventSpec.layout],
     ['Vent Zone', output.ventSpec.placement],
     ['Vent Count', `${output.ventSpec.ventCount}`],
@@ -1818,7 +1836,7 @@ export function buildConstructionPacketHtml(
       'Total Geometric Vent Opening',
       `${output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in`,
     ],
-    ['Unsourced Scenario Band', `${ventRange} sq in; not an equipment requirement`],
+    ['Equipment requirement', 'Not established; verify exact equipment manuals and free area per side'],
     ['Vent Unit Positions', output.ventSpec.ventBrickIndexes.join(', ')],
   ];
   const cornerRows: Array<[string, string]> = [
@@ -2005,6 +2023,7 @@ export function buildConstructionPacketHtml(
     <section class="block avoid-break">
       <h2>Safety Review</h2>
       ${warnings}
+      ${buildManufacturerReviewHtml(input, output)}
       ${clearanceSvg}
     </section>
 
@@ -2045,10 +2064,6 @@ export function buildEngineeringReportHtml(
       ? `<ul>${output.warnings.map((warning) => `<li>${warning.message}</li>`).join('')}</ul>`
       : '<p>No active safety warnings under the current model settings.</p>';
 
-  const ventRange =
-    output.ventSpec.recommendedAreaMaxSqIn === undefined
-      ? `${output.ventSpec.recommendedAreaMinSqIn.toFixed(1)}+`
-      : `${output.ventSpec.recommendedAreaMinSqIn.toFixed(1)}-${output.ventSpec.recommendedAreaMaxSqIn.toFixed(1)}`;
   const summaryRows: Array<[string, string]> = [
     ['Report type', 'Design planning report'],
     ['Generated on', generatedOn],
@@ -2078,13 +2093,7 @@ export function buildEngineeringReportHtml(
       'Fuel gas vent area',
       input.fuelType === 'wood'
         ? 'N/A for wood fuel mode'
-        : `${output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in geometric opening (unsourced scenario band ${ventRange} sq in; verify free area and location against exact equipment instructions)`,
-    ],
-    [
-      'Gas hardware template',
-      input.fuelType === 'wood'
-        ? 'N/A'
-        : (output.ventSpec.gasHardwareTemplateLabel ?? 'Generic firepit cavity'),
+        : `${output.ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in geometric opening; verify free area per side and location against exact equipment instructions`,
     ],
     [
       'Overhead clearance',
@@ -2168,6 +2177,7 @@ export function buildEngineeringReportHtml(
       ${buildKeyValueTable(screeningRows, 'Check', 'Status / Notes')}
       <h3>Active warnings</h3>
       ${warningList}
+      ${buildManufacturerReviewHtml(input, output)}
     </section>
 
     <section class="block avoid-break">

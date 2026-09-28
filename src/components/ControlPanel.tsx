@@ -2,6 +2,7 @@ import { useState, type Dispatch, type SetStateAction } from 'react';
 import HelpTip from './HelpTip';
 import { BRICK_PRESETS, CAPSTONE_PRESETS } from '../engine/MasonryEngine';
 import type { MasonryInput, MasonryUnit, AshCleanoutType } from '../types';
+import { AFG_MATCH_LIGHT, BREEO_INSERT_RINGS } from '../utils/manufacturerProfiles';
 import {
   clampSeatingFurnitureCount,
   getMaxCircularSeatingCount,
@@ -1270,8 +1271,9 @@ export default function ControlPanel({
                     Smokeless Insert / Liner Profile
                   </p>
                   <p className='mt-0.5 text-xs text-amber-800/70'>
-                    Enter measured dimensions for a fabricated steel liner. Commercial
-                    fire pits need their own manufacturer-approved surround design.
+                    Example dimensions are prefilled for exploration. Replace them
+                    with a reviewed liner design before fabrication. Commercial fire
+                    pits need their manufacturer-approved surround instructions.
                   </p>
                 </div>
 
@@ -1292,21 +1294,41 @@ export default function ControlPanel({
                     }
                   >
                     {input.smokelessInsertPreset &&
+                      !(
+                        input.smokelessInsertPreset in BREEO_INSERT_RINGS
+                      ) &&
                       input.smokelessInsertPreset !== 'custom-diy' && (
                         <option value={input.smokelessInsertPreset}>
                           Legacy commercial profile — unsupported fit model
                         </option>
                       )}
                     <option value='custom-diy'>Custom / DIY Steel Liner</option>
+                    {Object.entries(BREEO_INSERT_RINGS).map(([key, profile]) => (
+                      <option key={key} value={key}>{profile.label}</option>
+                    ))}
                   </select>
                 </label>
 
                 {input.smokelessInsertPreset &&
+                  !(input.smokelessInsertPreset in BREEO_INSERT_RINGS) &&
                   input.smokelessInsertPreset !== 'custom-diy' && (
                     <p className='sm:col-span-2 rounded-md border border-red-800/30 bg-red-50 p-2 text-xs text-red-900'>
                       This saved commercial profile has no verified masonry fit data.
                       Switch to Custom / DIY with measured liner dimensions, or use
                       the product manufacturer’s surround instructions.
+                    </p>
+                  )}
+
+                {input.smokelessInsertPreset &&
+                  input.smokelessInsertPreset in BREEO_INSERT_RINGS && (
+                    <p className='sm:col-span-2 rounded-md border border-sky-800/30 bg-sky-50 p-2 text-xs text-sky-950'>
+                      Breeo publishes a circular surround opening range and at least
+                      15 in surround depth for this insert ring. The planner checks
+                      the entered opening; verify actual depth, fit, and installation
+                      from the{' '}
+                      <a className='underline' href='https://breeo.com/products/x-series-insert-ring' target='_blank' rel='noreferrer'>
+                        Breeo X Series Insert Ring specifications
+                      </a>.
                     </p>
                   )}
 
@@ -1351,7 +1373,7 @@ export default function ControlPanel({
                     </label>
                     <label className='flex flex-col gap-1'>
                       <span className='text-xs font-medium text-amber-900'>
-                        Min. Pit Depth (in)
+                        Liner Depth Target (in)
                       </span>
                       <input
                         type='number'
@@ -2009,35 +2031,32 @@ export default function ControlPanel({
             </label>
 
             {input.fuelType !== 'wood' && (
-              <label className='flex flex-col gap-1'>
-                <FieldLabel
-                  label='Illustrative Vent Scenario'
-                  tip='These generic categories are unsourced size comparisons, not burner specifications. Use the exact hardware manual and a qualified installer for required free vent area and placement.'
-                />
-                <select
-                  className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
-                  aria-label='Gas hardware template'
-                  title='Gas hardware template'
-                  value={input.gasHardwareTemplate ?? 'generic-firepit'}
-                  onChange={(event) =>
-                    setInput((prev) => ({
-                      ...prev,
-                      gasHardwareTemplate: event.target
-                        .value as MasonryInput['gasHardwareTemplate'],
-                    }))
-                  }
-                >
-                  <option value='generic-firepit'>
-                    Generic firepit cavity
-                  </option>
-                  <option value='drop-in-pan'>Drop-in burner pan</option>
-                  <option value='linear-burner'>Linear burner tray</option>
-                  <option value='high-btu-bowl'>High-BTU bowl / ring</option>
-                </select>
-              </label>
+              <div className='flex flex-col gap-2'>
+                <label className='flex flex-col gap-1'>
+                  <FieldLabel label='Gas Equipment Profile' tip='Generic mode has no manufacturer vent requirement. A documented profile adds source-linked requirements for review, but free area and installation still need verification.' />
+                  <select
+                    className='rounded-md border border-amber-700/30 bg-white px-3 py-2'
+                    aria-label='Gas Equipment Profile'
+                    value={input.gasHardwareTemplate === 'afg-match-light' ? 'afg-match-light' : 'generic-firepit'}
+                    onChange={(event) => setInput((prev) => ({ ...prev, gasHardwareTemplate: event.target.value as MasonryInput['gasHardwareTemplate'] }))}
+                  >
+                    <option value='generic-firepit'>Generic / no product selected</option>
+                    <option value='afg-match-light'>{AFG_MATCH_LIGHT.label}</option>
+                  </select>
+                </label>
+                {input.gasHardwareTemplate === 'afg-match-light' && (
+                  <p className='rounded-md border border-sky-800/30 bg-sky-50 p-2 text-xs text-sky-950'>
+                    Manual {AFG_MATCH_LIGHT.sourceRevision}: at least two opposing
+                    vents with 18 sq in each; no operation under an overhang.
+                    Verify exact kit, free area, and installation with a qualified
+                    gas professional.{' '}
+                    <a className='underline' href={AFG_MATCH_LIGHT.sourceUrl} target='_blank' rel='noreferrer'>Manufacturer manual</a>
+                  </p>
+                )}
+              </div>
             )}
 
-            <label className='flex flex-col gap-1'>
+            {!(input.fuelType === 'wood' && input.smokelessMode && input.smokelessInsertPreset && input.smokelessInsertPreset in BREEO_INSERT_RINGS) && <label className='flex flex-col gap-1'>
               <FieldLabel
                 label='Thermal Liner'
                 tip='Wood pits should generally use a liner or ring to protect the outer decorative shell from direct heat.'
@@ -2058,7 +2077,7 @@ export default function ControlPanel({
                 <option value='fire-brick'>Fire Brick</option>
                 <option value='steel-ring'>Steel Ring</option>
               </select>
-            </label>
+            </label>}
 
             <label className='flex flex-col gap-1'>
               <FieldLabel

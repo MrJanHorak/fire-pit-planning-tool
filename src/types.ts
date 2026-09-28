@@ -58,7 +58,8 @@ export type GasHardwareTemplate =
   | 'generic-firepit'
   | 'drop-in-pan'
   | 'linear-burner'
-  | 'high-btu-bowl';
+  | 'high-btu-bowl'
+  | 'afg-match-light';
 export type ThermalAssemblyMode = 'single-wall' | 'double-wall';
 export type ThermalCavityFill = 'air-gap' | 'sand-fill' | 'insulation-board';
 export type ThermalCavityVentMode = 'vented' | 'sealed';
@@ -68,7 +69,7 @@ export type MortarType =
   | 'type-s'
   | 'construction-adhesive';
 export type SmokelessInsertPresetKey =
-  // Retained for reading older saved projects; branded fit calculations are disabled.
+  // Breeo keys use documented surround checks; Solo/TIKI remain unsupported legacy values.
   | 'solo-stove-bonfire-2'
   | 'breeo-x19'
   | 'breeo-x24'
@@ -201,6 +202,9 @@ export interface SafetyWarning {
     | 'smokeless-depth-insufficient'
     | 'smokeless-fabrication-review-required'
     | 'commercial-insert-fit-unverified'
+    | 'manufacturer-product-review-required'
+    | 'manufacturer-surround-opening-out-of-range'
+    | 'manufacturer-vent-geometric-deficit'
     | 'seating-combustible-surface';
   message: string;
   actualValue?: number;
@@ -224,8 +228,6 @@ export interface VentSpec {
   placement: 'base' | 'upper';
   totalOpenAreaSqIn: number;
   openingAreaSqIn: number;
-  recommendedAreaMinSqIn: number;
-  recommendedAreaMaxSqIn?: number;
   layout: 'evenly-spaced' | 'opposed-pairs';
   crossVentilationValid: boolean;
   ventAnglesDeg: number[];
@@ -234,8 +236,6 @@ export interface VentSpec {
   gasLineEntryBrickIndex?: number;
   gasLineEntryClear: boolean;
   gasLineAutoAdjusted: boolean;
-  gasHardwareTemplate: GasHardwareTemplate;
-  gasHardwareTemplateLabel?: string;
 }
 
 export interface CornerInterlockGuidance {
@@ -412,9 +412,9 @@ export interface SmokelessSpec {
   insertBaseOD: number;
   /** Insert top flange outer diameter (in). */
   insertFlangeOD: number;
-  /** Minimum required pit depth (in). */
+  /** User-entered liner depth target (in); not a verified product requirement. */
   insertMinDepthIn: number;
-  /** Required masonry inner diameter to accommodate the insert with air gap. */
+  /** Modeled masonry inner diameter using the entered base OD and air gap. */
   requiredMasonryID: number;
   /** Air gap between insert base OD and masonry inner wall (in). */
   airGapIn: number;
@@ -446,8 +446,8 @@ export interface SmokelessSpec {
   draftPressurePa: number;
   /** Number of base-course blocks to omit to create primary intake openings. */
   baseVentBlockOmissions: number;
-  /** Whether the insert flange safely overlaps the masonry inner wall edge. */
-  flangeOverlapStatus: 'secure' | 'marginal' | 'unsafe';
+  /** Geometric overlap only; these bands do not verify support or heat behavior. */
+  flangeOverlapStatus: 'nonpositive' | 'under-one-inch' | 'at-least-one-inch';
   notes: string[];
 }
 

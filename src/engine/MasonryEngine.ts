@@ -5,7 +5,6 @@ import type {
   CourseStrategySummary,
   CutPlanSpec,
   FoundationSpec,
-  GasHardwareTemplate,
   LinerSpec,
   LogisticsSpec,
   MasonryInput,
@@ -20,6 +19,7 @@ import type {
   WallCourseStrategy,
 } from '../types';
 import { calculateSeatingMaterials } from '../utils/seatingMaterials';
+import { BREEO_INSERT_RINGS, buildManufacturerReview } from '../utils/manufacturerProfiles';
 
 const IN3_PER_FT3 = 1728;
 const IN3_PER_YD3 = 46656;
@@ -68,37 +68,6 @@ const WALL_UNIT_WEIGHT_OVERRIDES_LB: Record<string, number> = {
   rockLedgestone: 32,
   rockFieldstone: 45,
   rockMosaic: 28,
-};
-
-const GAS_HARDWARE_TEMPLATES: Record<
-  GasHardwareTemplate,
-  {
-    label: string;
-    recommendedAreaMinSqIn: number;
-    recommendedAreaMaxSqIn: number;
-  }
-> = {
-  // Illustrative scenario bands only. No manufacturer SKU is identified by these keys.
-  'generic-firepit': {
-    label: 'Generic firepit cavity',
-    recommendedAreaMinSqIn: 18,
-    recommendedAreaMaxSqIn: 36,
-  },
-  'drop-in-pan': {
-    label: 'Drop-in burner pan',
-    recommendedAreaMinSqIn: 18,
-    recommendedAreaMaxSqIn: 40,
-  },
-  'linear-burner': {
-    label: 'Linear burner tray',
-    recommendedAreaMinSqIn: 24,
-    recommendedAreaMaxSqIn: 48,
-  },
-  'high-btu-bowl': {
-    label: 'High-BTU bowl / ring',
-    recommendedAreaMinSqIn: 36,
-    recommendedAreaMaxSqIn: 60,
-  },
 };
 
 /** Physical constants for the stack-effect draft pressure formula. */
@@ -377,7 +346,16 @@ export class MasonryEngine {
       strategy,
       input,
     );
-    const linerSpec = this.calculateLiner(input, planMetrics);
+    const usesBreeoInsertRing = Boolean(
+      input.fuelType === 'wood' &&
+      input.smokelessMode &&
+      input.smokelessInsertPreset &&
+      input.smokelessInsertPreset in BREEO_INSERT_RINGS,
+    );
+    const linerSpec = this.calculateLiner(
+      usesBreeoInsertRing ? { ...input, linerType: 'none' } : input,
+      planMetrics,
+    );
     let thermalAssembly = this.calculateThermalAssembly(
       input,
       planMetrics,
@@ -1367,7 +1345,26 @@ export class MasonryEngine {
     courseCount: number,
     unitCount: number,
   ): VentSpec {
-    const gasTemplate = this.resolveGasHardwareTemplate(input);
+    if (
+      input.fuelType === 'wood' &&
+      input.smokelessMode &&
+      input.smokelessInsertPreset &&
+      input.smokelessInsertPreset in BREEO_INSERT_RINGS
+    ) {
+      return {
+        ventCount: 0,
+        placement: 'base',
+        targetCourseIndexes: [],
+        totalOpenAreaSqIn: 0,
+        openingAreaSqIn: 0,
+        layout: 'evenly-spaced',
+        crossVentilationValid: true,
+        ventAnglesDeg: [],
+        ventBrickIndexes: [],
+        gasLineEntryClear: true,
+        gasLineAutoAdjusted: false,
+      };
+    }
     const ventCount =
       input.fuelType === 'wood'
         ? Math.max(4, input.ventCount)
@@ -1417,8 +1414,6 @@ export class MasonryEngine {
         targetCourseIndexes: [0],
         totalOpenAreaSqIn,
         openingAreaSqIn: input.ventOpeningAreaSqIn,
-        recommendedAreaMinSqIn: gasTemplate.recommendedAreaMinSqIn,
-        recommendedAreaMaxSqIn: gasTemplate.recommendedAreaMaxSqIn,
         layout,
         crossVentilationValid,
         ventAnglesDeg,
@@ -1427,8 +1422,6 @@ export class MasonryEngine {
         gasLineEntryBrickIndex,
         gasLineEntryClear,
         gasLineAutoAdjusted,
-        gasHardwareTemplate: gasTemplate.key,
-        gasHardwareTemplateLabel: gasTemplate.label,
       };
     }
 
@@ -1439,8 +1432,6 @@ export class MasonryEngine {
         targetCourseIndexes: [Math.max(0, courseCount - 1)],
         totalOpenAreaSqIn,
         openingAreaSqIn: input.ventOpeningAreaSqIn,
-        recommendedAreaMinSqIn: gasTemplate.recommendedAreaMinSqIn,
-        recommendedAreaMaxSqIn: gasTemplate.recommendedAreaMaxSqIn,
         layout,
         crossVentilationValid,
         ventAnglesDeg,
@@ -1449,8 +1440,6 @@ export class MasonryEngine {
         gasLineEntryBrickIndex,
         gasLineEntryClear,
         gasLineAutoAdjusted,
-        gasHardwareTemplate: gasTemplate.key,
-        gasHardwareTemplateLabel: gasTemplate.label,
       };
     }
 
@@ -1460,42 +1449,12 @@ export class MasonryEngine {
       targetCourseIndexes: [0, Math.min(1, Math.max(0, courseCount - 1))],
       totalOpenAreaSqIn,
       openingAreaSqIn: input.ventOpeningAreaSqIn,
-      recommendedAreaMinSqIn: 18,
       layout: 'evenly-spaced',
       crossVentilationValid: true,
       ventAnglesDeg,
       ventBrickIndexes,
       gasLineEntryClear: true,
       gasLineAutoAdjusted: false,
-      gasHardwareTemplate: gasTemplate.key,
-      gasHardwareTemplateLabel: gasTemplate.label,
-    };
-  }
-
-  private resolveGasHardwareTemplate(input: MasonryInput): {
-    key: GasHardwareTemplate;
-    label: string;
-    recommendedAreaMinSqIn: number;
-    recommendedAreaMaxSqIn: number;
-  } {
-    const key = input.gasHardwareTemplate ?? 'generic-firepit';
-    const template = GAS_HARDWARE_TEMPLATES[key];
-    if (!template) {
-      return {
-        key: 'generic-firepit',
-        label: GAS_HARDWARE_TEMPLATES['generic-firepit'].label,
-        recommendedAreaMinSqIn:
-          GAS_HARDWARE_TEMPLATES['generic-firepit'].recommendedAreaMinSqIn,
-        recommendedAreaMaxSqIn:
-          GAS_HARDWARE_TEMPLATES['generic-firepit'].recommendedAreaMaxSqIn,
-      };
-    }
-
-    return {
-      key,
-      label: template.label,
-      recommendedAreaMinSqIn: template.recommendedAreaMinSqIn,
-      recommendedAreaMaxSqIn: template.recommendedAreaMaxSqIn,
     };
   }
 
@@ -2012,22 +1971,22 @@ export class MasonryEngine {
       Math.ceil(primaryVentTotalAreaSqIn / singleBlockOpeningAreaSqIn),
     );
 
-    // --- Flange overlap safety (D_flange ≥ D_masonry + 1.0 in is secure) ---
+    // --- Geometric flange overlap only; bearing capacity is not modeled. ---
     const blockInnerRadius = requiredMasonryID / 2;
     const flangeRadius = insertFlangeOD / 2;
     const flangeOverlap = flangeRadius - blockInnerRadius;
     const flangeOverlapStatus: SmokelessSpec['flangeOverlapStatus'] =
-      flangeOverlap <= 0.25
-        ? 'unsafe'
+      flangeOverlap <= 0
+        ? 'nonpositive'
         : flangeOverlap < 1.0
-          ? 'marginal'
-          : 'secure';
+          ? 'under-one-inch'
+          : 'at-least-one-inch';
 
     // --- Notes ---
     const notes: string[] = [
       `Smokeless secondary-combustion mode active — insert: ${presetDef.label}.`,
       `Modeled masonry inner opening: ${requiredMasonryID.toFixed(2)} in (entered liner base ${insertBaseOD} in + 2 × ${airGapIn} in air gap). Verify fit with the fabricated liner.`,
-      `Modeled flange overlap: ${flangeOverlap.toFixed(2)} in — band: ${flangeOverlapStatus}. Verify actual bearing and support; diameter alone does not prove safe seating.`,
+      `Modeled flange overlap: ${flangeOverlap.toFixed(2)} in per side. This geometric value does not verify bearing, stability, or heat behavior.`,
       `Primary intake vents: ${primaryVentCount}× ${primaryVentDiameterIn}" dia. holes = ${primaryVentTotalAreaSqIn.toFixed(2)} sq in total.`,
       `Secondary combustion jets: ${secondaryVentCount}× ${secondaryVentDiameterIn}" dia. holes = ${secondaryVentTotalAreaSqIn.toFixed(2)} sq in total.`,
       `Intake/outlet ratio: ${intakeOutletRatio.toFixed(2)} — ${intakeOutletRatioStatus === 'optimal' ? 'within illustrative 1.2–1.5 band' : intakeOutletRatioStatus === 'starved' ? 'below illustrative 1.2–1.5 band' : 'above illustrative 1.2–1.5 band'}. This ratio does not validate combustion or airflow.`,
@@ -2073,12 +2032,15 @@ export class MasonryEngine {
     smokelessSpec: SmokelessSpec | undefined,
   ): SafetyWarning[] {
     const warnings: SafetyWarning[] = [];
+    const manufacturerReview = buildManufacturerReview(input, ventSpec);
+    if (manufacturerReview) warnings.push(...manufacturerReview.warnings);
 
     if (
       input.fuelType === 'wood' &&
       input.smokelessMode &&
       input.smokelessInsertPreset &&
-      input.smokelessInsertPreset !== 'custom-diy'
+      input.smokelessInsertPreset !== 'custom-diy' &&
+      !manufacturerReview
     ) {
       warnings.push({
         code: 'commercial-insert-fit-unverified',
@@ -2104,7 +2066,7 @@ export class MasonryEngine {
       message: `Configured overhead clearance is ${overheadClearanceFt.toFixed(1)} ft. No product-specific or local requirement has been verified for branches, soffits, and other overhead combustibles; confirm the site and equipment instructions before building.`,
     });
 
-    if (input.fuelType === 'wood' && input.linerType === 'none') {
+    if (input.fuelType === 'wood' && input.linerType === 'none' && !manufacturerReview) {
       warnings.push({
         code: 'wood-liner-recommended',
         message:
@@ -2186,21 +2148,16 @@ export class MasonryEngine {
           requiredValue: SMOKELESS_RATIO_MAX,
         });
       }
-      if (smokelessSpec.flangeOverlapStatus === 'unsafe') {
+      if (smokelessSpec.flangeOverlapStatus === 'nonpositive') {
         warnings.push({
           code: 'smokeless-flange-unsafe',
-          message: `Insert flange overlap is only ${(smokelessSpec.insertFlangeOD / 2 - smokelessSpec.requiredMasonryID / 2).toFixed(2)} in — the insert may fall into the pit. Flange OD (${smokelessSpec.insertFlangeOD} in) must overlap the masonry inner edge by at least 1 in on each side.`,
-        });
-      } else if (smokelessSpec.flangeOverlapStatus === 'marginal') {
-        warnings.push({
-          code: 'smokeless-flange-unsafe',
-          message: `Insert flange overlap is marginal. Verify the insert seats securely on the capstones before finalizing wall dimensions.`,
+          message: `Modeled insert flange overlap is ${(smokelessSpec.insertFlangeOD / 2 - smokelessSpec.requiredMasonryID / 2).toFixed(2)} in per side, so the entered flange does not reach the modeled masonry bearing edge. Revise the geometry and obtain a support detail before fabrication.`,
         });
       }
       if (input.wallHeightIn < smokelessSpec.insertMinDepthIn) {
         warnings.push({
           code: 'smokeless-depth-insufficient',
-          message: `Wall height (${input.wallHeightIn} in) is less than the minimum pit depth required for this insert (${smokelessSpec.insertMinDepthIn} in). Increase wall height or choose a shallower insert.`,
+          message: `Wall height (${input.wallHeightIn} in) is below the entered liner depth target (${smokelessSpec.insertMinDepthIn} in). Confirm the actual liner height and the support detail before fabrication.`,
           actualValue: input.wallHeightIn,
           requiredValue: smokelessSpec.insertMinDepthIn,
         });
@@ -2278,10 +2235,12 @@ export class MasonryEngine {
     }
 
     if (input.fuelType !== 'wood') {
-      warnings.push({
-        code: 'gas-manufacturer-requirements-unverified',
-        message: `Gas vent area (${ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in total), placement, and free opening per side need the exact burner and enclosure manual plus qualified installer review. The selected category is illustrative and cannot establish compliance.`,
-      });
+      if (!manufacturerReview) {
+        warnings.push({
+          code: 'gas-manufacturer-requirements-unverified',
+          message: `Gas vent area (${ventSpec.totalOpenAreaSqIn.toFixed(1)} sq in total), placement, and free opening per side need the exact burner and enclosure manual plus qualified installer review. Generic planning geometry cannot establish compliance.`,
+        });
+      }
 
       if (!ventSpec.crossVentilationValid) {
         warnings.push({
