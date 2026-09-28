@@ -1617,41 +1617,45 @@ export default function App() {
               </div>
             </div>
 
-            <div className='flex gap-2' role='tablist' aria-label='View mode'>
-              <button
-                id='visualization-tab-3d'
-                role='tab'
-                aria-selected={view === '3d'}
-                aria-controls='visualization-panel'
-                className={`rounded-full px-4 py-2 text-sm font-semibold ${view === '3d' ? 'bg-amber-900 text-amber-50' : 'bg-amber-100 text-amber-900'}`}
-                onClick={() => setView('3d')}
-              >
-                3D Preview
-              </button>
-              <button
-                id='visualization-tab-construction'
-                role='tab'
-                aria-selected={view === 'construction'}
-                aria-controls='visualization-panel'
-                className={`rounded-full px-4 py-2 text-sm font-semibold ${view === 'construction' ? 'bg-amber-900 text-amber-50' : 'bg-amber-100 text-amber-900'}`}
-                onClick={() => setView('construction')}
-              >
-                Build Plan
-              </button>
-              <button
-                className='rounded-full bg-amber-900 px-4 py-2 text-sm font-semibold text-amber-50'
-                onClick={handleStakeholderRender}
-                disabled={isRenderingImage}
-              >
-                {isRenderingImage ? 'Rendering Image…' : 'Save Image'}
-              </button>
-              <button
-                className='rounded-full bg-amber-100 px-4 py-2 text-sm font-semibold text-amber-900'
-                onClick={handleExportGlb}
-                disabled={isExportingGlb}
-              >
-                {isExportingGlb ? 'Exporting GLB…' : 'Export GLB'}
-              </button>
+            <div className='flex flex-wrap gap-2'>
+              <div className='flex gap-2' role='tablist' aria-label='View mode'>
+                <button
+                  id='visualization-tab-3d'
+                  role='tab'
+                  aria-selected={view === '3d'}
+                  aria-controls='visualization-panel'
+                  className={`rounded-full px-4 py-2 text-sm font-semibold ${view === '3d' ? 'bg-amber-900 text-amber-50' : 'bg-amber-100 text-amber-900'}`}
+                  onClick={() => setView('3d')}
+                >
+                  3D Preview
+                </button>
+                <button
+                  id='visualization-tab-construction'
+                  role='tab'
+                  aria-selected={view === 'construction'}
+                  aria-controls='visualization-panel'
+                  className={`rounded-full px-4 py-2 text-sm font-semibold ${view === 'construction' ? 'bg-amber-900 text-amber-50' : 'bg-amber-100 text-amber-900'}`}
+                  onClick={() => setView('construction')}
+                >
+                  Build Plan
+                </button>
+              </div>
+              <div className='flex gap-2'>
+                <button
+                  className='rounded-full bg-amber-900 px-4 py-2 text-sm font-semibold text-amber-50'
+                  onClick={handleStakeholderRender}
+                  disabled={isRenderingImage}
+                >
+                  {isRenderingImage ? 'Rendering Image…' : 'Save Image'}
+                </button>
+                <button
+                  className='rounded-full bg-amber-100 px-4 py-2 text-sm font-semibold text-amber-900'
+                  onClick={handleExportGlb}
+                  disabled={isExportingGlb}
+                >
+                  {isExportingGlb ? 'Exporting GLB…' : 'Export GLB'}
+                </button>
+              </div>
             </div>
             {/* <p className='text-xs text-amber-900/75'>
               3D Preview: drag to rotate and scroll to zoom. Build Plan: use

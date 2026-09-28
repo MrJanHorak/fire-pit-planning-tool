@@ -2087,6 +2087,8 @@ export default function Stage3D({
     (course) => course.courseIndex === inspectedWallBrick?.courseIndex,
   );
   const [showDimensions, setShowDimensions] = useState(false);
+  const controlsTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const controlsPanelRef = useRef<HTMLDivElement | null>(null);
   const orbitRef = useRef<OrbitHandle>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const sceneRef = useRef<Scene | null>(null);
@@ -3071,17 +3073,43 @@ export default function Stage3D({
     setSelectedBrick(null);
   }, [cutawayMode]);
 
+  useEffect(() => {
+    if (!showControls) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setShowControls(false);
+      controlsTriggerRef.current?.focus();
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (
+        controlsPanelRef.current?.contains(target) ||
+        controlsTriggerRef.current?.contains(target)
+      ) return;
+      setShowControls(false);
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('pointerdown', onPointerDown);
+    };
+  }, [showControls]);
+
   return (
     <div className='stage3d-shell card-rise relative h-[620px] rounded-2xl border border-amber-900/20 bg-amber-100/70 p-2 shadow-lg sm:h-[680px]'>
-      <div className='absolute bottom-2 right-2 top-2 z-10 flex flex-col items-end sm:bottom-4 sm:right-4 sm:top-4'>
-        <div className='flex max-h-full min-h-0 flex-col items-end gap-2'>
+      <div className='stage3d-controls-shell absolute bottom-2 right-2 top-2 z-10 flex flex-col items-end sm:bottom-4 sm:right-4 sm:top-4'>
+        <div className='stage3d-controls-inner flex max-h-full min-h-0 flex-col items-end gap-2'>
           <button
+            ref={controlsTriggerRef}
             type='button'
             aria-label='3D display controls'
             aria-expanded={showControls}
             aria-controls='stage3d-controls-panel'
             onClick={() => setShowControls((value) => !value)}
-            className='flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-50/95 text-amber-900 shadow hover:bg-amber-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-950'
+            className='stage3d-controls-trigger flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-50/95 text-amber-900 shadow hover:bg-amber-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-950'
           >
             <svg aria-hidden='true' className='h-5 w-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
               <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' />
@@ -3089,6 +3117,7 @@ export default function Stage3D({
             </svg>
           </button>
           <div
+            ref={controlsPanelRef}
             id='stage3d-controls-panel'
             hidden={!showControls}
             className='stage3d-controls-panel min-h-0 w-[min(320px,calc(100vw-2rem))] overflow-y-auto overflow-x-hidden rounded-2xl border border-amber-900/20 bg-amber-50/95 p-2 shadow-2xl backdrop-blur'

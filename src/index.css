@@ -90,6 +90,35 @@ summary:focus-visible {
   background: rgba(125, 78, 44, 0.55);
 }
 
+@media (max-width: 639px) {
+  .stage3d-controls-shell {
+    left: 0.5rem;
+    right: 0.5rem;
+  }
+
+  .stage3d-controls-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  .stage3d-controls-trigger {
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
+
+  .stage3d-controls-panel {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-height: min(70%, 480px);
+    border-radius: 1rem;
+  }
+}
+
 html[data-theme='dark'] .stage3d-controls-panel {
   background: rgba(34, 23, 15, 0.94) !important;
   scrollbar-color: rgba(205, 165, 124, 0.5) transparent;
@@ -97,6 +126,11 @@ html[data-theme='dark'] .stage3d-controls-panel {
 
 html[data-theme='dark'] .stage3d-controls-panel::-webkit-scrollbar-thumb {
   background: rgba(205, 165, 124, 0.5);
+}
+
+html[data-theme='dark'] :is(button, a, input, select, textarea, summary):focus-visible {
+  outline-color: #f7c87d;
+  outline-width: 3px;
 }
 
 html[data-theme='dark'] body {
