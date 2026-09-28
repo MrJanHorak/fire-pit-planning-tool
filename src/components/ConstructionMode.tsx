@@ -305,6 +305,9 @@ export default function ConstructionMode({
 
           <div
             className='overflow-x-auto rounded-lg border border-amber-900/20 bg-white p-2'
+            role='region'
+            aria-label='Course layout diagram'
+            tabIndex={0}
             dangerouslySetInnerHTML={{ __html: coursePlanMarkup }}
           />
         </>

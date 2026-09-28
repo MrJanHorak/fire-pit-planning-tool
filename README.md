@@ -50,13 +50,15 @@ The 3D preview requires WebGL. The remaining planner and exports can be used whe
 
 ### Browser release checks
 
-The browser suite checks autosave, project JSON round-trip, planning-packet export, and phone-width preview controls. Install Chrome locally, then run:
+The browser suite checks autosave, project JSON round-trip, planning-packet export, phone-width preview controls, and automated WCAG A/AA checks in both themes. Install Chrome locally, then run:
 
 ```bash
 npm run test:e2e
 ```
 
 The checked-in GitHub Actions quality gate runs the unit suite, production build, production-dependency audit, and browser suite on every push and pull request. CI installs its own Chromium browser. A passing local run does not verify the deployed Vercel version; review the preview deployment before promotion.
+
+To run the same browser checks against a hosted preview, set `E2E_BASE_URL` to the preview's full HTTPS origin before running `npm run test:e2e`. The suite uses an isolated browser context and declines analytics, but it downloads project files during the test.
 
 ## Review before construction
 

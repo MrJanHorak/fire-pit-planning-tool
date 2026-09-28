@@ -417,7 +417,7 @@ export default function ControlPanel({
                   </span>
                   <span
                     className={`block text-xs font-medium leading-tight ${
-                      selected ? 'text-amber-100/90' : 'text-amber-700/80'
+                      selected ? 'text-amber-100/90' : 'text-amber-900/90'
                     }`}
                   >
                     {option.label}
@@ -1748,7 +1748,7 @@ export default function ControlPanel({
                       </span>
                       <span
                         className={`block text-xs leading-tight ${
-                          selected ? 'text-amber-100/90' : 'text-amber-700/80'
+                          selected ? 'text-amber-100/90' : 'text-amber-900/90'
                         }`}
                       >
                         {option.hint}
@@ -1806,7 +1806,7 @@ export default function ControlPanel({
                       </span>
                       <span
                         className={`block text-xs leading-tight ${
-                          selected ? 'text-amber-100/90' : 'text-amber-700/80'
+                          selected ? 'text-amber-100/90' : 'text-amber-900/90'
                         }`}
                       >
                         {option.hint}

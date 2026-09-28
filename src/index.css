@@ -57,6 +57,12 @@ summary:focus-visible {
   animation: rise-in 360ms ease-out both;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .card-rise {
+    animation: none;
+  }
+}
+
 .control-panel-grid > label {
   row-gap: 0.25rem;
 }

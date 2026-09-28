@@ -164,3 +164,10 @@ TypeScript, all 118 tests, and the production build pass locally for this contin
 - Added browser coverage for autosave after reload, project JSON export/import, planning-packet content, and narrow-phone preview settings including Escape and outside-click dismissal.
 - Local verification: 123 unit tests, 3 browser tests in both local Chrome and CI-mode Playwright Chromium, TypeScript, production build, and `git diff --check` pass. The production dependency audit reports zero advisories. The full npm install still reports seven advisories in the dependency tree; these need separate review.
 - The checked-in workflow has not run on the remote CI service yet. Deployment preview review and independent engineering validation remain release gates.
+
+## Hosted smoke and accessibility continuation (2026-09-28)
+
+- Confirmed the remote `main` commit matches the local release-gate commit. All three browser smoke tests passed against the published Vercel site, covering autosave, project import/export, planning-packet content, and phone preview settings.
+- Added a hosted-URL option (`E2E_BASE_URL`) to the Playwright configuration so the same smoke suite can check future preview deployments without launching a local server.
+- Added automated WCAG A/AA browser checks for designer and build-plan views in light and dark themes, plus the open phone preview settings. The first scan found insufficient contrast on four plan-shape labels. Stronger label and hint colors now pass the scan.
+- The build-plan course diagram can now receive keyboard focus for horizontal scrolling, and the card entrance animation is disabled when reduced motion is requested. Automated checks do not replace manual screen-reader, zoom, and device testing.
